@@ -1,7 +1,9 @@
 import { Head } from '@inertiajs/react';
-import { dashboard } from '@/routes';
-import { columns, Payment } from "./payments/columns-appartements"
+import { client, dashboard } from '@/routes';
+import { columns, appartements } from "./payments/columns-appartements"
+import { columns_reserv,reservationss } from './payments/columns-reservations';
 import { DataTable } from "./payments/data-table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useEffect, useState } from 'react'
 import {
   Card,
@@ -11,62 +13,63 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { columns_clt, clt } from './payments/columns-client';
 
 
-async function getData(): Promise<Payment> {
-  // Fetch data from your API here.
-  return [
-    {
-      id: "728ed52f",
-      amount: 100,
-      status: "success",
-      email: "brice@idt.ci",
-    },
-    {
-      id: "728ed52f",
-      amount: 100,
-      status: "pending",
-      email: "marvin@example.com",
-    },
-    {
-      id: "728ed52f",
-      amount: 100,
-      status: "failed",
-      email: "yenan@example.com",
-    },
-    {
-      id: "728ed52f",
-      amount: 100,
-      status: "pending",
-      email: "kodjane@example.com",
-    },
-    {
-      id: "728ed52f",
-      amount: 100,
-      status: "pending",
-      email: "m@example.com",
-    },
-    {
-      id: "728ed52f",
-      amount: 100,
-      status: "pending",
-      email: "m@example.com",
-    },
-    {
-      id: "728ed52f",
-      amount: 100,
-      status: "pending",
-      email: "m@example.com",
-    },
-    // ...
-  ]
-}
+// async function getData(): Promise<Payment> {
+//   // Fetch data from your API here.
+//   return [
+//     {
+//       id: "728ed52f",
+//       amount: 100,
+//       status: "success",
+//       email: "brice@idt.ci",
+//     },
+//     {
+//       id: "728ed52f",
+//       amount: 100,
+//       status: "pending",
+//       email: "marvin@example.com",
+//     },
+//     {
+//       id: "728ed52f",
+//       amount: 100,
+//       status: "failed",
+//       email: "yenan@example.com",
+//     },
+//     {
+//       id: "728ed52f",
+//       amount: 100,
+//       status: "pending",
+//       email: "kodjane@example.com",
+//     },
+//     {
+//       id: "728ed52f",
+//       amount: 100,
+//       status: "pending",
+//       email: "m@example.com",
+//     },
+//     {
+//       id: "728ed52f",
+//       amount: 100,
+//       status: "pending",
+//       email: "m@example.com",
+//     },
+//     {
+//       id: "728ed52f",
+//       amount: 100,
+//       status: "pending",
+//       email: "m@example.com",
+//     },
+//     // ...
+//   ]
+// }
 
 export default function Dashboard() {
-    const [data, setData] = useState<Payment[]>([])
-    useEffect(()=>{
-        getData().then(setData)
-    },[]);
+        // const [data, setData] = useState<Payment[]>([])
+        // useEffect(()=>{
+        //     getData().then(setData)
+        // },[]);
 
     return (
         <>
@@ -139,9 +142,29 @@ export default function Dashboard() {
                         </Card>
                     </div>
                 </div>
-                <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
+                <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border p-5">
                     {/* <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" /> */}
-                    <DataTable columns={columns} data={data} />
+                    <Tabs defaultValue="reservation" className="w-full">
+                        <TabsList>
+                            <TabsTrigger value="client">Planning</TabsTrigger>
+                            <TabsTrigger value="reservation">Traitement Reservation-Client</TabsTrigger>
+                            <TabsTrigger value="accueil">Accueils Client</TabsTrigger>
+                            <TabsTrigger value="client">Etat des lieux</TabsTrigger>
+                            <TabsTrigger value="client">Suivi des besoins</TabsTrigger>
+                            <TabsTrigger value="client">Gestion des casse</TabsTrigger>
+                            <TabsTrigger value="client">Signalement des pannes</TabsTrigger>
+                            <TabsTrigger value="client">Generation des devis</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="reservation">
+                             <DataTable columns={columns_reserv} data={reservationss} />
+                        </TabsContent>
+                        {/* <TabsContent value="appartements">
+                             <DataTable columns={columns} data={appartements} />
+                        </TabsContent> */}
+                        <TabsContent value="client">
+                             <DataTable columns={columns_clt} data={clt} />
+                        </TabsContent>
+                    </Tabs>
                 </div>
             </div>
         </>

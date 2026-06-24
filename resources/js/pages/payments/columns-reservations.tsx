@@ -57,7 +57,7 @@ export const columns_reserv: ColumnDef<reservations>[] = [
   },
   {
     accessorKey: "id_client",
-    header: "Client",
+    header: "",
   },
   {
     accessorKey: "date_debut",

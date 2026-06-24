@@ -1,12 +1,7 @@
 import { Head } from '@inertiajs/react';
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import { dashboard } from '@/routes';
-import { emp, columns_emp } from './payments/columns-employe';
-import { depense, columns_dep } from './payments/columns-depense';
-import { clt,columns_clt } from './payments/columns-client';
 import { columns, appartements } from "./payments/columns-appartements"
 import { columns_reserv,reservationss } from './payments/columns-reservations';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DataTable } from "./payments/data-table"
 import { useEffect, useState } from 'react'
 import {
@@ -17,56 +12,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { columns_fact, facture } from './payments/columns-facture';
 
 
 // async function getData(): Promise<Payment> {
 //   // Fetch data from your API here.
-//   return [
-//     {
-//       id: "728ed52f",
-//       amount: 100,
-//       status: "success",
-//       email: "brice@idt.ci",
-//     },
-//     {
-//       id: "728ed52f",
-//       amount: 100,
-//       status: "pending",
-//       email: "marvin@example.com",
-//     },
-//     {
-//       id: "728ed52f",
-//       amount: 100,
-//       status: "failed",
-//       email: "yenan@example.com",
-//     },
-//     {
-//       id: "728ed52f",
-//       amount: 100,
-//       status: "pending",
-//       email: "kodjane@example.com",
-//     },
-//     {
-//       id: "728ed52f",
-//       amount: 100,
-//       status: "pending",
-//       email: "m@example.com",
-//     },
-//     {
-//       id: "728ed52f",
-//       amount: 100,
-//       status: "pending",
-//       email: "m@example.com",
-//     },
-//     {
-//       id: "728ed52f",
-//       amount: 100,
-//       status: "pending",
-//       email: "m@example.com",
-//     },
-//     // ...
-//   ]
+//   return reservationss;
+    
+    
 // }
+
+
+let client = false;
 
 export default function Dashboard() {
     // const [data, setData] = useState<Payment[]>([])
@@ -149,24 +107,16 @@ export default function Dashboard() {
                     {/* <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" /> */}
                     <Tabs defaultValue="reservation" className="w-full">
                         <TabsList>
-                            <TabsTrigger value="reservation">Recrutement</TabsTrigger>
-                            <TabsTrigger value="appartements">Entretien</TabsTrigger>
-                            <TabsTrigger value="depense">Contrats</TabsTrigger>
-                            <TabsTrigger value="employe">Salaires</TabsTrigger>
-                            <TabsTrigger value="employe">Conges</TabsTrigger>
-                            <TabsTrigger value="employe">Licenciement</TabsTrigger>
+                            <TabsTrigger value="reservation">Expression besoins</TabsTrigger>
+                            <TabsTrigger value="facture">Receptions</TabsTrigger>
+                            <TabsTrigger value="facture">Enregistrement</TabsTrigger>
+                            <TabsTrigger value="facture">Affectation Equipement</TabsTrigger>
                         </TabsList>
                         <TabsContent value="reservation">
                              <DataTable columns={columns_reserv} data={reservationss} />
                         </TabsContent>
-                        <TabsContent value="appartements">
-                             <DataTable columns={columns} data={appartements} />
-                        </TabsContent>
-                        <TabsContent value="depense">
-                             <DataTable columns={columns_dep} data={depense} />
-                        </TabsContent>
-                        <TabsContent value="employe">
-                             <DataTable columns={columns_emp} data={emp} />
+                        <TabsContent value="facture">
+                             <DataTable columns={columns_fact} data={facture} />
                         </TabsContent>
                     </Tabs>
                 </div>

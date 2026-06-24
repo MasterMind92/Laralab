@@ -18,23 +18,13 @@ import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
+        title: 'Proprietaire',
         href: dashboard(),
         icon: LayoutGrid,
     },
     {
-        title: 'Proprietaire',
-        href: "/propietaire",
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Commercial',
-        href: "/commercial",
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Client',
-        href: "/client",
+        title: 'Gerant',
+        href: "#",
         icon: LayoutGrid,
     },
     {
@@ -47,6 +37,26 @@ const mainNavItems: NavItem[] = [
         href: "comptabilite",
         icon: LayoutGrid,
     },
+    {
+        title: 'Logistique',
+        href: "comptabilite",
+        icon: LayoutGrid,
+    },
+    {
+        title: 'Maintenance',
+        href: "comptabilite",
+        icon: LayoutGrid,
+    },
+    {
+        title: 'Commercial',
+        href: "/commercial",
+        icon: LayoutGrid,
+    },
+    
+    
+    
+    
+    
 ];
 
 const footerNavItems: NavItem[] = [

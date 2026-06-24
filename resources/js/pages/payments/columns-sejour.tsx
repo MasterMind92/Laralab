@@ -13,40 +13,60 @@ import {
 
 // This type is used to define the shape of our data.
 // You can use a Zod schema here if you want.
-export type Payment = {
+export type Sejour = {
   id: string
-  amount: number
-  status: "pending" | "processing" | "success" | "failed"
-  email: string
+  status: "en cours" | "cloture" 
+  id_reservation: string
+  date_entree: string
+  date_sortie: string
+  etat_lieux_entree: string
+  etat_lieux_sortie: string
+  casses: string
 }
 
-export const payments: Payment[] = [
+export const sejour: Sejour[] = [
   {
     id: "728ed52f",
-    amount: 100,
-    status: "pending",
-    email: "m@example.com",
+    status: "en cours",
+    id_reservation: "m@example.com",
+    date_entree: "2026-01-01 12:00",
+    date_sortie: "2026-01-02 12:00",
+    etat_lieux_entree: "ok",
+    etat_lieux_sortie: "non ok",
+    casses: "Oui",
   },
-  {
-    id: "489e1d42",
-    amount: 125,
-    status: "processing",
-    email: "example@gmail.com",
-  },
+  
   // ...
 ]
 
-export const columns: ColumnDef<Payment>[] = [
+export const columns_sej: ColumnDef<Sejour>[] = [
+  
+  {
+    accessorKey: "id_reservation",
+    header: "Ref Reservation",
+  },
   {
     accessorKey: "status",
-    header: "Status",
+    header: "Statut",
   },
   {
-    accessorKey: "email",
-    header: "Email",
+    accessorKey: "date_entree",
+    header: "Date d'entree",
   },
   {
-    accessorKey: "amount",
+    accessorKey: "date_sortie",
+    header: "Date de Sortie",
+  },
+  {
+    accessorKey: "etat_lieux_entree",
+    header: "Statut check-in",
+  },
+  {
+    accessorKey: "etat_lieux_sortie",
+    header: "Statut Check out",
+  },
+  {
+    accessorKey: "casses",
     header: "Amount",
   },
   {

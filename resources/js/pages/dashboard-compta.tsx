@@ -1,14 +1,10 @@
 import { Head } from '@inertiajs/react';
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import { dashboard } from '@/routes';
-import { emp, columns_emp } from './payments/columns-employe';
-import { depense, columns_dep } from './payments/columns-depense';
-import { clt,columns_clt } from './payments/columns-client';
-import { columns, appartements } from "./payments/columns-appartements"
-import { columns_reserv,reservationss } from './payments/columns-reservations';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { columns_sej, sejour } from './payments/columns-sejour';
+import { facture, columns_fact } from './payments/columns-facture';
 import { DataTable } from "./payments/data-table"
 import { useEffect, useState } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Card,
   CardContent,
@@ -145,28 +141,23 @@ export default function Dashboard() {
                         </Card>
                     </div>
                 </div>
-                <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border p-5">
-                    {/* <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" /> */}
-                    <Tabs defaultValue="reservation" className="w-full">
+                <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
+                    <Tabs defaultValue="sejour" className="w-full">
                         <TabsList>
-                            <TabsTrigger value="reservation">Recrutement</TabsTrigger>
-                            <TabsTrigger value="appartements">Entretien</TabsTrigger>
-                            <TabsTrigger value="depense">Contrats</TabsTrigger>
-                            <TabsTrigger value="employe">Salaires</TabsTrigger>
-                            <TabsTrigger value="employe">Conges</TabsTrigger>
-                            <TabsTrigger value="employe">Licenciement</TabsTrigger>
+                            <TabsTrigger value="sejour">Consultation des devis</TabsTrigger>
+                            <TabsTrigger value="facture">Cloture de sejours</TabsTrigger>
+                            <TabsTrigger value="facture">Factures</TabsTrigger>
+                            <TabsTrigger value="facture">Encaissements</TabsTrigger>
+                            <TabsTrigger value="facture">Recouvrement</TabsTrigger>
+                            <TabsTrigger value="facture">Achats</TabsTrigger>
+                            <TabsTrigger value="facture">Depenses</TabsTrigger>
+                            <TabsTrigger value="facture">Etats Financiers</TabsTrigger>
                         </TabsList>
-                        <TabsContent value="reservation">
-                             <DataTable columns={columns_reserv} data={reservationss} />
+                        <TabsContent value="sejour">
+                             <DataTable columns={columns_sej} data={sejour} />
                         </TabsContent>
-                        <TabsContent value="appartements">
-                             <DataTable columns={columns} data={appartements} />
-                        </TabsContent>
-                        <TabsContent value="depense">
-                             <DataTable columns={columns_dep} data={depense} />
-                        </TabsContent>
-                        <TabsContent value="employe">
-                             <DataTable columns={columns_emp} data={emp} />
+                        <TabsContent value="facture">
+                             <DataTable columns={columns_fact} data={facture} />
                         </TabsContent>
                     </Tabs>
                 </div>
