@@ -32,6 +32,14 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
         sub:[
             {
+                title: "dashboard",
+                url:"#",
+            },
+            {
+                title: "Appartements",
+                url:"#",
+            },
+            {
                 title: "Recrutement",
                 url:"#",
             },
@@ -63,7 +71,7 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
         sub:[
             {
-                title: "test",
+                title: "Appartements",
                 url:"#",
             }
         ]
@@ -113,15 +121,15 @@ const mainNavItems: NavItem[] = [
                 url:"#",
             },
             {
-                title: "Factures",
+                title: "Facture du sejour",
                 url:"#",
             },
             {
-                title: "Encaissements",
+                title: "Encaissements factures",
                 url:"#",
             },
             {
-                title: "Recouvrement",
+                title: "Recouvrements factures",
                 url:"#",
             },
             {
@@ -150,7 +158,7 @@ const mainNavItems: NavItem[] = [
                 url:"#",
             },
             {
-                title: "Recepeiton",
+                title: "Reception",
                 url:"#",
             },
             {
@@ -202,7 +210,7 @@ const mainNavItems: NavItem[] = [
                 url:"#",
             },
             {
-                title: "Etats des lieux",
+                title: "Etats des lieux d'entrees",
                 url:"#",
             },
             {
@@ -215,6 +223,14 @@ const mainNavItems: NavItem[] = [
             },
             {
                 title: "Signalement des pannes",
+                url:"#",
+            },
+            {
+                title: "Etats des lieux de sortie",
+                url:"#",
+            },
+            {
+                title: "Devis du Sejour",
                 url:"#",
             },
 
@@ -275,9 +291,8 @@ export function AppSidebar() {
                         {item.sub && item.sub.map((item) => (
                         <SidebarMenuItem key={item.title}>
                             <SidebarMenuButton asChild isActive={item.isActive}>
-                            <a href={item.url}>{item.title}</a>
+                            {/* <a href={item.url}>{item.title}</a> */}
                             <Link href={item.url} prefetch >
-                                
                                 <span>{item.title}</span>
                             </Link>
                             </SidebarMenuButton>

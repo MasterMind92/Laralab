@@ -1,0 +1,129 @@
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+
+@layer base {
+  :root {
+    /* LuxStay Design Tokens */
+    --gold:           210 131 62;        /* #B8975A */
+    --gold-light:     232 213 163;
+    --gold-dark:      139 110 58;
+    --dark:           15 15 15;
+    --dark-2:         26 26 26;
+    --dark-3:         38 38 38;
+    --cream:          247 244 238;
+    --cream-2:        237 233 223;
+
+    /* shadcn required tokens */
+    --background:     247 244 238;
+    --foreground:     15 15 15;
+    --card:           255 255 255;
+    --card-foreground:15 15 15;
+    --primary:        210 131 62;
+    --primary-foreground: 15 15 15;
+    --secondary:      237 233 223;
+    --secondary-foreground: 15 15 15;
+    --muted:          237 233 223;
+    --muted-foreground: 120 113 108;
+    --accent:         237 233 223;
+    --accent-foreground: 15 15 15;
+    --destructive:    220 38 38;
+    --destructive-foreground: 255 255 255;
+    --border:         220 213 200;
+    --input:          220 213 200;
+    --ring:           210 131 62;
+    --radius:         0.375rem;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background-color: rgb(var(--cream));
+    color: rgb(var(--dark));
+    font-weight: 300;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.15;
+  }
+}
+
+@layer components {
+  /* ── Gold button ── */
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2
+           px-6 py-2.5 rounded text-xs tracking-widest uppercase font-medium
+           bg-[rgb(var(--gold))] text-[rgb(var(--dark))]
+           transition-all duration-200 cursor-pointer border-none
+           hover:bg-[rgb(var(--gold-dark))] hover:text-white;
+  }
+  .btn-gold:disabled { @apply opacity-50 cursor-not-allowed; }
+
+  /* ── Outline gold button ── */
+  .btn-outline-gold {
+    @apply inline-flex items-center justify-center gap-2
+           px-6 py-2.5 rounded text-xs tracking-widest uppercase font-medium
+           border border-[rgb(var(--gold))] text-[rgb(var(--gold))] bg-transparent
+           transition-all duration-200 cursor-pointer
+           hover:bg-[rgb(var(--gold))] hover:text-[rgb(var(--dark))];
+  }
+
+  /* ── Section label ── */
+  .section-label {
+    @apply text-[11px] tracking-[0.2em] uppercase font-medium text-[rgb(var(--gold))];
+  }
+
+  /* ── Gold divider ── */
+  .divider-gold { @apply w-10 h-0.5 bg-[rgb(var(--gold))] my-2; }
+
+  /* ── Form label ── */
+  .form-label-ls {
+    @apply block text-[11px] tracking-[0.14em] uppercase font-medium text-stone-400 mb-1;
+  }
+
+  /* ── Input ── */
+  .input-ls {
+    @apply w-full px-3 py-2.5 text-sm rounded
+           border-[1.5px] border-stone-200
+           bg-white text-[rgb(var(--dark))] outline-none
+           transition-all duration-200
+           placeholder:text-stone-300
+           focus:border-[rgb(var(--gold))] focus:ring-2 focus:ring-[rgb(var(--gold))]/15;
+  }
+  .input-ls.error  { @apply border-red-500 focus:ring-red-500/15; }
+  .input-ls.valid  { @apply border-green-500 focus:ring-green-500/15; }
+
+  /* ── Apt card ── */
+  .apt-card {
+    @apply bg-white rounded-xl border border-[rgb(var(--gold))]/10 overflow-hidden
+           transition-all duration-300
+           hover:-translate-y-1.5 hover:shadow-2xl;
+  }
+  .apt-card-img-wrap { @apply relative overflow-hidden h-48; }
+  .apt-card-img {
+    @apply w-full h-full object-cover transition-transform duration-700;
+  }
+  .apt-card:hover .apt-card-img { @apply scale-105; }
+
+  /* ── Badge ── */
+  .badge-ls {
+    @apply absolute top-3 left-3 text-[10px] tracking-widest uppercase
+           font-semibold px-2.5 py-1 rounded-sm;
+  }
+  .badge-gold  { @apply bg-[rgb(var(--gold))] text-[rgb(var(--dark))]; }
+  .badge-blue  { @apply bg-blue-600 text-white; }
+  .badge-green { @apply bg-emerald-600 text-white; }
+
+  /* ── Stars ── */
+  .stars-gold { @apply text-[rgb(var(--gold))] text-xs; }
+}

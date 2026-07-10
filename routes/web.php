@@ -14,4 +14,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('logistique', 'dashboard-logistique')->name('logistique');
 });
 
+Route::prefix('portail-client')->group(function(){
+
+    // creer les differentes routes pour les pages du template e-commerce
+      
+    Route::inertia('/', 'portail-client/HomePage')->name('index.client');
+    Route::inertia('appartement/list', 'portail-client/ApartmentListPage')->name('list.appartement.client');
+    Route::inertia('appartement/details', 'portail-client/ApartmentDetailPage')->name('detail.appartment.client');
+    Route::inertia('login', 'portail-client/LoginPage')->name('login.client');
+    Route::inertia('checkout', 'portail-client/CheckoutPage')->name('checkout.client');
+
+});
+
 require __DIR__.'/settings.php';
