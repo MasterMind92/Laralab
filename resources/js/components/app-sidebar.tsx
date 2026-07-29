@@ -193,13 +193,13 @@ const mainNavItems: NavItem[] = [
         ]
     },
     {
-        title: 'Commercial',
+        title: 'Receptionniste',
         href: "/commercial",
         icon: LayoutGrid,
         sub:[
             {
                 title: "Planning",
-                url:"#",
+                url:"/planning",
             },
             {
                 title: "Traitement  Reservation-Client",

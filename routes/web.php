@@ -12,7 +12,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('comptabilite', 'dashboard-compta')->name('comptabilite');
     Route::inertia('maintenance', 'dashboard-maintenance')->name('maintenance');
     Route::inertia('logistique', 'dashboard-logistique')->name('logistique');
+    // 
+
+    Route::inertia('planning', 'receptionniste/planning')->name('receptionniste.planning');
 });
+
 
 Route::prefix('portail-client')->group(function(){
 
