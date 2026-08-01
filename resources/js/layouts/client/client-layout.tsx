@@ -2,7 +2,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useEffect } from 'react';
 
-// import("@/themes/public/index.css");
+import("@/themes/public/index.css");
 type LayoutProps = {
     children?: React.ReactNode
 }

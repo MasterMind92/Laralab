@@ -33,7 +33,7 @@ export default function Calendar() {
   }
 
   function handleDateSelect(selectInfo: DateSelectInfo) {
-    let title = prompt('Please enter a new title for your event')
+    let title = prompt('Entrez un titre pour votre evenement')
     let calendarApi = selectInfo.view.calendar
 
     calendarApi.unselect() // clear date selection
@@ -50,7 +50,7 @@ export default function Calendar() {
   }
 
   function handleEventClick(clickInfo: EventClickInfo) {
-    if (confirm(`Are you sure you want to delete the event '${clickInfo.event.title}'`)) {
+    if (confirm(`Etes vous sur de vouloir supprimer cet evenement '${clickInfo.event.title}'`)) {
       clickInfo.event.remove()
     }
   }
