@@ -41,7 +41,7 @@ const mainNavItems: NavItem[] = [
             },
             {
                 title: "Appartements",
-                url:"#",
+                url:"/appartements",
             },
             {
                 title: "Recrutement",
@@ -77,7 +77,7 @@ const mainNavItems: NavItem[] = [
         sub:[
             {
                 title: "Appartements",
-                url:"#",
+                url:"/appartements",
             }
         ]
     },

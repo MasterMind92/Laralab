@@ -1,34 +1,39 @@
 import { Head } from '@inertiajs/react';
 import { dashboard } from '@/routes';
-import { useEffect, useState } from 'react'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import Calendar from '@/components/fullcalendar/calendar';
+import Calendar from '@/components/fullcalendar/Calendar';
 
+type PlanningAppartement = {
+    id: number;
+    numero: string;
+};
 
-// async function getData(): Promise<Payment> {
-//   // Fetch data from your API here.
-//   return reservationss;
-    
-    
-// }
+type PlanningClient = {
+    id: number;
+    nom: string;
+    prenom: string;
+    telephone: string | null;
+    email: string | null;
+};
 
+type PlanningReservation = {
+    id: number;
+    date_debut: string;
+    date_fin: string;
+    statut: 'en_attente' | 'validee' | 'annulee' | 'terminee';
+    appartement: PlanningAppartement | null;
+    client: { id: number; nom: string; prenom: string } | null;
+    sejour: { id: number; statut: 'en_cours' | 'cloture' } | null;
+};
 
-let client = false;
-
-export default function Dashboard() {
-    // const [data, setData] = useState<Payment[]>([])
-    // useEffect(()=>{
-    //     getData().then(setData)
-    // },[]);
-
+export default function Dashboard({
+    appartements,
+    clients,
+    reservations,
+}: {
+    appartements: PlanningAppartement[];
+    clients: PlanningClient[];
+    reservations: PlanningReservation[];
+}) {
     return (
         <>
             <Head title="Dashboard" />
@@ -102,7 +107,7 @@ export default function Dashboard() {
                 </div> */}
                 <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border p-5">
                     {/* <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" /> */}
-                    <Calendar/>
+                    <Calendar appartements={appartements} clients={clients} reservations={reservations} />
                 </div>
             </div>
         </>

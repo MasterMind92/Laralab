@@ -1,149 +1,371 @@
-import { useState } from 'react'
+import { router, useForm } from '@inertiajs/react'
 import {
-  EventApi,
   DateSelectInfo,
   EventClickInfo,
-  EventDisplayInfo,
-  formatDate,
 } from '@fullcalendar/react'
 import FullCalendar from '@fullcalendar/react'
 import themePlugin from '@fullcalendar/react/themes/classic'
 import dayGridPlugin from '@fullcalendar/react/daygrid'
 import timeGridPlugin from '@fullcalendar/react/timegrid'
 import interactionPlugin from '@fullcalendar/react/interaction'
-import { INITIAL_EVENTS, createEventId } from '@/lib/event-utils' 
+import { type FormEvent, useState } from 'react'
+import ReservationController from '@/actions/App/Http/Controllers/ReservationController'
+import SejourController from '@/actions/App/Http/Controllers/SejourController'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 import '@fullcalendar/react/skeleton.css'
 import '@fullcalendar/react/themes/classic/theme.css'
 import '@fullcalendar/react/themes/classic/palette.css'
 
+type Statut = 'en_attente' | 'validee' | 'annulee' | 'terminee'
 
-interface SidebarProps {
-  weekendsVisible: boolean
-  handleWeekendsToggle: () => void
-  currentEvents: EventApi[]
+type CalendarAppartement = {
+  id: number
+  numero: string
 }
 
-export default function Calendar() {
-  const [weekendsVisible, setWeekendsVisible] = useState(true)
-  const [currentEvents, setCurrentEvents] = useState<EventApi[]>([])
+type CalendarClient = {
+  id: number
+  nom: string
+  prenom: string
+  telephone: string | null
+  email: string | null
+}
 
-  function handleWeekendsToggle() {
-    setWeekendsVisible(!weekendsVisible)
-  }
+type CalendarReservation = {
+  id: number
+  date_debut: string
+  date_fin: string
+  statut: Statut
+  appartement: { id: number; numero: string } | null
+  client: { id: number; nom: string; prenom: string } | null
+  sejour: { id: number; statut: 'en_cours' | 'cloture' } | null
+}
+
+const STATUT_LABELS: Record<Statut, string> = {
+  en_attente: 'En attente',
+  validee: 'Validée',
+  annulee: 'Annulée',
+  terminee: 'Terminée',
+}
+
+// Formate en UTC (et non en heure locale) pour ne pas décaler la date affichée
+// selon le fuseau du navigateur : ce sont des dates de séjour, pas des instants.
+function formatDateTime(value: string): string {
+  const date = new Date(value)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return (
+    `${date.getUTCFullYear()}/${pad(date.getUTCMonth() + 1)}/${pad(date.getUTCDate())} ` +
+    `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`
+  )
+}
+
+const STATUT_COLORS: Record<Statut, string> = {
+  en_attente: '#d97706',
+  validee: '#16a34a',
+  annulee: '#dc2626',
+  terminee: '#6b7280',
+}
+
+const NEW_CLIENT_VALUE = '__new__'
+
+type ReservationFormValues = {
+  appartement_id: string
+  date_debut: string
+  date_fin: string
+  statut: 'en_attente' | 'validee'
+  client_id: string
+  client: { nom: string; prenom: string; telephone: string; email: string }
+}
+
+export default function Calendar({
+  reservations,
+  appartements,
+  clients,
+}: {
+  reservations: CalendarReservation[]
+  appartements: CalendarAppartement[]
+  clients: CalendarClient[]
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [selectedReservation, setSelectedReservation] = useState<CalendarReservation | null>(null)
+  const [checkinProcessing, setCheckinProcessing] = useState(false)
+
+  const form = useForm<ReservationFormValues>({
+    appartement_id: '',
+    date_debut: '',
+    date_fin: '',
+    statut: 'validee',
+    client_id: '',
+    client: { nom: '', prenom: '', telephone: '', email: '' },
+  })
+
+  const reservationsById = new Map(reservations.map((r) => [String(r.id), r]))
+
+  const events = reservations
+    .filter((r) => r.appartement && r.client)
+    .map((r) => ({
+      id: String(r.id),
+      title: `${r.appartement!.numero} — ${r.client!.nom} ${r.client!.prenom}`,
+      start: r.date_debut,
+      end: r.date_fin,
+      allDay: true,
+      backgroundColor: STATUT_COLORS[r.statut],
+      borderColor: STATUT_COLORS[r.statut],
+    }))
 
   function handleDateSelect(selectInfo: DateSelectInfo) {
-    let title = prompt('Entrez un titre pour votre evenement')
-    let calendarApi = selectInfo.view.calendar
-
-    calendarApi.unselect() // clear date selection
-
-    if (title) {
-      calendarApi.addEvent({
-        id: createEventId(),
-        title,
-        start: selectInfo.startStr,
-        end: selectInfo.endStr,
-        allDay: selectInfo.allDay
-      })
-    }
+    form.reset()
+    form.setData((data) => ({
+      ...data,
+      date_debut: selectInfo.startStr,
+      date_fin: selectInfo.endStr,
+    }))
+    selectInfo.view.calendar.unselect()
+    setDialogOpen(true)
   }
 
   function handleEventClick(clickInfo: EventClickInfo) {
-    if (confirm(`Etes vous sur de vouloir supprimer cet evenement '${clickInfo.event.title}'`)) {
-      clickInfo.event.remove()
-    }
+    const reservation = reservationsById.get(clickInfo.event.id)
+    if (reservation) setSelectedReservation(reservation)
   }
 
-  function handleEvents(events: EventApi[]) {
-    setCurrentEvents(events)
+  function checkin(reservation: CalendarReservation) {
+    setCheckinProcessing(true)
+    router.post(
+      SejourController.store().url,
+      { reservation_id: reservation.id },
+      {
+        preserveScroll: true,
+        onFinish: () => setCheckinProcessing(false),
+        onSuccess: () => setSelectedReservation(null),
+      },
+    )
   }
+
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    form.post(ReservationController.store().url, {
+      preserveScroll: true,
+      onSuccess: () => {
+        form.reset()
+        setDialogOpen(false)
+      },
+    })
+  }
+
+  const { data, setData, errors, processing } = form
+  const isNewClient = data.client_id === NEW_CLIENT_VALUE || data.client_id === ''
 
   return (
-    <div className='demo-app'>
-      {/* <Sidebar
-        weekendsVisible={weekendsVisible}
-        handleWeekendsToggle={handleWeekendsToggle}
-        currentEvents={currentEvents}
-      /> */}
-      <div className='demo-app-main'>
+    <div className="demo-app">
+      <div className="demo-app-main">
         <FullCalendar
-          className='demo-app-calendar'
+          className="demo-app-calendar"
           plugins={[themePlugin, dayGridPlugin, timeGridPlugin, interactionPlugin]}
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            right: 'dayGridMonth,timeGridWeek,timeGridDay',
           }}
-          initialView='dayGridMonth'
-          editable={true}
+          initialView="dayGridMonth"
           selectable={true}
           selectMirror={true}
           dayMaxEvents={true}
-          weekends={weekendsVisible}
-          initialEvents={INITIAL_EVENTS} // alternatively, use the `events` setting to fetch from a feed
+          events={events}
           select={handleDateSelect}
-          eventContent={renderEventContent} // custom render function
           eventClick={handleEventClick}
-          eventsSet={handleEvents} // called after events are initialized/added/changed/removed
-          /* you can update a remote database when these fire:
-          eventAdd={function(){}}
-          eventChange={function(){}}
-          eventRemove={function(){}}
-          */
         />
       </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nouvelle réservation</DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={submit} className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="appartement_id">Appartement</Label>
+              <Select
+                value={data.appartement_id}
+                onValueChange={(value) => setData('appartement_id', value)}
+              >
+                <SelectTrigger id="appartement_id">
+                  <SelectValue placeholder="Sélectionner un appartement" />
+                </SelectTrigger>
+                <SelectContent>
+                  {appartements.map((appartement) => (
+                    <SelectItem key={appartement.id} value={String(appartement.id)}>
+                      {appartement.numero}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.appartement_id && <p className="text-sm text-destructive">{errors.appartement_id}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="date_debut">Arrivée</Label>
+                <Input
+                  id="date_debut"
+                  type="date"
+                  value={data.date_debut}
+                  onChange={(e) => setData('date_debut', e.target.value)}
+                />
+                {errors.date_debut && <p className="text-sm text-destructive">{errors.date_debut}</p>}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="date_fin">Départ</Label>
+                <Input
+                  id="date_fin"
+                  type="date"
+                  value={data.date_fin}
+                  onChange={(e) => setData('date_fin', e.target.value)}
+                />
+                {errors.date_fin && <p className="text-sm text-destructive">{errors.date_fin}</p>}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="statut">Statut</Label>
+              <Select value={data.statut} onValueChange={(value) => setData('statut', value as 'en_attente' | 'validee')}>
+                <SelectTrigger id="statut">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="validee">Validée</SelectItem>
+                  <SelectItem value="en_attente">En attente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="client_id">Client</Label>
+              <Select
+                value={data.client_id}
+                onValueChange={(value) => setData('client_id', value === NEW_CLIENT_VALUE ? '' : value)}
+              >
+                <SelectTrigger id="client_id">
+                  <SelectValue placeholder="Nouveau client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NEW_CLIENT_VALUE}>+ Nouveau client</SelectItem>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={String(client.id)}>
+                      {client.nom} {client.prenom}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.client_id && <p className="text-sm text-destructive">{errors.client_id}</p>}
+            </div>
+
+            {isNewClient && (
+              <div className="grid grid-cols-2 gap-4 rounded-md border p-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="client_nom">Nom</Label>
+                  <Input
+                    id="client_nom"
+                    value={data.client.nom}
+                    onChange={(e) => setData('client', { ...data.client, nom: e.target.value })}
+                  />
+                  {errors['client.nom'] && <p className="text-sm text-destructive">{errors['client.nom']}</p>}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="client_prenom">Prénom</Label>
+                  <Input
+                    id="client_prenom"
+                    value={data.client.prenom}
+                    onChange={(e) => setData('client', { ...data.client, prenom: e.target.value })}
+                  />
+                  {errors['client.prenom'] && <p className="text-sm text-destructive">{errors['client.prenom']}</p>}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="client_telephone">Téléphone</Label>
+                  <Input
+                    id="client_telephone"
+                    value={data.client.telephone}
+                    onChange={(e) => setData('client', { ...data.client, telephone: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="client_email">Email</Label>
+                  <Input
+                    id="client_email"
+                    type="email"
+                    value={data.client.email}
+                    onChange={(e) => setData('client', { ...data.client, email: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button type="submit" disabled={processing}>
+                {processing ? 'Enregistrement...' : 'Créer la réservation'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={selectedReservation !== null} onOpenChange={(open) => !open && setSelectedReservation(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedReservation?.appartement?.numero} — {selectedReservation?.client?.nom}{' '}
+              {selectedReservation?.client?.prenom}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedReservation && (
+            <div className="space-y-3 text-sm">
+              <p>
+                <span className="text-muted-foreground">Dates : </span>
+                {formatDateTime(selectedReservation.date_debut)} → {formatDateTime(selectedReservation.date_fin)}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Statut réservation : </span>
+                {STATUT_LABELS[selectedReservation.statut]}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Séjour : </span>
+                {selectedReservation.sejour
+                  ? selectedReservation.sejour.statut === 'en_cours'
+                    ? 'Check-in effectué'
+                    : 'Clôturé'
+                  : 'Pas encore de check-in'}
+              </p>
+
+              {selectedReservation.statut === 'validee' && !selectedReservation.sejour && (
+                <DialogFooter>
+                  <Button onClick={() => checkin(selectedReservation)} disabled={checkinProcessing}>
+                    {checkinProcessing ? 'Check-in...' : 'Effectuer le check-in'}
+                  </Button>
+                </DialogFooter>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
-
-function renderEventContent(eventInfo: EventDisplayInfo) {
-  return (
-    <>
-      <b>{eventInfo.timeText}</b>
-      <i>{eventInfo.event.title}</i>
-    </>
-  )
-}
-
-// function Sidebar({ weekendsVisible, handleWeekendsToggle, currentEvents }: SidebarProps) {
-//   return (
-//     <div className='demo-app-sidebar'>
-//       <div className='demo-app-sidebar-section'>
-//         <h2>Instructions</h2>
-//         <ul>
-//           <li>Select dates and you will be prompted to create a new event</li>
-//           <li>Drag, drop, and resize events</li>
-//           <li>Click an event to delete it</li>
-//         </ul>
-//       </div>
-//       <div className='demo-app-sidebar-section'>
-//         <label>
-//           <input
-//             type='checkbox'
-//             checked={weekendsVisible}
-//             onChange={handleWeekendsToggle}
-//           ></input>
-//           toggle weekends
-//         </label>
-//       </div>
-//       <div className='demo-app-sidebar-section'>
-//         <h2>All Events ({currentEvents.length})</h2>
-//         <ul>
-//           {currentEvents.map((event) => (
-//             <SidebarEvent key={event.id} event={event} />
-//           ))}
-//         </ul>
-//       </div>
-//     </div>
-//   )
-// }
-
-// function SidebarEvent({ event }: { event: EventApi }) {
-//   return (
-//     <li key={event.id}>
-//       <b>{formatDate(event.start!, {year: 'numeric', month: 'short', day: 'numeric'})}</b>
-//       <i>{event.title}</i>
-//     </li>
-//   )
-// }

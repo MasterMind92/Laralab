@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\AppartementController;
+use App\Http\Controllers\PlanningController;
+use App\Http\Controllers\ReservationController;
+use App\Http\Controllers\SejourController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
 
@@ -40,9 +44,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('logistique')
         ->middleware('role:logistique');
 
-    Route::inertia('planning', 'receptionniste/planning')
+    Route::get('planning', [PlanningController::class, 'index'])
         ->name('receptionniste.planning')
         ->middleware('role:receptionniste');
+
+    Route::post('reservations', [ReservationController::class, 'store'])
+        ->name('reservations.store')
+        ->middleware('role:receptionniste');
+
+    Route::post('sejours', [SejourController::class, 'store'])
+        ->name('sejours.store')
+        ->middleware('role:receptionniste');
+
+    // Catalogue des appartements : réservé à proprietaire/gerant (accès total via EnsureUserHasRole).
+    Route::resource('appartements', AppartementController::class)
+        ->except(['create', 'edit', 'show'])
+        ->middleware('role:proprietaire');
 });
 
 
