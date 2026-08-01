@@ -1,8 +1,7 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { BookOpen, FolderGit2, LayoutGrid } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
-import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { ChevronRight } from "lucide-react"
 import {
@@ -25,11 +24,16 @@ import {
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 
+// Rôles ayant accès à tous les pôles, quel que soit leur `roles` déclaré ci-dessous
+// (doit rester synchronisé avec App\Http\Middleware\EnsureUserHasRole côté backend).
+const FULL_ACCESS_ROLES = ['proprietaire', 'gerant'];
+
 const mainNavItems: NavItem[] = [
     {
         title: 'Proprietaire',
         href: dashboard(),
         icon: LayoutGrid,
+        roles: ['proprietaire'],
         sub:[
             {
                 title: "dashboard",
@@ -67,8 +71,9 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Gerant',
-        href: "#",
+        href: dashboard(),
         icon: LayoutGrid,
+        roles: ['gerant'],
         sub:[
             {
                 title: "Appartements",
@@ -80,6 +85,7 @@ const mainNavItems: NavItem[] = [
         title: 'RH',
         href: "ressources-humaine",
         icon: LayoutGrid,
+        roles: ['rh'],
         sub:[
             {
                 title: "Recrutement",
@@ -111,6 +117,7 @@ const mainNavItems: NavItem[] = [
         title: 'Comptabilite',
         href: "comptabilite",
         icon: LayoutGrid,
+        roles: ['compta'],
         sub:[
             {
                 title: "Consultation Devis",
@@ -150,8 +157,9 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Logistique',
-        href: "comptabilite",
+        href: "logistique",
         icon: LayoutGrid,
+        roles: ['logistique'],
         sub:[
             {
                 title: "Expression Besoins",
@@ -174,8 +182,9 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Maintenance',
-        href: "comptabilite",
+        href: "maintenance",
         icon: LayoutGrid,
+        roles: ['maintenance'],
         sub:[
             {
                 title: "Prise en charge pannes",
@@ -194,8 +203,9 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Receptionniste',
-        href: "/commercial",
+        href: "/receptionniste",
         icon: LayoutGrid,
+        roles: ['receptionniste'],
         sub:[
             {
                 title: "Planning",
@@ -233,10 +243,8 @@ const mainNavItems: NavItem[] = [
                 title: "Devis du Sejour",
                 url:"#",
             },
-
         ]
     },
-    
 ];
 
 const footerNavItems: NavItem[] = [
@@ -253,6 +261,15 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
+    const { auth } = usePage<{ auth: { user: { role: string } | null } }>().props;
+    const role = auth.user?.role;
+
+    const visibleNavItems = mainNavItems.filter(
+        (item) =>
+            !item.roles ||
+            (role !== undefined && (FULL_ACCESS_ROLES.includes(role) || item.roles.includes(role))),
+    );
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -269,7 +286,7 @@ export function AppSidebar() {
 
             <SidebarContent className="gap-0">
         {/* We create a collapsible SidebarGroup for each parent. */}
-        {mainNavItems.map((item) => (
+        {visibleNavItems.map((item) => (
             <Collapsible
                 key={item.title}
                 title={item.title}

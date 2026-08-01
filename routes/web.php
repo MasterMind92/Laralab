@@ -1,20 +1,48 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
 
 Route::inertia('/', 'welcome')->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
-    Route::inertia('commercial', 'dashboard-commercial')->name('commercial');
-    Route::inertia('ressources-humaine', 'dashboard')->name('ressource');
-    Route::inertia('client', 'dashboard-client')->name('client');
-    Route::inertia('comptabilite', 'dashboard-compta')->name('comptabilite');
-    Route::inertia('maintenance', 'dashboard-maintenance')->name('maintenance');
-    Route::inertia('logistique', 'dashboard-logistique')->name('logistique');
-    // 
+// Déconnexion en GET pour faciliter les tests manuels multi-rôles (Fortify n'expose que le POST).
+// Réservée à l'environnement local : une déconnexion en GET peut être déclenchée involontairement (lien, prefetch).
+if (app()->environment('local')) {
+    Route::middleware('auth')->get('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout.get');
+}
 
-    Route::inertia('planning', 'receptionniste/planning')->name('receptionniste.planning');
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::inertia('dashboard', 'dashboard')
+        ->name('dashboard')
+        ->middleware('role:rh,compta,logistique,maintenance,receptionniste');
+
+    Route::inertia('receptionniste', 'dashboard-commercial')
+        ->name('receptionniste')
+        ->middleware('role:receptionniste');
+
+    Route::inertia('ressources-humaine', 'dashboard')
+        ->name('ressource')
+        ->middleware('role:rh');
+
+    Route::inertia('client', 'dashboard-client')
+        ->name('client')
+        ->middleware('role:receptionniste');
+
+    Route::inertia('comptabilite', 'dashboard-compta')
+        ->name('comptabilite')
+        ->middleware('role:compta');
+
+    Route::inertia('maintenance', 'dashboard-maintenance')
+        ->name('maintenance')
+        ->middleware('role:maintenance');
+
+    Route::inertia('logistique', 'dashboard-logistique')
+        ->name('logistique')
+        ->middleware('role:logistique');
+
+    Route::inertia('planning', 'receptionniste/planning')
+        ->name('receptionniste.planning')
+        ->middleware('role:receptionniste');
 });
 
 

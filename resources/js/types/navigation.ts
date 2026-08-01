@@ -18,4 +18,6 @@ export type NavItem = {
     icon?: LucideIcon | null;
     isActive?: boolean;
     sub ?: NavSubItem[];
+    /** Rôles utilisateur autorisés à voir cette entrée. Omis = visible par tous. */
+    roles?: string[];
 };
