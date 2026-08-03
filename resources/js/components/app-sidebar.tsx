@@ -41,7 +41,7 @@ const mainNavItems: NavItem[] = [
             },
             {
                 title: "Appartements",
-                url:"/appartements",
+                url:"/admin/appartements",
             },
             {
                 title: "Recrutement",
@@ -77,13 +77,13 @@ const mainNavItems: NavItem[] = [
         sub:[
             {
                 title: "Appartements",
-                url:"/appartements",
+                url:"/admin/appartements",
             }
         ]
     },
     {
         title: 'RH',
-        href: "ressources-humaine",
+        href: "/admin/ressources-humaine",
         icon: LayoutGrid,
         roles: ['rh'],
         sub:[
@@ -115,7 +115,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Comptabilite',
-        href: "comptabilite",
+        href: "/admin/comptabilite",
         icon: LayoutGrid,
         roles: ['compta'],
         sub:[
@@ -157,7 +157,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Logistique',
-        href: "logistique",
+        href: "/admin/logistique",
         icon: LayoutGrid,
         roles: ['logistique'],
         sub:[
@@ -182,7 +182,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Maintenance',
-        href: "maintenance",
+        href: "/admin/maintenance",
         icon: LayoutGrid,
         roles: ['maintenance'],
         sub:[
@@ -203,13 +203,13 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Receptionniste',
-        href: "/receptionniste",
+        href: "/admin/receptionniste",
         icon: LayoutGrid,
         roles: ['receptionniste'],
         sub:[
             {
                 title: "Planning",
-                url:"/planning",
+                url:"/admin/planning",
             },
             {
                 title: "Traitement  Reservation-Client",

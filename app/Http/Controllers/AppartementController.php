@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreAppartementRequest;
 use App\Http\Requests\UpdateAppartementRequest;
 use App\Models\Appartement;
+use App\Models\Equipement;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,7 +19,10 @@ class AppartementController extends Controller
     public function index(): Response
     {
         return Inertia::render('appartements/index', [
-            'appartements' => Appartement::orderBy('numero')->get(),
+            'appartements' => Appartement::with('equipements')->orderBy('numero')->get(),
+            'equipementsCatalogue' => Equipement::whereNull('appartement_id')
+                ->orderBy('nom')
+                ->get(['id', 'nom', 'icone']),
         ]);
     }
 
@@ -26,7 +31,13 @@ class AppartementController extends Controller
      */
     public function store(StoreAppartementRequest $request): RedirectResponse
     {
-        Appartement::create($request->validated());
+        $data = $request->safe()->except('photos');
+
+        $appartement = Appartement::create($data);
+
+        if ($request->hasFile('photos')) {
+            $appartement->update(['photos' => $this->uploadPhotos($request->file('photos'))]);
+        }
 
         return back();
     }
@@ -36,7 +47,17 @@ class AppartementController extends Controller
      */
     public function update(UpdateAppartementRequest $request, Appartement $appartement): RedirectResponse
     {
-        $appartement->update($request->validated());
+        $data = $request->safe()->except(['photos', 'equipements']);
+
+        if ($request->hasFile('photos')) {
+            $data['photos'] = [...($appartement->photos ?? []), ...$this->uploadPhotos($request->file('photos'))];
+        }
+
+        $appartement->update($data);
+
+        if ($request->has('equipements')) {
+            $this->syncEquipements($appartement, $request->input('equipements', []));
+        }
 
         return back();
     }
@@ -55,5 +76,53 @@ class AppartementController extends Controller
         $appartement->delete();
 
         return back();
+    }
+
+    /**
+     * @param  array<\Illuminate\Http\UploadedFile>  $files
+     * @return array<string>
+     */
+    private function uploadPhotos(array $files): array
+    {
+        return collect($files)
+            ->map(fn ($file) => Storage::disk('public')->url($file->store('appartements', 'public')))
+            ->all();
+    }
+
+    /**
+     * Synchronise les équipements de cet appartement avec la sélection du catalogue
+     * (catalogueIds = équipements « modèles », appartement_id null). Cocher clone une
+     * ligne dédiée à cet appartement ; décocher supprime cette ligne dédiée (jamais les
+     * modèles du catalogue — la remettre au stock créerait un doublon dans le catalogue,
+     * qui interroge la même colonne appartement_id).
+     *
+     * @param  array<int>  $catalogueIds
+     */
+    private function syncEquipements(Appartement $appartement, array $catalogueIds): void
+    {
+        $selection = Equipement::whereNull('appartement_id')->whereIn('id', $catalogueIds)->get();
+        $nomsSelectionnes = $selection->pluck('nom')->all();
+
+        $actuels = $appartement->equipements()->get();
+
+        foreach ($actuels as $equipement) {
+            if (! in_array($equipement->nom, $nomsSelectionnes, true)) {
+                $equipement->delete();
+            }
+        }
+
+        $nomsActuels = $actuels->pluck('nom')->all();
+
+        foreach ($selection as $modele) {
+            if (! in_array($modele->nom, $nomsActuels, true)) {
+                Equipement::create([
+                    'nom' => $modele->nom,
+                    'type' => $modele->type,
+                    'icone' => $modele->icone,
+                    'statut' => 'affecte',
+                    'appartement_id' => $appartement->id,
+                ]);
+            }
+        }
     }
 }

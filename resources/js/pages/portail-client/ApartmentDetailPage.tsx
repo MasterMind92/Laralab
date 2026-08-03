@@ -102,10 +102,12 @@ function BookingBox({ pricePerNight, maxGuests, aptId }: { pricePerNight: number
               </span>
               <span>{formatPrice(pricing.base)}€</span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-[rgb(var(--gold))]/10">
-              <span className="text-stone-500">Frais de service (12%)</span>
-              <span>{formatPrice(pricing.fee)}€</span>
-            </div>
+            {pricing.fee > 0 && (
+              <div className="flex justify-between py-1.5 border-b border-[rgb(var(--gold))]/10">
+                <span className="text-stone-500">Frais de service (12%)</span>
+                <span>{formatPrice(pricing.fee)}€</span>
+              </div>
+            )}
             <div className="flex justify-between pt-2 font-semibold">
               <span>Total</span>
               <span>{formatPrice(pricing.total)}€</span>

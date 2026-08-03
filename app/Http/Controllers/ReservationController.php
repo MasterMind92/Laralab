@@ -18,11 +18,7 @@ class ReservationController extends Controller
     {
         $data = $request->validated();
 
-        $chevauchement = Reservation::query()
-            ->where('appartement_id', $data['appartement_id'])
-            ->whereIn('statut', ['en_attente', 'validee'])
-            ->where('date_debut', '<', $data['date_fin'])
-            ->where('date_fin', '>', $data['date_debut'])
+        $chevauchement = Reservation::overlapping($data['appartement_id'], $data['date_debut'], $data['date_fin'])
             ->exists();
 
         if ($chevauchement) {

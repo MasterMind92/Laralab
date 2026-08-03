@@ -128,10 +128,12 @@ function OrderSummary({ apt, checkin, checkout, guests, nights }: {
               <span className="text-stone-500">{apt.pricePerNight}€ × {nights} nuit{nights > 1 ? "s" : ""}</span>
               <span>{formatPrice(pricing.base)}€</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-stone-500">Frais de service (12%)</span>
-              <span>{formatPrice(pricing.fee)}€</span>
-            </div>
+            {pricing.fee > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-stone-500">Frais de service (12%)</span>
+                <span>{formatPrice(pricing.fee)}€</span>
+              </div>
+            )}
             <div className="flex justify-between font-semibold text-base mt-2 pt-2 border-t border-stone-100">
               <span>Total</span>
               <span className="font-['Cormorant_Garamond'] text-2xl">{formatPrice(pricing.total)}€</span>

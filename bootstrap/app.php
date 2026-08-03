@@ -27,6 +27,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => EnsureUserHasRole::class,
         ]);
+
+        // Un visiteur non connecté sur une page côté client (portail) doit atterrir sur la
+        // connexion du portail, pas sur celle du back-office interne (et inversement).
+        $middleware->redirectGuestsTo(function (Request $request) {
+            return $request->is('checkout*', 'mes-reservations*', 'mon-compte*')
+                ? '/connexion'
+                : '/login';
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

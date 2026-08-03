@@ -220,6 +220,9 @@ export function computeBookingTotal(
   nights: number
 ): { base: number; fee: number; total: number } {
   const base = pricePerNight * nights;
-  const fee = Math.round(base * 0.12);
+  // Frais de service : pas encore un vrai paramètre de facturation (prévu à l'Étape 5),
+  // on ne les fait pas apparaître dans les calculs pour l'instant.
+  // const fee = Math.round(base * 0.12);
+  const fee = 0;
   return { base, fee, total: base + fee };
 }

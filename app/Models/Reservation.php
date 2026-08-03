@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['appartement_id', 'client_id', 'date_debut', 'date_fin', 'statut'])]
+#[Fillable(['appartement_id', 'client_id', 'date_debut', 'date_fin', 'statut', 'nombre_personnes', 'notes'])]
 class Reservation extends Model
 {
     protected function casts(): array
@@ -16,6 +17,18 @@ class Reservation extends Model
             'date_debut' => 'date',
             'date_fin' => 'date',
         ];
+    }
+
+    /**
+     * Réservations actives (en_attente/validee) chevauchant la période donnée pour un appartement.
+     */
+    public function scopeOverlapping(Builder $query, int $appartementId, string $debut, string $fin): Builder
+    {
+        return $query
+            ->where('appartement_id', $appartementId)
+            ->whereIn('statut', ['en_attente', 'validee'])
+            ->where('date_debut', '<', $fin)
+            ->where('date_fin', '>', $debut);
     }
 
     public function appartement(): BelongsTo

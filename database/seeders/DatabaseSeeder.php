@@ -36,5 +36,7 @@ class DatabaseSeeder extends Seeder
                 'role' => $role,
             ]);
         }
+
+        $this->call(EquipementCatalogueSeeder::class);
     }
 }

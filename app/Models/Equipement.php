@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['nom', 'type', 'date_achat', 'statut', 'employe_id', 'appartement_id'])]
+#[Fillable(['nom', 'type', 'icone', 'date_achat', 'statut', 'employe_id', 'appartement_id'])]
 class Equipement extends Model
 {
     protected function casts(): array
