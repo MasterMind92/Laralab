@@ -125,18 +125,18 @@ function OrderSummary({ apt, checkin, checkout, guests, nights }: {
         {pricing ? (
           <div className="border-t border-[rgb(var(--gold))]/10 pt-4 flex flex-col gap-1.5">
             <div className="flex justify-between text-sm">
-              <span className="text-stone-500">{apt.pricePerNight}€ × {nights} nuit{nights > 1 ? "s" : ""}</span>
-              <span>{formatPrice(pricing.base)}€</span>
+              <span className="text-stone-500">{apt.pricePerNight} FCFA × {nights} nuit{nights > 1 ? "s" : ""}</span>
+              <span>{formatPrice(pricing.base)} FCFA</span>
             </div>
             {pricing.fee > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-stone-500">Frais de service (12%)</span>
-                <span>{formatPrice(pricing.fee)}€</span>
+                <span className="text-stone-500">Frais de service</span>
+                <span>{formatPrice(pricing.fee)} FCFA</span>
               </div>
             )}
             <div className="flex justify-between font-semibold text-base mt-2 pt-2 border-t border-stone-100">
               <span>Total</span>
-              <span className="font-['Cormorant_Garamond'] text-2xl">{formatPrice(pricing.total)}€</span>
+              <span className="font-['Cormorant_Garamond'] text-2xl">{formatPrice(pricing.total)} FCFA</span>
             </div>
           </div>
         ) : (
@@ -420,7 +420,7 @@ export default function CheckoutPage() {
               <Shield size={14} />
               {isSubmitting
                 ? "Traitement en cours…"
-                : `Confirmer et payer${nights > 0 ? ` ${formatPrice(computeBookingTotal(apt.pricePerNight, nights).total)}€` : ""}`
+                : `Confirmer et payer${nights > 0 ? ` ${formatPrice(computeBookingTotal(apt.pricePerNight, nights).total)} FCFA` : ""}`
               }
             </button>
             <p className="text-center text-[11px] text-stone-400 mt-3">

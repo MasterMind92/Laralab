@@ -1,38 +1,32 @@
+export type TypeLogement = "studio" | "t2" | "t3" | "t4_plus" | "penthouse" | "villa";
+export type StatutEntretien = "propre" | "a_nettoyer" | "en_maintenance";
+
+/** Reflète Appartement::pourPortail() côté backend. */
 export interface Apartment {
   id: number;
-  title: string;
-  subtitle: string;
-  location: string;
-  address: string;
-  lat: number;
-  lng: number;
-  pricePerNight: number;
-  rating: number;
-  reviewCount: number;
-  rooms: number;
-  bathrooms: number;
-  sqm: number;
-  maxGuests: number;
-  images: string[];
-  badge?: string;
-  badgeVariant?: "gold" | "blue" | "green";
-  amenities: Amenity[];
-  reviews: Review[];
-  checkIn: string;
-  checkOut: string;
+  numero: string;
+  titre: string | null;
+  description: string | null;
+  adresse: string | null;
+  type: TypeLogement | null;
+  prix_nuit: string;
+  capacite: number;
+  chambres: number | null;
+  salles_de_bain: number | null;
+  surface_m2: string | null;
+  photos: string[];
+  statut_entretien: StatutEntretien;
+  disponible_le: string | null;
 }
 
-export interface Amenity {
-  icon: string;
-  label: string;
-}
-
-export interface Review {
+export interface ApartmentEquipement {
   id: number;
-  name: string;
-  date: string;
-  rating: number;
-  text: string;
+  nom: string;
+  icone: string | null;
+}
+
+export interface ApartmentDetail extends Apartment {
+  equipements: ApartmentEquipement[];
 }
 
 export interface SearchFormValues {

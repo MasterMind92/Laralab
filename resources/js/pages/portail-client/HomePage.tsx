@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { router } from "@inertiajs/react";
 import { Search, Shield, Headphones, Star, Gem } from "lucide-react";
 import { searchSchema, type SearchSchema } from "@/lib/validators";
-import { APARTMENTS } from "@/lib/data";
+import type { Apartment } from "@/types";
 import ApartmentCard from "@/components/shared/ApartmentCard";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -129,9 +129,7 @@ const WHY_ITEMS = [
 ];
 
 // ─── HomePage ─────────────────────────────────────────────────────────────────
-export default function HomePage() {
-  const featured = APARTMENTS.slice(0, 3);
-
+export default function HomePage({ featured }: { featured: Apartment[] }) {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />

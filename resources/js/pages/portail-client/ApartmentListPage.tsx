@@ -3,20 +3,25 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SlidersHorizontal, LayoutGrid, List } from "lucide-react";
 import { filterSchema, type FilterSchema } from "@/lib/validators";
-import { APARTMENTS } from "@/lib/data";
 import ApartmentCard from "@/components/shared/ApartmentCard";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { cn } from "@/lib/utils";
+import type { Apartment, TypeLogement } from "@/types";
 
-// ─── APT_TYPES & AMENITY OPTIONS ────────────────────────────────────────────
-const APT_TYPES    = ["Studio", "T2", "T3", "T4+", "Penthouse", "Villa"];
-const AMENITIES    = ["Wifi", "Parking", "Piscine", "Climatisation", "Cuisine équipée", "Vue mer"];
+// ─── APT_TYPES ──────────────────────────────────────────────────────────────
+const APT_TYPES: { value: TypeLogement; label: string }[] = [
+  { value: "studio", label: "Studio" },
+  { value: "t2", label: "T2" },
+  { value: "t3", label: "T3" },
+  { value: "t4_plus", label: "T4+" },
+  { value: "penthouse", label: "Penthouse" },
+  { value: "villa", label: "Villa" },
+];
 const SORT_OPTIONS = [
   { value: "recommended", label: "Recommandés" },
   { value: "price_asc",   label: "Prix croissant" },
   { value: "price_desc",  label: "Prix décroissant" },
-  { value: "rating",      label: "Mieux notés" },
 ];
 
 // ─── Filter Sidebar ───────────────────────────────────────────────────────────
@@ -84,11 +89,11 @@ function FilterSidebar({ onApply }: { onApply: (d: FilterSchema) => void }) {
             💰 Budget / nuit
           </p>
           <div className="grid grid-cols-2 gap-2">
-            <input {...register("priceMin")} type="number" placeholder="Min €" min="0" className="input-ls" />
+            <input {...register("priceMin")} type="number" placeholder="Min FCFA" min="0" className="input-ls" />
             <input
               {...register("priceMax")}
               type="number"
-              placeholder="Max €"
+              placeholder="Max FCFA"
               min="0"
               className={`input-ls ${errors.priceMax ? "error" : ""}`}
             />
@@ -99,40 +104,20 @@ function FilterSidebar({ onApply }: { onApply: (d: FilterSchema) => void }) {
         </div>
 
         {/* Type */}
-        <div className="mb-5">
+        <div className="mb-6">
           <p className="text-[10px] tracking-[0.16em] uppercase text-[rgb(var(--gold))] font-semibold mb-3 pb-2 border-b border-[rgb(var(--gold))]/12">
             🏠 Type
           </p>
           <div className="flex flex-col gap-2">
             {APT_TYPES.map((t) => (
-              <label key={t} className="flex items-center gap-2 text-sm cursor-pointer">
+              <label key={t.value} className="flex items-center gap-2 text-sm cursor-pointer">
                 <input
                   type="checkbox"
-                  value={t.toLowerCase()}
+                  value={t.value}
                   {...register("types")}
                   className="accent-[rgb(var(--gold))]"
                 />
-                {t}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Amenities */}
-        <div className="mb-6">
-          <p className="text-[10px] tracking-[0.16em] uppercase text-[rgb(var(--gold))] font-semibold mb-3 pb-2 border-b border-[rgb(var(--gold))]/12">
-            ⚙️ Équipements
-          </p>
-          <div className="flex flex-col gap-2">
-            {AMENITIES.map((a) => (
-              <label key={a} className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  value={a.toLowerCase()}
-                  {...register("amenities")}
-                  className="accent-[rgb(var(--gold))]"
-                />
-                {a}
+                {t.label}
               </label>
             ))}
           </div>
@@ -150,16 +135,26 @@ function FilterSidebar({ onApply }: { onApply: (d: FilterSchema) => void }) {
 }
 
 // ─── ApartmentListPage ────────────────────────────────────────────────────────
-export default function ApartmentListPage() {
+export default function ApartmentListPage({ appartements }: { appartements: Apartment[] }) {
   const [sort, setSort] = useState("recommended");
   const [layout, setLayout] = useState<"grid" | "list">("grid");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_filters, setFilters] = useState<FilterSchema | null>(null);
+  const [filters, setFilters] = useState<FilterSchema | null>(null);
 
-  const sorted = [...APARTMENTS].sort((a, b) => {
-    if (sort === "price_asc")  return a.pricePerNight - b.pricePerNight;
-    if (sort === "price_desc") return b.pricePerNight - a.pricePerNight;
-    if (sort === "rating")     return b.rating - a.rating;
+  const filtered = appartements.filter((apt) => {
+    if (filters?.destination) {
+      const needle = filters.destination.toLowerCase();
+      const haystack = `${apt.adresse ?? ""} ${apt.titre ?? apt.numero}`.toLowerCase();
+      if (!haystack.includes(needle)) return false;
+    }
+    if (filters?.priceMin && Number(apt.prix_nuit) < Number(filters.priceMin)) return false;
+    if (filters?.priceMax && Number(apt.prix_nuit) > Number(filters.priceMax)) return false;
+    if (filters?.types?.length && (!apt.type || !filters.types.includes(apt.type))) return false;
+    return true;
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sort === "price_asc")  return Number(a.prix_nuit) - Number(b.prix_nuit);
+    if (sort === "price_desc") return Number(b.prix_nuit) - Number(a.prix_nuit);
     return 0;
   });
 
@@ -183,7 +178,9 @@ export default function ApartmentListPage() {
           <h1 className="font-['Cormorant_Garamond'] text-5xl font-light text-white">
             Nos <em className="text-[rgb(var(--gold))] italic">appartements</em>
           </h1>
-          <p className="text-sm text-white/40 mt-2">Découvrez notre sélection de {APARTMENTS.length}+ appartements de prestige</p>
+          <p className="text-sm text-white/40 mt-2">
+            Découvrez notre sélection de {appartements.length} appartement{appartements.length > 1 ? "s" : ""} de prestige
+          </p>
         </div>
       </div>
 
@@ -233,32 +230,19 @@ export default function ApartmentListPage() {
             </div>
 
             {/* Grid / List */}
-            <div className={cn(
-              layout === "grid"
-                ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5"
-                : "flex flex-col gap-4"
-            )}>
-              {sorted.map((apt) => (
-                <ApartmentCard key={apt.id} apartment={apt} layout={layout} />
-              ))}
-            </div>
-
-            {/* Pagination */}
-            <div className="flex justify-center gap-2 mt-10">
-              {[1, 2, 3, 4, 5].map((p) => (
-                <button
-                  key={p}
-                  className={cn(
-                    "w-9 h-9 text-xs rounded border transition-all duration-200",
-                    p === 1
-                      ? "bg-[rgb(var(--gold))] border-[rgb(var(--gold))] text-[rgb(var(--dark))] font-medium"
-                      : "border-stone-200 text-stone-500 hover:border-[rgb(var(--gold))] hover:text-[rgb(var(--gold))]"
-                  )}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
+            {sorted.length > 0 ? (
+              <div className={cn(
+                layout === "grid"
+                  ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5"
+                  : "flex flex-col gap-4"
+              )}>
+                {sorted.map((apt) => (
+                  <ApartmentCard key={apt.id} apartment={apt} layout={layout} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-stone-400 py-16">Aucun appartement ne correspond à ces critères.</p>
+            )}
           </div>
         </div>
       </div>

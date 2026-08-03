@@ -1,6 +1,31 @@
-import type { Apartment } from "@/types";
+// Données fictives conservées uniquement pour CheckoutPage.tsx en attendant l'Étape 5
+// (checkout réel). Type local et indépendant du vrai type Apartment (types/client.ts),
+// qui reflète désormais le modèle réel depuis l'Étape 3.
+interface LegacyApartment {
+  id: number;
+  title: string;
+  subtitle: string;
+  location: string;
+  address: string;
+  lat: number;
+  lng: number;
+  pricePerNight: number;
+  rating: number;
+  reviewCount: number;
+  rooms: number;
+  bathrooms: number;
+  sqm: number;
+  maxGuests: number;
+  images: string[];
+  badge?: string;
+  badgeVariant?: "gold" | "blue" | "green";
+  amenities: { icon: string; label: string }[];
+  reviews: { id: number; name: string; date: string; rating: number; text: string }[];
+  checkIn: string;
+  checkOut: string;
+}
 
-export const APARTMENTS: Apartment[] = [
+export const APARTMENTS: LegacyApartment[] = [
   {
     id: 1,
     title: "Suite Haussmann",

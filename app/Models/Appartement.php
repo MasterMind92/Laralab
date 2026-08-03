@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 use Carbon\CarbonInterface;
 
 #[Fillable([
@@ -42,11 +43,18 @@ class Appartement extends Model
     }
 
     /**
-     * Photos réelles si présentes, sinon la liste de repli configurée.
+     * Photos réelles (URL recalculée à partir du chemin relatif stocké, jamais figée)
+     * si présentes, sinon la liste de repli configurée.
      */
     public function photosAffichables(): array
     {
-        return ! empty($this->photos) ? $this->photos : config('portail.photos_defaut', []);
+        if (empty($this->photos)) {
+            return config('portail.photos_defaut', []);
+        }
+
+        return collect($this->photos)
+            ->map(fn (string $path) => Storage::disk('public')->url($path))
+            ->all();
     }
 
     /**
@@ -61,6 +69,29 @@ class Appartement extends Model
 
         return $this->indisponible_depuis->copy()
             ->addHours(config('portail.duree_indisponibilite_defaut_heures', 24));
+    }
+
+    /**
+     * Forme plate utilisée par les pages du portail public (Inertia props).
+     */
+    public function pourPortail(): array
+    {
+        return [
+            'id' => $this->id,
+            'numero' => $this->numero,
+            'titre' => $this->titre,
+            'description' => $this->description,
+            'adresse' => $this->adresse,
+            'type' => $this->type,
+            'prix_nuit' => $this->prix_nuit,
+            'capacite' => $this->capacite,
+            'chambres' => $this->chambres,
+            'salles_de_bain' => $this->salles_de_bain,
+            'surface_m2' => $this->surface_m2,
+            'photos' => $this->photosAffichables(),
+            'statut_entretien' => $this->statut_entretien,
+            'disponible_le' => $this->disponibleLe()?->toIso8601String(),
+        ];
     }
 
     public function reservations(): HasMany

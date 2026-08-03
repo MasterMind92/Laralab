@@ -7,7 +7,6 @@ use App\Http\Requests\UpdateAppartementRequest;
 use App\Models\Appartement;
 use App\Models\Equipement;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -79,13 +78,17 @@ class AppartementController extends Controller
     }
 
     /**
+     * Stocke les chemins relatifs (pas d'URL absolue figée) : l'URL réelle est
+     * recalculée à l'affichage par Appartement::photosAffichables(), pour ne pas
+     * dépendre de l'adresse locale utilisée au moment de l'upload (APP_URL).
+     *
      * @param  array<\Illuminate\Http\UploadedFile>  $files
      * @return array<string>
      */
     private function uploadPhotos(array $files): array
     {
         return collect($files)
-            ->map(fn ($file) => Storage::disk('public')->url($file->store('appartements', 'public')))
+            ->map(fn ($file) => $file->store('appartements', 'public'))
             ->all();
     }
 
