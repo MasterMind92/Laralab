@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { router } from "@inertiajs/react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Lock, UserPlus } from "lucide-react";
-import { loginSchema, registerSchema, type LoginSchema, type RegisterSchema } from "@/lib/validators";
+import { useState, type FormEvent } from "react";
+import { useForm } from "@inertiajs/react";
+import { Eye, EyeOff, Lock, Mail, UserPlus } from "lucide-react";
+import { store } from "@/routes/login";
+import RegisterController from "@/actions/App/Http/Controllers/PortailClient/RegisterController";
 import { usePasswordStrength } from "@/hooks/usePasswordStrength";
 import Navbar from "@/components/layout/Navbar";
 import { cn } from "@/lib/utils";
@@ -13,24 +12,17 @@ import { cn } from "@/lib/utils";
 // ═══════════════════════════════════════════════════════
 // LOGIN FORM
 // ═══════════════════════════════════════════════════════
-  function LoginForm({ onSwitch }: { onSwitch: () => void }) {
+function LoginForm({ onSwitch }: { onSwitch: () => void }) {
   const [showPw, setShowPw] = useState(false);
-  const [success, setSuccess] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginSchema>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "", remember: false },
+  const { data, setData, errors, processing, post } = useForm({
+    email: "",
+    password: "",
+    remember: false,
   });
 
-  const onSubmit = async (_data: LoginSchema) => {
-    // Simulate async API call
-    await new Promise((r) => setTimeout(r, 800));
-    setSuccess(true);
-    setTimeout(() => router.get("/"), 1200);
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    post(store().url);
   };
 
   return (
@@ -38,41 +30,41 @@ import { cn } from "@/lib/utils";
       <h3 className="font-['Cormorant_Garamond'] text-3xl font-light mb-1">Content de vous revoir</h3>
       <p className="text-sm text-stone-400 mb-7">Connectez-vous à votre espace LuxStay</p>
 
-      {success && (
-        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700 flex items-center gap-2">
-          ✓ Connexion réussie ! Redirection…
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {/* Email */}
         <div>
           <label className="form-label-ls">Adresse e-mail</label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300 text-sm">✉️</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300">
+              <Mail size={15} />
+            </span>
             <input
-              {...register("email")}
+              value={data.email}
+              onChange={(e) => setData("email", e.target.value)}
               type="email"
               placeholder="votre@email.com"
               autoComplete="email"
               className={cn("input-ls pl-9", errors.email && "error")}
             />
           </div>
-          {errors.email && <p className="text-[11px] text-red-500 mt-1">{errors.email.message}</p>}
+          {errors.email && <p className="text-[11px] text-red-500 mt-1">{errors.email}</p>}
         </div>
 
         {/* Password */}
         <div>
           <div className="flex justify-between items-center mb-1">
             <label className="form-label-ls mb-0">Mot de passe</label>
-            <a href="/mot-de-passe-oublie" className="text-[11px] text-[rgb(var(--gold))] hover:underline">
+            <a href="/connexion/mot-de-passe-oublie" className="text-[11px] text-[rgb(var(--gold))] hover:underline">
               Mot de passe oublié ?
             </a>
           </div>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300 text-sm">🔒</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300">
+              <Lock size={15} />
+            </span>
             <input
-              {...register("password")}
+              value={data.password}
+              onChange={(e) => setData("password", e.target.value)}
               type={showPw ? "text" : "password"}
               placeholder="••••••••"
               autoComplete="current-password"
@@ -88,45 +80,29 @@ import { cn } from "@/lib/utils";
               {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           </div>
-          {errors.password && <p className="text-[11px] text-red-500 mt-1">{errors.password.message}</p>}
+          {errors.password && <p className="text-[11px] text-red-500 mt-1">{errors.password}</p>}
         </div>
 
         {/* Remember */}
         <label className="flex items-center gap-2 text-sm text-stone-500 cursor-pointer">
-          <input type="checkbox" {...register("remember")} className="accent-[rgb(var(--gold))]" />
+          <input
+            type="checkbox"
+            checked={data.remember}
+            onChange={(e) => setData("remember", e.target.checked)}
+            className="accent-[rgb(var(--gold))]"
+          />
           Se souvenir de moi
         </label>
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={processing}
           className="btn-gold w-full justify-center py-3 mt-1"
         >
           <Lock size={13} />
-          {isSubmitting ? "Connexion…" : "Se connecter"}
+          {processing ? "Connexion…" : "Se connecter"}
         </button>
       </form>
-
-      {/* Divider */}
-      <div className="flex items-center gap-3 my-5">
-        <div className="flex-1 h-px bg-[rgb(var(--gold))]/15" />
-        <span className="text-[11px] text-stone-400 uppercase tracking-wider">ou</span>
-        <div className="flex-1 h-px bg-[rgb(var(--gold))]/15" />
-      </div>
-
-      {/* OAuth */}
-      {[
-        { emoji: "🔵", label: "Continuer avec Google" },
-        { emoji: "🔷", label: "Continuer avec Facebook" },
-      ].map((s) => (
-        <button
-          key={s.label}
-          type="button"
-          className="w-full flex items-center justify-center gap-2.5 border border-stone-200 rounded-lg px-4 py-2.5 text-sm mb-2.5 hover:border-[rgb(var(--gold))] transition-colors bg-white"
-        >
-          <span>{s.emoji}</span> {s.label}
-        </button>
-      ))}
 
       <p className="text-center text-sm text-stone-400 mt-5">
         Pas encore de compte ?{" "}
@@ -144,25 +120,20 @@ import { cn } from "@/lib/utils";
 function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
   const [showPw, setShowPw]   = useState(false);
   const [showPwC, setShowPwC] = useState(false);
-  const [success, setSuccess]  = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<RegisterSchema>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: { firstname: "", lastname: "", email: "", password: "", confirmPassword: "", terms: false },
+  const { data, setData, errors, processing, post } = useForm({
+    prenom: "",
+    nom: "",
+    email: "",
+    password: "",
+    password_confirmation: "",
+    terms: false,
   });
 
-  const pwVal = watch("password");
-  const strength = usePasswordStrength(pwVal);
+  const strength = usePasswordStrength(data.password);
 
-  const onSubmit = async (_data: RegisterSchema) => {
-    await new Promise((r) => setTimeout(r, 900));
-    setSuccess(true);
-    setTimeout(() => router.get("/"), 1400);
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    post(RegisterController.store().url);
   };
 
   return (
@@ -170,32 +141,28 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
       <h3 className="font-['Cormorant_Garamond'] text-3xl font-light mb-1">Rejoignez LuxStay</h3>
       <p className="text-sm text-stone-400 mb-7">Créez votre compte en quelques secondes</p>
 
-      {success && (
-        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-          ✓ Compte créé avec succès ! Redirection…
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {/* Name row */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="form-label-ls">Prénom</label>
             <input
-              {...register("firstname")}
+              value={data.prenom}
+              onChange={(e) => setData("prenom", e.target.value)}
               placeholder="Jean"
-              className={cn("input-ls", errors.firstname && "error")}
+              className={cn("input-ls", errors.prenom && "error")}
             />
-            {errors.firstname && <p className="text-[11px] text-red-500 mt-1">{errors.firstname.message}</p>}
+            {errors.prenom && <p className="text-[11px] text-red-500 mt-1">{errors.prenom}</p>}
           </div>
           <div>
             <label className="form-label-ls">Nom</label>
             <input
-              {...register("lastname")}
+              value={data.nom}
+              onChange={(e) => setData("nom", e.target.value)}
               placeholder="Dupont"
-              className={cn("input-ls", errors.lastname && "error")}
+              className={cn("input-ls", errors.nom && "error")}
             />
-            {errors.lastname && <p className="text-[11px] text-red-500 mt-1">{errors.lastname.message}</p>}
+            {errors.nom && <p className="text-[11px] text-red-500 mt-1">{errors.nom}</p>}
           </div>
         </div>
 
@@ -203,24 +170,30 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         <div>
           <label className="form-label-ls">Adresse e-mail</label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300">✉️</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300">
+              <Mail size={15} />
+            </span>
             <input
-              {...register("email")}
+              value={data.email}
+              onChange={(e) => setData("email", e.target.value)}
               type="email"
               placeholder="votre@email.com"
               className={cn("input-ls pl-9", errors.email && "error")}
             />
           </div>
-          {errors.email && <p className="text-[11px] text-red-500 mt-1">{errors.email.message}</p>}
+          {errors.email && <p className="text-[11px] text-red-500 mt-1">{errors.email}</p>}
         </div>
 
         {/* Password */}
         <div>
           <label className="form-label-ls">Mot de passe</label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300">🔒</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300">
+              <Lock size={15} />
+            </span>
             <input
-              {...register("password")}
+              value={data.password}
+              onChange={(e) => setData("password", e.target.value)}
               type={showPw ? "text" : "password"}
               placeholder="Minimum 8 caractères"
               autoComplete="new-password"
@@ -236,7 +209,7 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
             </button>
           </div>
           {/* Strength bar */}
-          {pwVal && (
+          {data.password && (
             <div className="mt-2">
               <div className="flex gap-1">
                 {[1, 2, 3, 4].map((seg) => (
@@ -254,20 +227,23 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
               )}
             </div>
           )}
-          {errors.password && <p className="text-[11px] text-red-500 mt-1">{errors.password.message}</p>}
+          {errors.password && <p className="text-[11px] text-red-500 mt-1">{errors.password}</p>}
         </div>
 
         {/* Confirm password */}
         <div>
           <label className="form-label-ls">Confirmer le mot de passe</label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300">🔒</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300">
+              <Lock size={15} />
+            </span>
             <input
-              {...register("confirmPassword")}
+              value={data.password_confirmation}
+              onChange={(e) => setData("password_confirmation", e.target.value)}
               type={showPwC ? "text" : "password"}
               placeholder="Répétez le mot de passe"
               autoComplete="new-password"
-              className={cn("input-ls pl-9 pr-10", errors.confirmPassword && "error")}
+              className={cn("input-ls pl-9 pr-10", errors.password_confirmation && "error")}
             />
             <button
               type="button"
@@ -278,7 +254,9 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
               {showPwC ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           </div>
-          {errors.confirmPassword && <p className="text-[11px] text-red-500 mt-1">{errors.confirmPassword.message}</p>}
+          {errors.password_confirmation && (
+            <p className="text-[11px] text-red-500 mt-1">{errors.password_confirmation}</p>
+          )}
         </div>
 
         {/* Terms */}
@@ -286,7 +264,9 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
           <label className="flex items-start gap-2.5 text-sm text-stone-500 cursor-pointer">
             <input
               type="checkbox"
-              {...register("terms")}
+              required
+              checked={data.terms}
+              onChange={(e) => setData("terms", e.target.checked)}
               className="mt-0.5 accent-[rgb(var(--gold))]"
             />
             <span>
@@ -296,16 +276,15 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
               <a href="#" className="text-[rgb(var(--gold))] hover:underline">politique de confidentialité</a>
             </span>
           </label>
-          {errors.terms && <p className="text-[11px] text-red-500 mt-1">{errors.terms.message}</p>}
         </div>
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={processing}
           className="btn-gold w-full justify-center py-3 mt-1"
         >
           <UserPlus size={13} />
-          {isSubmitting ? "Création…" : "Créer mon compte"}
+          {processing ? "Création…" : "Créer mon compte"}
         </button>
       </form>
 

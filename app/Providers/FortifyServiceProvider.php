@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Http\Responses\LoginResponse;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -11,6 +13,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
+use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 
@@ -32,6 +35,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureActions();
         $this->configureViews();
         $this->configureRateLimiting();
+        $this->configurePasswordResetUrls();
     }
 
     /**
@@ -41,6 +45,24 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
+
+        $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
+    }
+
+    /**
+     * Le lien de réinitialisation envoyé par e-mail pointe vers une page portail
+     * pour un client, vers la page interne pour tout autre rôle — sans dupliquer
+     * le POST /reset-password de Fortify, réutilisé tel quel des deux côtés.
+     */
+    private function configurePasswordResetUrls(): void
+    {
+        ResetPassword::createUrlUsing(function ($notifiable, string $token) {
+            if ($notifiable->role === 'client') {
+                return url('/connexion/reinitialiser-mot-de-passe/'.$token).'?email='.urlencode($notifiable->email);
+            }
+
+            return url(route('password.reset', ['token' => $token, 'email' => $notifiable->email], false));
+        });
     }
 
     /**

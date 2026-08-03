@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, usePage} from "@inertiajs/react";
-import { Menu, X, Lock } from "lucide-react";
+import { LogOut, Menu, User, X, Lock } from "lucide-react";
+import { logout } from "@/routes";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -9,8 +10,9 @@ const NAV_LINKS = [
 ];
 
 export default function Navbar() {
-  const { url } = usePage();
+  const { url, props } = usePage<{ auth: { user: { name: string } | null } }>();
   const [open, setOpen] = useState(false);
+  const user = props.auth.user;
 
   return (
     <nav className="sticky top-0 z-50 bg-[rgb(var(--dark))] border-b border-[rgb(var(--gold))]/10">
@@ -41,13 +43,29 @@ export default function Navbar() {
 
         {/* CTA */}
         <div className="hidden md:flex items-center gap-3">
-          <Link
-            href="/connexion"
-            className="text-[11px] tracking-[0.12em] uppercase border border-[rgb(var(--gold))] text-[rgb(var(--gold))] px-4 py-1.5 rounded transition-all duration-200 hover:bg-[rgb(var(--gold))] hover:text-[rgb(var(--dark))] flex items-center gap-1.5"
-          >
-            <Lock size={11} />
-            Connexion
-          </Link>
+          {user ? (
+            <>
+              <span className="text-[11px] tracking-[0.08em] uppercase text-white/55 flex items-center gap-1.5">
+                <User size={12} className="text-[rgb(var(--gold))]" /> {user.name}
+              </span>
+              <Link
+                href={logout()}
+                as="button"
+                className="text-[11px] tracking-[0.12em] uppercase border border-[rgb(var(--gold))] text-[rgb(var(--gold))] px-4 py-1.5 rounded transition-all duration-200 hover:bg-[rgb(var(--gold))] hover:text-[rgb(var(--dark))] flex items-center gap-1.5"
+              >
+                <LogOut size={11} />
+                Déconnexion
+              </Link>
+            </>
+          ) : (
+            <Link
+              href="/connexion"
+              className="text-[11px] tracking-[0.12em] uppercase border border-[rgb(var(--gold))] text-[rgb(var(--gold))] px-4 py-1.5 rounded transition-all duration-200 hover:bg-[rgb(var(--gold))] hover:text-[rgb(var(--dark))] flex items-center gap-1.5"
+            >
+              <Lock size={11} />
+              Connexion
+            </Link>
+          )}
         </div>
 
         {/* Mobile hamburger */}
@@ -76,13 +94,24 @@ export default function Navbar() {
               {l.label}
             </Link>
           ))}
-          <Link
-            href="/connexion"
-            onClick={() => setOpen(false)}
-            className="btn-outline-gold mt-2 w-full justify-center"
-          >
-            <Lock size={11} /> Connexion
-          </Link>
+          {user ? (
+            <Link
+              href={logout()}
+              as="button"
+              onClick={() => setOpen(false)}
+              className="btn-outline-gold mt-2 w-full justify-center"
+            >
+              <LogOut size={11} /> Déconnexion ({user.name})
+            </Link>
+          ) : (
+            <Link
+              href="/connexion"
+              onClick={() => setOpen(false)}
+              className="btn-outline-gold mt-2 w-full justify-center"
+            >
+              <Lock size={11} /> Connexion
+            </Link>
+          )}
         </div>
       )}
     </nav>
