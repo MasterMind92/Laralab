@@ -5,15 +5,22 @@ namespace App\Providers;
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\LoginResponse;
+use App\Http\Responses\VerifyEmailResponse;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use Laravel\Fortify\Contracts\VerifyEmailResponse as VerifyEmailResponseContract;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 
@@ -36,6 +43,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureViews();
         $this->configureRateLimiting();
         $this->configurePasswordResetUrls();
+        $this->configureEmailVerification();
     }
 
     /**
@@ -47,6 +55,28 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::createUsersUsing(CreateNewUser::class);
 
         $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
+        $this->app->singleton(VerifyEmailResponseContract::class, VerifyEmailResponse::class);
+    }
+
+    /**
+     * L'appli n'a pas de app/Providers/EventServiceProvider.php, donc le mapping
+     * Registered -> SendEmailVerificationNotification que Laravel câble d'habitude
+     * automatiquement n'est jamais enregistré : on le déclare ici explicitement.
+     * Habillage LuxStay minimal du mail (thème complet réutilisé/étendu à l'Étape 6).
+     */
+    private function configureEmailVerification(): void
+    {
+        Event::listen(Registered::class, SendEmailVerificationNotification::class);
+
+        VerifyEmail::toMailUsing(function ($notifiable, string $url) {
+            return (new MailMessage)
+                ->subject('Confirmez votre adresse e-mail — LuxStay')
+                ->greeting('Bonjour '.$notifiable->name.',')
+                ->line('Merci de vous être inscrit sur LuxStay. Confirmez votre adresse e-mail pour activer pleinement votre compte.')
+                ->action('Confirmer mon adresse e-mail', $url)
+                ->line("Si vous n'êtes pas à l'origine de cette inscription, vous pouvez ignorer cet e-mail.")
+                ->theme('luxstay');
+        });
     }
 
     /**
@@ -85,9 +115,10 @@ class FortifyServiceProvider extends ServiceProvider
             'status' => $request->session()->get('status'),
         ]));
 
-        Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/verify-email', [
-            'status' => $request->session()->get('status'),
-        ]));
+        Fortify::verifyEmailView(fn (Request $request) => Inertia::render(
+            $request->user()?->role === 'client' ? 'portail-client/EmailVerificationNoticePage' : 'auth/verify-email',
+            ['status' => $request->session()->get('status')],
+        ));
 
         Fortify::registerView(fn () => Inertia::render('auth/register', [
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
