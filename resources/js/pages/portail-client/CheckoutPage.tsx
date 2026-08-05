@@ -1,14 +1,50 @@
-"use client";
-
-import { useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { User, CreditCard, Smartphone, CheckCircle, Shield } from "lucide-react";
-import { checkoutSchema, type CheckoutSchema } from "@/lib/validators";
-import { APARTMENTS, getNights, computeBookingTotal, formatPrice } from "@/lib/data";
+import { useForm } from "@inertiajs/react";
+import { useState, type FormEvent } from "react";
+import { User, CreditCard, Smartphone, CheckCircle, Shield, TriangleAlert } from "lucide-react";
+import ReservationController from "@/actions/App/Http/Controllers/PortailClient/ReservationController";
+import { formatPrice } from "@/lib/data";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { cn } from "@/lib/utils";
+
+type PaymentMethod = "card" | "paypal" | "mobile";
+
+// ─── Formatage des champs de carte bancaire (décoratif — Phase 03) ───────────
+function formatCardNumber(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 16);
+  return (digits.match(/.{1,4}/g) ?? []).join(" ");
+}
+
+function formatCardExpiry(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)} / ${digits.slice(2)}`;
+}
+
+function formatCardCvv(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 4);
+}
+
+type CheckoutAppartement = {
+  id: number;
+  titre: string;
+  adresse: string | null;
+  photo: string | null;
+  prix_nuit: string;
+};
+
+type Pricing = {
+  base: number;
+  fee: number;
+  total: number;
+};
+
+type CheckoutClient = {
+  prenom: string;
+  nom: string;
+  email: string;
+  telephone: string;
+};
 
 // ─── Steps indicator ──────────────────────────────────────────────────────────
 const STEPS = ["Sélection", "Informations", "Paiement", "Confirmation"];
@@ -49,7 +85,7 @@ function StepsBar({ current }: { current: number }) {
   );
 }
 
-// ─── Payment method button ────────────────────────────────────────────────────
+// ─── Payment method button (décoratif — aucun paiement réel, Phase 03) ────────
 function PayMethodBtn({
   icon: Icon,
   label,
@@ -59,9 +95,9 @@ function PayMethodBtn({
 }: {
   icon: React.ElementType;
   label: string;
-  value: string;
-  current: string;
-  onSelect: (v: string) => void;
+  value: PaymentMethod;
+  current: PaymentMethod;
+  onSelect: (v: PaymentMethod) => void;
 }) {
   return (
     <button
@@ -81,15 +117,21 @@ function PayMethodBtn({
 }
 
 // ─── Order Summary ────────────────────────────────────────────────────────────
-function OrderSummary({ apt, checkin, checkout, guests, nights }: {
-  apt: (typeof APARTMENTS)[0];
+function OrderSummary({
+  appartement,
+  checkin,
+  checkout,
+  guests,
+  nights,
+  pricing,
+}: {
+  appartement: CheckoutAppartement;
   checkin: string;
   checkout: string;
   guests: string;
   nights: number;
+  pricing: Pricing;
 }) {
-  const pricing = nights > 0 ? computeBookingTotal(apt.pricePerNight, nights) : null;
-
   const fmt = (d: string) =>
     d ? new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
@@ -99,11 +141,15 @@ function OrderSummary({ apt, checkin, checkout, guests, nights }: {
 
   return (
     <div className="bg-white border border-[rgb(var(--gold))]/15 rounded-xl overflow-hidden sticky top-[80px]">
-      <img src={apt.images[0]} alt={apt.title} className="w-full h-44 object-cover" />
+      {appartement.photo && (
+        <img src={appartement.photo} alt={appartement.titre} className="w-full h-44 object-cover" />
+      )}
 
       <div className="p-5">
-        <h4 className="font-['Cormorant_Garamond'] text-xl mb-1">{apt.title}</h4>
-        <p className="text-[11px] uppercase tracking-wider text-[rgb(var(--gold))] mb-4">📍 {apt.location}</p>
+        <h4 className="font-['Cormorant_Garamond'] text-xl mb-1">{appartement.titre}</h4>
+        {appartement.adresse && (
+          <p className="text-[11px] uppercase tracking-wider text-[rgb(var(--gold))] mb-4">📍 {appartement.adresse}</p>
+        )}
 
         {/* Date tags */}
         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -122,10 +168,10 @@ function OrderSummary({ apt, checkin, checkout, guests, nights }: {
         </p>
 
         {/* Price lines */}
-        {pricing ? (
+        {nights > 0 ? (
           <div className="border-t border-[rgb(var(--gold))]/10 pt-4 flex flex-col gap-1.5">
             <div className="flex justify-between text-sm">
-              <span className="text-stone-500">{apt.pricePerNight} FCFA × {nights} nuit{nights > 1 ? "s" : ""}</span>
+              <span className="text-stone-500">{appartement.prix_nuit} FCFA × {nights} nuit{nights > 1 ? "s" : ""}</span>
               <span>{formatPrice(pricing.base)} FCFA</span>
             </div>
             {pricing.fee > 0 && (
@@ -140,7 +186,7 @@ function OrderSummary({ apt, checkin, checkout, guests, nights }: {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-stone-400 italic text-center">Sélectionnez des dates</p>
+          <p className="text-sm text-stone-400 italic text-center">Dates invalides</p>
         )}
 
         {/* Guarantees */}
@@ -158,55 +204,49 @@ function OrderSummary({ apt, checkin, checkout, guests, nights }: {
 }
 
 // ─── CheckoutPage ─────────────────────────────────────────────────────────────
-export default function CheckoutPage() {
-  const searchParams = new URLSearchParams(location.search);
-  const [confirmed, setConfirmed] = useState(false);
+export default function CheckoutPage({
+  appartement,
+  checkin,
+  checkout,
+  guests,
+  nights,
+  pricing,
+  disponible,
+  client,
+  confirmed,
+}: {
+  appartement: CheckoutAppartement;
+  checkin: string;
+  checkout: string;
+  guests: string;
+  nights: number;
+  pricing: Pricing;
+  disponible: boolean;
+  client: CheckoutClient;
+  confirmed: boolean;
+}) {
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [cardName, setCardName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
 
-  const aptId   = Number(searchParams.get("apt_id") ?? 1);
-  const checkin  = searchParams.get("checkin")  ?? "";
-  const checkout = searchParams.get("checkout") ?? "";
-  const guests   = searchParams.get("guests")   ?? "";
-
-  const apt = APARTMENTS.find((a) => a.id === aptId) ?? APARTMENTS[0];
-  const nights = getNights(checkin, checkout);
-
-  const {
-    register,
-    handleSubmit,
-    control,
-    setValue,
-    formState: { errors, isSubmitting },
-  } = useForm<CheckoutSchema>({
-    resolver: zodResolver(checkoutSchema),
-    defaultValues: {
-      firstname: "", lastname: "", email: "", phone: "",
-      nationality: "", specialRequests: "",
-      paymentMethod: "card",
-      cardName: "", cardNumber: "", cardExpiry: "", cardCvv: "",
-      mmOperator: "", mmNumber: "", terms: false,
-    },
+  const { data, setData, errors, processing, post } = useForm({
+    prenom: client.prenom,
+    nom: client.nom,
+    email: client.email,
+    telephone: client.telephone,
+    notes: "",
+    terms: false,
+    appartement_id: appartement.id,
+    date_debut: checkin,
+    date_fin: checkout,
+    nombre_personnes: guests ? Number(guests) : undefined,
   });
 
-  const paymentMethod = useWatch({ control, name: "paymentMethod" });
-
-  // Format card number with spaces
-  const handleCardInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let v = e.target.value.replace(/\D/g, "").slice(0, 16);
-    v = v.replace(/(.{4})/g, "$1 ").trim();
-    setValue("cardNumber", v, { shouldValidate: true });
-  };
-
-  // Format MM / YY
-  const handleExpiryInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let v = e.target.value.replace(/\D/g, "").slice(0, 4);
-    if (v.length > 2) v = v.slice(0, 2) + " / " + v.slice(2);
-    setValue("cardExpiry", v, { shouldValidate: true });
-  };
-
-  const onSubmit = async (_data: CheckoutSchema) => {
-    await new Promise((r) => setTimeout(r, 1000));
-    setConfirmed(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    post(ReservationController.store().url, { preserveScroll: true });
   };
 
   if (confirmed) {
@@ -217,8 +257,11 @@ export default function CheckoutPage() {
           <div className="text-center max-w-md">
             <CheckCircle size={64} className="text-green-500 mx-auto mb-6" />
             <h2 className="font-['Cormorant_Garamond'] text-4xl mb-3">Réservation confirmée !</h2>
-            <p className="text-stone-500 mb-2">Un e-mail de confirmation vous a été envoyé.</p>
-            <p className="text-stone-400 text-sm mb-8">{apt.title} · {apt.location}</p>
+            <p className="text-stone-500 mb-2">Votre demande de réservation a bien été enregistrée.</p>
+            <p className="text-stone-400 text-sm mb-8">
+              {appartement.titre}
+              {appartement.adresse ? ` · ${appartement.adresse}` : ""}
+            </p>
             <a href="/" className="btn-gold py-3 px-8">Retour à l'accueil</a>
           </div>
         </div>
@@ -234,10 +277,17 @@ export default function CheckoutPage() {
       <div className="flex-1 max-w-6xl mx-auto w-full px-6 py-8">
         <StepsBar current={1} />
 
+        {!disponible && (
+          <div className="mb-6 flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-3 text-sm">
+            <TriangleAlert size={16} />
+            Cet appartement n'est plus disponible sur ces dates. Choisissez d'autres dates depuis sa fiche.
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
 
           {/* ── LEFT: Form ── */}
-          <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <form onSubmit={onSubmit} noValidate>
 
             {/* ── 1. Coordonnées ── */}
             <div className="bg-white rounded-xl border border-[rgb(var(--gold))]/12 p-6 mb-5">
@@ -248,43 +298,55 @@ export default function CheckoutPage() {
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="form-label-ls">Prénom *</label>
-                  <input {...register("firstname")} placeholder="Jean" className={cn("input-ls", errors.firstname && "error")} />
-                  {errors.firstname && <p className="text-[11px] text-red-500 mt-1">{errors.firstname.message}</p>}
+                  <input
+                    value={data.prenom}
+                    onChange={(e) => setData("prenom", e.target.value)}
+                    placeholder="Jean"
+                    className={cn("input-ls", errors.prenom && "error")}
+                  />
+                  {errors.prenom && <p className="text-[11px] text-red-500 mt-1">{errors.prenom}</p>}
                 </div>
                 <div>
                   <label className="form-label-ls">Nom *</label>
-                  <input {...register("lastname")} placeholder="Dupont" className={cn("input-ls", errors.lastname && "error")} />
-                  {errors.lastname && <p className="text-[11px] text-red-500 mt-1">{errors.lastname.message}</p>}
+                  <input
+                    value={data.nom}
+                    onChange={(e) => setData("nom", e.target.value)}
+                    placeholder="Dupont"
+                    className={cn("input-ls", errors.nom && "error")}
+                  />
+                  {errors.nom && <p className="text-[11px] text-red-500 mt-1">{errors.nom}</p>}
                 </div>
               </div>
 
               <div className="mb-4">
                 <label className="form-label-ls">Adresse e-mail *</label>
-                <input {...register("email")} type="email" placeholder="jean.dupont@email.com" className={cn("input-ls", errors.email && "error")} />
-                {errors.email && <p className="text-[11px] text-red-500 mt-1">{errors.email.message}</p>}
+                <input
+                  value={data.email}
+                  onChange={(e) => setData("email", e.target.value)}
+                  type="email"
+                  placeholder="jean.dupont@email.com"
+                  className={cn("input-ls", errors.email && "error")}
+                />
+                {errors.email && <p className="text-[11px] text-red-500 mt-1">{errors.email}</p>}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="form-label-ls">Téléphone *</label>
-                  <input {...register("phone")} type="tel" placeholder="+33 6 00 00 00 00" className={cn("input-ls", errors.phone && "error")} />
-                  {errors.phone && <p className="text-[11px] text-red-500 mt-1">{errors.phone.message}</p>}
-                </div>
-                <div>
-                  <label className="form-label-ls">Nationalité</label>
-                  <select {...register("nationality")} className="input-ls">
-                    <option value="">Sélectionner</option>
-                    {["Française", "Ivoirienne", "Sénégalaise", "Marocaine", "Autre"].map((n) => (
-                      <option key={n} value={n.toLowerCase()}>{n}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="mb-4">
+                <label className="form-label-ls">Téléphone</label>
+                <input
+                  value={data.telephone}
+                  onChange={(e) => setData("telephone", e.target.value)}
+                  type="tel"
+                  placeholder="+225 07 00 00 00 00"
+                  className={cn("input-ls", errors.telephone && "error")}
+                />
+                {errors.telephone && <p className="text-[11px] text-red-500 mt-1">{errors.telephone}</p>}
               </div>
 
               <div>
                 <label className="form-label-ls">Demandes spéciales</label>
                 <textarea
-                  {...register("specialRequests")}
+                  value={data.notes}
+                  onChange={(e) => setData("notes", e.target.value)}
                   rows={3}
                   placeholder="Arrivée tardive, lit bébé, étage élevé…"
                   className="input-ls resize-none"
@@ -292,20 +354,18 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* ── 2. Paiement ── */}
+            {/* ── 2. Paiement (décoratif — Phase 03) ── */}
             <div className="bg-white rounded-xl border border-[rgb(var(--gold))]/12 p-6 mb-5">
               <h3 className="font-['Cormorant_Garamond'] text-2xl flex items-center gap-2 mb-5 pb-3 border-b border-[rgb(var(--gold))]/10">
                 <CreditCard size={16} className="text-[rgb(var(--gold))]" /> Mode de paiement
               </h3>
 
-              {/* Method selector */}
               <div className="flex gap-2 flex-wrap mb-5">
-                <PayMethodBtn icon={CreditCard}  label="Carte bancaire" value="card"    current={paymentMethod} onSelect={(v) => setValue("paymentMethod", v as "card" | "paypal" | "mobile")} />
-                <PayMethodBtn icon={Shield}       label="PayPal"         value="paypal"  current={paymentMethod} onSelect={(v) => setValue("paymentMethod", v as "card" | "paypal" | "mobile")} />
-                <PayMethodBtn icon={Smartphone}   label="Mobile Money"   value="mobile"  current={paymentMethod} onSelect={(v) => setValue("paymentMethod", v as "card" | "paypal" | "mobile")} />
+                <PayMethodBtn icon={CreditCard}  label="Carte bancaire" value="card"    current={paymentMethod} onSelect={setPaymentMethod} />
+                <PayMethodBtn icon={Shield}       label="PayPal"         value="paypal"  current={paymentMethod} onSelect={setPaymentMethod} />
+                <PayMethodBtn icon={Smartphone}   label="Mobile Money"   value="mobile"  current={paymentMethod} onSelect={setPaymentMethod} />
               </div>
 
-              {/* ── Card fields ── */}
               {paymentMethod === "card" && (
                 <div className="space-y-4">
                   <div className="flex gap-2 mb-1">
@@ -314,64 +374,70 @@ export default function CheckoutPage() {
                     ))}
                   </div>
                   <div>
-                    <label className="form-label-ls">Nom sur la carte *</label>
-                    <input {...register("cardName")} placeholder="JEAN DUPONT" className={cn("input-ls", errors.cardName && "error")} />
-                    {errors.cardName && <p className="text-[11px] text-red-500 mt-1">{errors.cardName.message}</p>}
+                    <label className="form-label-ls">Nom sur la carte</label>
+                    <input
+                      value={cardName}
+                      onChange={(e) => setCardName(e.target.value.toUpperCase())}
+                      placeholder="JEAN DUPONT"
+                      className="input-ls uppercase"
+                    />
                   </div>
                   <div>
-                    <label className="form-label-ls">Numéro de carte *</label>
+                    <label className="form-label-ls">Numéro de carte</label>
                     <div className="relative">
                       <input
-                        {...register("cardNumber")}
-                        onChange={handleCardInput}
+                        value={cardNumber}
+                        onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                        inputMode="numeric"
+                        autoComplete="cc-number"
                         placeholder="1234 5678 9012 3456"
                         maxLength={19}
-                        className={cn("input-ls pr-10", errors.cardNumber && "error")}
+                        className="input-ls pr-10 tracking-widest"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-300 text-lg">💳</span>
                     </div>
-                    {errors.cardNumber && <p className="text-[11px] text-red-500 mt-1">{errors.cardNumber.message}</p>}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="form-label-ls">Date d'expiration *</label>
+                      <label className="form-label-ls">Date d'expiration</label>
                       <input
-                        {...register("cardExpiry")}
-                        onChange={handleExpiryInput}
+                        value={cardExpiry}
+                        onChange={(e) => setCardExpiry(formatCardExpiry(e.target.value))}
+                        inputMode="numeric"
+                        autoComplete="cc-exp"
                         placeholder="MM / AA"
                         maxLength={7}
-                        className={cn("input-ls", errors.cardExpiry && "error")}
+                        className="input-ls"
                       />
-                      {errors.cardExpiry && <p className="text-[11px] text-red-500 mt-1">{errors.cardExpiry.message}</p>}
                     </div>
                     <div>
-                      <label className="form-label-ls">CVV / CVC *</label>
+                      <label className="form-label-ls">CVV / CVC</label>
                       <input
-                        {...register("cardCvv")}
+                        value={cardCvv}
+                        onChange={(e) => setCardCvv(formatCardCvv(e.target.value))}
+                        inputMode="numeric"
+                        autoComplete="cc-csc"
+                        type="password"
                         placeholder="•••"
                         maxLength={4}
-                        onInput={(e) => { (e.target as HTMLInputElement).value = (e.target as HTMLInputElement).value.replace(/\D/g, ""); }}
-                        className={cn("input-ls", errors.cardCvv && "error")}
+                        className="input-ls"
                       />
-                      {errors.cardCvv && <p className="text-[11px] text-red-500 mt-1">{errors.cardCvv.message}</p>}
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* ── PayPal ── */}
               {paymentMethod === "paypal" && (
                 <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
                   🅿️ Vous serez redirigé vers <strong>PayPal</strong> pour finaliser le paiement en toute sécurité.
                 </div>
               )}
 
-              {/* ── Mobile Money ── */}
               {paymentMethod === "mobile" && (
                 <div className="space-y-4">
                   <div>
                     <label className="form-label-ls">Opérateur</label>
-                    <select {...register("mmOperator")} className="input-ls">
+                    <select className="input-ls">
                       <option value="">Choisir l'opérateur</option>
                       {["Orange Money", "MTN Mobile Money", "Wave", "Moov Money"].map((o) => (
                         <option key={o} value={o.toLowerCase().replace(/\s/g, "_")}>{o}</option>
@@ -379,17 +445,15 @@ export default function CheckoutPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="form-label-ls">Numéro Mobile Money *</label>
-                    <input
-                      {...register("mmNumber")}
-                      type="tel"
-                      placeholder="+225 07 00 00 00 00"
-                      className={cn("input-ls", errors.mmNumber && "error")}
-                    />
-                    {errors.mmNumber && <p className="text-[11px] text-red-500 mt-1">{errors.mmNumber.message}</p>}
+                    <label className="form-label-ls">Numéro Mobile Money</label>
+                    <input type="tel" placeholder="+225 07 00 00 00 00" className="input-ls" />
                   </div>
                 </div>
               )}
+
+              <p className="text-[11px] text-stone-400 mt-4">
+                Le paiement en ligne n'est pas encore actif — cette section deviendra fonctionnelle prochainement.
+              </p>
             </div>
 
             {/* ── 3. CGU ── */}
@@ -397,7 +461,9 @@ export default function CheckoutPage() {
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  {...register("terms")}
+                  required
+                  checked={data.terms}
+                  onChange={(e) => setData("terms", e.target.checked)}
                   className="mt-0.5 accent-[rgb(var(--gold))]"
                 />
                 <span className="text-sm text-stone-500 leading-relaxed">
@@ -408,34 +474,34 @@ export default function CheckoutPage() {
                   et les règles du logement.
                 </span>
               </label>
-              {errors.terms && <p className="text-[11px] text-red-500 mt-2">{errors.terms.message}</p>}
             </div>
 
             {/* ── Submit ── */}
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="btn-gold w-full justify-center py-4 text-sm"
+              disabled={processing || !disponible}
+              className="btn-gold w-full justify-center py-4 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Shield size={14} />
-              {isSubmitting
+              {processing
                 ? "Traitement en cours…"
-                : `Confirmer et payer${nights > 0 ? ` ${formatPrice(computeBookingTotal(apt.pricePerNight, nights).total)} FCFA` : ""}`
+                : `Confirmer la réservation${nights > 0 ? ` — ${formatPrice(pricing.total)} FCFA` : ""}`
               }
             </button>
             <p className="text-center text-[11px] text-stone-400 mt-3">
-              🔒 Paiement 100% sécurisé — données chiffrées SSL
+              🔒 Aucun paiement n'est prélevé pour l'instant — votre demande sera confirmée par notre équipe.
             </p>
           </form>
 
           {/* ── RIGHT: Summary ── */}
           <div>
             <OrderSummary
-              apt={apt}
+              appartement={appartement}
               checkin={checkin}
               checkout={checkout}
               guests={guests}
               nights={nights}
+              pricing={pricing}
             />
           </div>
         </div>

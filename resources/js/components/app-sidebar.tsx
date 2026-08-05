@@ -151,7 +151,11 @@ const mainNavItems: NavItem[] = [
                 title: "Etats Financiers",
                 url:"#",
             },
-            
+            {
+                title: "Parametres de facturation",
+                url:"/admin/parametres-facturation",
+            },
+
 
         ]
     },

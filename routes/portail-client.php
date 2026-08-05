@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\PortailClient\AppartementController;
+use App\Http\Controllers\PortailClient\CheckoutController;
 use App\Http\Controllers\PortailClient\HomeController;
 use App\Http\Controllers\PortailClient\PasswordController;
 use App\Http\Controllers\PortailClient\RegisterController;
+use App\Http\Controllers\PortailClient\ReservationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -11,9 +13,9 @@ use Illuminate\Support\Facades\Route;
 | Portail public
 |--------------------------------------------------------------------------
 |
-| Le portail est la page d'accueil du site. Connexion/inscription/mot de passe
-| oublié branchés à l'Étape 4 — le checkout (Étape 5) reste pour l'instant un
-| simple Route::inertia.
+| Le portail est la page d'accueil du site. Le checkout (Étape 5) est
+| réservé aux clients connectés — cf. bootstrap/app.php pour la redirection
+| des invités vers /connexion plutôt que /login sur ces routes.
 |
 */
 
@@ -30,5 +32,7 @@ Route::post('inscription', [RegisterController::class, 'store'])->name('register
 Route::get('connexion/mot-de-passe-oublie', [PasswordController::class, 'forgot'])->name('password.forgot.client');
 Route::get('connexion/reinitialiser-mot-de-passe/{token}', [PasswordController::class, 'reset'])->name('password.reset.client');
 
-// TODO Étape 5 : PortailClient\CheckoutController@index + ReservationController@store (auth + role:client).
-Route::inertia('checkout', 'portail-client/CheckoutPage')->name('checkout.client');
+Route::middleware(['auth', 'verified', 'role:client'])->group(function () {
+    Route::get('checkout', [CheckoutController::class, 'index'])->name('checkout.client');
+    Route::post('checkout', [ReservationController::class, 'store'])->name('reservations.store.client');
+});

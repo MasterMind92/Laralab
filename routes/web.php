@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AppartementController;
+use App\Http\Controllers\ParametreFacturationController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\SejourController;
@@ -59,6 +60,14 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
     Route::resource('appartements', AppartementController::class)
         ->except(['create', 'edit', 'show'])
         ->middleware('role:proprietaire');
+
+    Route::get('parametres-facturation', [ParametreFacturationController::class, 'edit'])
+        ->name('parametres-facturation.edit')
+        ->middleware('role:compta');
+
+    Route::put('parametres-facturation', [ParametreFacturationController::class, 'update'])
+        ->name('parametres-facturation.update')
+        ->middleware('role:compta');
 });
 
 require __DIR__.'/portail-client.php';
