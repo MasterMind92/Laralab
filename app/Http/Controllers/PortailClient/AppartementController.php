@@ -15,7 +15,7 @@ class AppartementController extends Controller
      */
     public function index(): Response
     {
-        $appartements = Appartement::orderBy('numero')->get()->map->pourPortail()->all();
+        $appartements = Appartement::with('reductions')->orderBy('numero')->get()->map->pourPortail()->all();
 
         return Inertia::render('portail-client/ApartmentListPage', [
             'appartements' => $appartements,
@@ -24,7 +24,7 @@ class AppartementController extends Controller
 
     public function show(Appartement $appartement): Response
     {
-        $appartement->load('equipements');
+        $appartement->load(['equipements', 'reductions']);
 
         $data = $appartement->pourPortail();
         $data['equipements'] = $appartement->equipements

@@ -28,6 +28,8 @@ class CheckoutController extends Controller
                 ->withErrors(['appartement_id' => "Cet appartement n'existe pas ou plus."]);
         }
 
+        $appartement->load('reductions');
+
         $checkin = $request->query('checkin');
         $checkout = $request->query('checkout');
         $nights = 0;
@@ -37,8 +39,12 @@ class CheckoutController extends Controller
         }
 
         $base = $nights * (float) $appartement->prix_nuit;
+        $reduction = $nights > 0 ? $appartement->reductionApplicable($nights) : null;
+        $discount = $reduction ? $reduction->montantPour($base) : 0;
+        $sousTotal = $base - $discount;
+
         $parametres = ParametreFacturation::actuel();
-        $fee = $parametres->frais_service_actif ? round($base * (float) $parametres->taux_frais_service) : 0;
+        $fee = $parametres->frais_service_actif ? round($sousTotal * (float) $parametres->taux_frais_service) : 0;
 
         $disponible = $appartement->statut_entretien === 'propre'
             && $nights > 0
@@ -60,8 +66,14 @@ class CheckoutController extends Controller
             'nights' => $nights,
             'pricing' => [
                 'base' => $base,
+                'discount' => $discount,
+                'reduction' => $reduction ? [
+                    'nuits_min' => $reduction->nuits_min,
+                    'type' => $reduction->type,
+                    'valeur' => $reduction->valeur,
+                ] : null,
                 'fee' => $fee,
-                'total' => $base + $fee,
+                'total' => $sousTotal + $fee,
             ],
             'disponible' => $disponible,
             'client' => [

@@ -49,6 +49,23 @@ type EquipementResume = {
     icone: string | null;
 };
 
+type TypeReduction = 'pourcentage' | 'montant_fixe';
+
+type ReductionResume = {
+    id: number;
+    nuits_min: number;
+    type: TypeReduction;
+    valeur: string;
+};
+
+type ReductionRow = {
+    nuits_min: number | string;
+    type: TypeReduction;
+    valeur: number | string;
+};
+
+const emptyReductionRow: ReductionRow = { nuits_min: '', type: 'pourcentage', valeur: '' };
+
 type Appartement = {
     id: number;
     numero: string;
@@ -64,6 +81,7 @@ type Appartement = {
     salles_de_bain: number | null;
     surface_m2: string | null;
     equipements: EquipementResume[];
+    reductions: ReductionResume[];
 };
 
 type AppartementFormValues = {
@@ -80,6 +98,7 @@ type AppartementFormValues = {
     surface_m2: number | string;
     photos: File[];
     equipements: number[];
+    reductions: ReductionRow[];
 };
 
 const STATUT_LABELS: Record<StatutEntretien, string> = {
@@ -117,6 +136,7 @@ const emptyForm: AppartementFormValues = {
     surface_m2: '',
     photos: [],
     equipements: [],
+    reductions: [],
 };
 
 function AppartementFormFields({
@@ -139,6 +159,21 @@ function AppartementFormFields({
             'equipements',
             checked ? [...data.equipements, id] : data.equipements.filter((e) => e !== id),
         );
+    }
+
+    function addReduction() {
+        setData('reductions', [...data.reductions, { ...emptyReductionRow }]);
+    }
+
+    function updateReduction(index: number, patch: Partial<ReductionRow>) {
+        setData(
+            'reductions',
+            data.reductions.map((r, i) => (i === index ? { ...r, ...patch } : r)),
+        );
+    }
+
+    function removeReduction(index: number) {
+        setData('reductions', data.reductions.filter((_, i) => i !== index));
     }
 
     return (
@@ -317,6 +352,63 @@ function AppartementFormFields({
                 </div>
             )}
 
+            {equipementsCatalogue && (
+                <div className="grid gap-2">
+                    <div className="flex items-center justify-between">
+                        <Label>Réductions par durée de séjour</Label>
+                        <Button type="button" variant="outline" size="sm" onClick={addReduction}>
+                            Ajouter un palier
+                        </Button>
+                    </div>
+                    <div className="space-y-2 rounded-md border p-3">
+                        {data.reductions.length === 0 && (
+                            <p className="text-xs text-muted-foreground">Aucun palier — le prix plein s'applique quelle que soit la durée.</p>
+                        )}
+                        {data.reductions.map((reduction, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        placeholder="Nuits"
+                                        className="w-20"
+                                        value={reduction.nuits_min}
+                                        onChange={(e) => updateReduction(index, { nuits_min: e.target.value })}
+                                    />
+                                    <span className="text-xs text-muted-foreground whitespace-nowrap">nuits et +</span>
+                                </div>
+                                <Select
+                                    value={reduction.type}
+                                    onValueChange={(value) => updateReduction(index, { type: value as TypeReduction })}
+                                >
+                                    <SelectTrigger className="w-36">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="pourcentage">Pourcentage</SelectItem>
+                                        <SelectItem value="montant_fixe">Montant fixe</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={reduction.type === 'pourcentage' ? 100 : undefined}
+                                    step="0.01"
+                                    placeholder={reduction.type === 'pourcentage' ? '%' : 'FCFA'}
+                                    className="w-28"
+                                    value={reduction.valeur}
+                                    onChange={(e) => updateReduction(index, { valeur: e.target.value })}
+                                />
+                                <Button type="button" variant="ghost" size="sm" onClick={() => removeReduction(index)}>
+                                    Retirer
+                                </Button>
+                            </div>
+                        ))}
+                        {errors.reductions && <p className="text-sm text-destructive">{errors.reductions}</p>}
+                    </div>
+                </div>
+            )}
+
             <DialogFooter>
                 <Button type="submit" disabled={processing}>
                     {processing ? 'Enregistrement...' : submitLabel}
@@ -357,6 +449,11 @@ export default function AppartementsIndex({
                 const modele = equipementsCatalogue.find((c) => c.nom === e.nom);
                 return modele?.id ?? e.id;
             }),
+            reductions: appartement.reductions.map((r) => ({
+                nuits_min: r.nuits_min,
+                type: r.type,
+                valeur: r.valeur,
+            })),
         });
         setEditing(appartement);
     }

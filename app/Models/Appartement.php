@@ -73,6 +73,7 @@ class Appartement extends Model
 
     /**
      * Forme plate utilisée par les pages du portail public (Inertia props).
+     * Nécessite la relation `reductions` déjà chargée (voir PortailClient\AppartementController).
      */
     public function pourPortail(): array
     {
@@ -91,6 +92,16 @@ class Appartement extends Model
             'photos' => $this->photosAffichables(),
             'statut_entretien' => $this->statut_entretien,
             'disponible_le' => $this->disponibleLe()?->toIso8601String(),
+            'reductions' => $this->reductions
+                ->sortBy('nuits_min')
+                ->values()
+                ->map(fn (Reduction $r) => [
+                    'id' => $r->id,
+                    'nuits_min' => $r->nuits_min,
+                    'type' => $r->type,
+                    'valeur' => $r->valeur,
+                ])
+                ->all(),
         ];
     }
 
@@ -102,6 +113,24 @@ class Appartement extends Model
     public function equipements(): HasMany
     {
         return $this->hasMany(Equipement::class);
+    }
+
+    public function reductions(): HasMany
+    {
+        return $this->hasMany(Reduction::class);
+    }
+
+    /**
+     * Palier de réduction applicable pour un séjour de $nights nuits : celui au plus
+     * grand nuits_min <= $nights (escalier progressif, pas de plage à borne max).
+     * Nécessite la relation `reductions` déjà chargée.
+     */
+    public function reductionApplicable(int $nights): ?Reduction
+    {
+        return $this->reductions
+            ->filter(fn (Reduction $r) => $r->nuits_min <= $nights)
+            ->sortByDesc('nuits_min')
+            ->first();
     }
 
     public function interventions(): HasMany

@@ -38,6 +38,10 @@ class UpdateAppartementRequest extends FormRequest
             'photos.*' => ['image', 'max:5120'],
             'equipements' => ['nullable', 'array'],
             'equipements.*' => ['integer', 'exists:equipements,id'],
+            'reductions' => ['nullable', 'array'],
+            'reductions.*.nuits_min' => ['required_with:reductions', 'integer', 'min:1', 'distinct'],
+            'reductions.*.type' => ['required_with:reductions', 'in:pourcentage,montant_fixe'],
+            'reductions.*.valeur' => ['required_with:reductions', 'numeric', 'min:0'],
         ];
     }
 }

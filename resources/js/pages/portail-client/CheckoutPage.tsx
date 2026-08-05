@@ -33,11 +33,24 @@ type CheckoutAppartement = {
   prix_nuit: string;
 };
 
+type PricingReduction = {
+  nuits_min: number;
+  type: "pourcentage" | "montant_fixe";
+  valeur: string;
+};
+
 type Pricing = {
   base: number;
+  discount: number;
+  reduction: PricingReduction | null;
   fee: number;
   total: number;
 };
+
+function labelReduction(r: PricingReduction): string {
+  const valeur = r.type === "pourcentage" ? `-${Number(r.valeur)}%` : `-${formatPrice(Number(r.valeur))} FCFA`;
+  return `${valeur}, ${r.nuits_min} nuit${r.nuits_min > 1 ? "s" : ""}+`;
+}
 
 type CheckoutClient = {
   prenom: string;
@@ -174,6 +187,12 @@ function OrderSummary({
               <span className="text-stone-500">{appartement.prix_nuit} FCFA × {nights} nuit{nights > 1 ? "s" : ""}</span>
               <span>{formatPrice(pricing.base)} FCFA</span>
             </div>
+            {pricing.discount > 0 && pricing.reduction && (
+              <div className="flex justify-between text-sm text-green-700">
+                <span>Réduction ({labelReduction(pricing.reduction)})</span>
+                <span>-{formatPrice(pricing.discount)} FCFA</span>
+              </div>
+            )}
             {pricing.fee > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-stone-500">Frais de service</span>

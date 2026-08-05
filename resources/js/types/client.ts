@@ -1,5 +1,13 @@
 export type TypeLogement = "studio" | "t2" | "t3" | "t4_plus" | "penthouse" | "villa";
 export type StatutEntretien = "propre" | "a_nettoyer" | "en_maintenance";
+export type TypeReduction = "pourcentage" | "montant_fixe";
+
+export interface ApartmentReduction {
+  id: number;
+  nuits_min: number;
+  type: TypeReduction;
+  valeur: string;
+}
 
 /** Reflète Appartement::pourPortail() côté backend. */
 export interface Apartment {
@@ -17,6 +25,7 @@ export interface Apartment {
   photos: string[];
   statut_entretien: StatutEntretien;
   disponible_le: string | null;
+  reductions: ApartmentReduction[];
 }
 
 export interface ApartmentEquipement {

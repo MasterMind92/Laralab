@@ -9,7 +9,12 @@ import ImageCarousel from "@/components/shared/ImageCarousel";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { cn } from "@/lib/utils";
-import type { ApartmentDetail } from "@/types";
+import type { ApartmentDetail, ApartmentReduction } from "@/types";
+
+function labelReduction(r: { nuits_min: number; type: "pourcentage" | "montant_fixe"; valeur: string }): string {
+  const valeur = r.type === "pourcentage" ? `-${Number(r.valeur)}%` : `-${formatPrice(Number(r.valeur))} FCFA`;
+  return `${valeur} dès ${r.nuits_min} nuit${r.nuits_min > 1 ? "s" : ""}`;
+}
 
 const TYPE_LABELS: Record<string, string> = {
   studio: "Studio",
@@ -30,11 +35,13 @@ function BookingBox({
   maxGuests,
   aptId,
   indisponible,
+  reductions,
 }: {
   pricePerNight: number;
   maxGuests: number;
   aptId: number;
   indisponible: boolean;
+  reductions: ApartmentReduction[];
 }) {
   const today = new Date().toISOString().split("T")[0];
 
@@ -51,7 +58,7 @@ function BookingBox({
   const checkinVal  = watch("checkin");
   const checkoutVal = watch("checkout");
   const nights = getNights(checkinVal, checkoutVal);
-  const pricing = nights > 0 ? computeBookingTotal(pricePerNight, nights) : null;
+  const pricing = nights > 0 ? computeBookingTotal(pricePerNight, nights, reductions) : null;
 
   const onSubmit = (data: BookingSchema) => {
     const params = new URLSearchParams({ apt_id: String(aptId), ...data });
@@ -65,6 +72,12 @@ function BookingBox({
         {pricePerNight} FCFA{" "}
         <span className="font-['DM_Sans'] text-sm text-stone-400 font-light">/ nuit</span>
       </div>
+
+      {reductions.length > 0 && (
+        <p className="text-[11px] text-green-700 mb-1">
+          🏷️ {reductions.map(labelReduction).join(" · ")}
+        </p>
+      )}
 
       <hr className="border-[rgb(var(--gold))]/15 my-4" />
 
@@ -130,6 +143,12 @@ function BookingBox({
                 </span>
                 <span>{formatPrice(pricing.base)} FCFA</span>
               </div>
+              {pricing.discount > 0 && pricing.reduction && (
+                <div className="flex justify-between py-1.5 border-b border-[rgb(var(--gold))]/10 text-green-700">
+                  <span>Réduction ({labelReduction(pricing.reduction)})</span>
+                  <span>-{formatPrice(pricing.discount)} FCFA</span>
+                </div>
+              )}
               {pricing.fee > 0 && (
                 <div className="flex justify-between py-1.5 border-b border-[rgb(var(--gold))]/10">
                   <span className="text-stone-500">Frais de service</span>
@@ -283,6 +302,7 @@ export default function ApartmentDetailPage({ appartement }: { appartement: Apar
               maxGuests={appartement.capacite}
               aptId={appartement.id}
               indisponible={enMaintenance}
+              reductions={appartement.reductions}
             />
           </div>
         </div>

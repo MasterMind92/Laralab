@@ -18,7 +18,7 @@ class AppartementController extends Controller
     public function index(): Response
     {
         return Inertia::render('appartements/index', [
-            'appartements' => Appartement::with('equipements')->orderBy('numero')->get(),
+            'appartements' => Appartement::with(['equipements', 'reductions'])->orderBy('numero')->get(),
             'equipementsCatalogue' => Equipement::whereNull('appartement_id')
                 ->orderBy('nom')
                 ->get(['id', 'nom', 'icone']),
@@ -46,7 +46,7 @@ class AppartementController extends Controller
      */
     public function update(UpdateAppartementRequest $request, Appartement $appartement): RedirectResponse
     {
-        $data = $request->safe()->except(['photos', 'equipements']);
+        $data = $request->safe()->except(['photos', 'equipements', 'reductions']);
 
         if ($request->hasFile('photos')) {
             $data['photos'] = [...($appartement->photos ?? []), ...$this->uploadPhotos($request->file('photos'))];
@@ -56,6 +56,10 @@ class AppartementController extends Controller
 
         if ($request->has('equipements')) {
             $this->syncEquipements($appartement, $request->input('equipements', []));
+        }
+
+        if ($request->has('reductions')) {
+            $this->syncReductions($appartement, $request->input('reductions', []));
         }
 
         return back();
@@ -127,5 +131,24 @@ class AppartementController extends Controller
                 ]);
             }
         }
+    }
+
+    /**
+     * Remplace intégralement les paliers de réduction de cet appartement. Contrairement
+     * aux équipements (clonés depuis un catalogue partagé), chaque palier n'existe que
+     * pour cet appartement : pas de diffing nécessaire, le formulaire resoumet toutes
+     * les lignes à chaque sauvegarde.
+     *
+     * @param  array<array{nuits_min: int, type: string, valeur: float}>  $reductions
+     */
+    private function syncReductions(Appartement $appartement, array $reductions): void
+    {
+        $appartement->reductions()->delete();
+
+        $appartement->reductions()->createMany(array_map(fn (array $r) => [
+            'nuits_min' => $r['nuits_min'],
+            'type' => $r['type'],
+            'valeur' => $r['valeur'],
+        ], $reductions));
     }
 }
