@@ -43,6 +43,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureViews();
         $this->configureRateLimiting();
         $this->configurePasswordResetUrls();
+        $this->configurePasswordResetMail();
         $this->configureEmailVerification();
     }
 
@@ -92,6 +93,28 @@ class FortifyServiceProvider extends ServiceProvider
             }
 
             return url(route('password.reset', ['token' => $token, 'email' => $notifiable->email], false));
+        });
+    }
+
+    /**
+     * Habillage LuxStay minimal du mail de réinitialisation (même thème que la
+     * vérification d'e-mail). Réutilise le callback de configurePasswordResetUrls()
+     * pour ne pas dupliquer la logique de construction du lien selon le rôle.
+     */
+    private function configurePasswordResetMail(): void
+    {
+        ResetPassword::toMailUsing(function ($notifiable, string $token) {
+            $url = call_user_func(ResetPassword::$createUrlCallback, $notifiable, $token);
+            $expire = config('auth.passwords.'.config('auth.defaults.passwords').'.expire');
+
+            return (new MailMessage)
+                ->subject('Réinitialisation de votre mot de passe — LuxStay')
+                ->greeting('Bonjour '.$notifiable->name.',')
+                ->line('Vous recevez cet e-mail car nous avons reçu une demande de réinitialisation de mot de passe pour votre compte.')
+                ->action('Réinitialiser mon mot de passe', $url)
+                ->line("Ce lien de réinitialisation expirera dans {$expire} minutes.")
+                ->line("Si vous n'êtes pas à l'origine de cette demande, aucune action n'est requise.")
+                ->theme('luxstay');
         });
     }
 
