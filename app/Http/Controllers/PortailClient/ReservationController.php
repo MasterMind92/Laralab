@@ -5,12 +5,53 @@ namespace App\Http\Controllers\PortailClient;
 use App\Http\Controllers\Controller;
 use App\Models\Appartement;
 use App\Models\Client;
+use App\Models\ParametreFacturation;
 use App\Models\Reservation;
+use App\Notifications\ReservationConfirmee;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class ReservationController extends Controller
 {
+    /**
+     * Liste les réservations du client connecté, les plus récentes d'abord.
+     */
+    public function index(Request $request): Response
+    {
+        $client = $request->user()->client;
+        $parametres = ParametreFacturation::actuel();
+
+        $reservations = $client
+            ? $client->reservations()->with('appartement.reductions')->orderByDesc('date_debut')->get()
+            : collect();
+
+        return Inertia::render('portail-client/MyReservationsPage', [
+            'reservations' => $reservations->map(function (Reservation $reservation) use ($parametres) {
+                $appartement = $reservation->appartement;
+                $nights = (int) $reservation->date_debut->diffInDays($reservation->date_fin);
+                ['sous_total' => $sousTotal] = $appartement->prixPour($nights);
+                $fee = $parametres->frais_service_actif ? round($sousTotal * (float) $parametres->taux_frais_service) : 0;
+
+                return [
+                    'id' => $reservation->id,
+                    'appartement' => [
+                        'id' => $appartement->id,
+                        'titre' => $appartement->titre ?? $appartement->numero,
+                        'photo' => $appartement->photosAffichables()[0] ?? null,
+                    ],
+                    'date_debut' => $reservation->date_debut->toDateString(),
+                    'date_fin' => $reservation->date_fin->toDateString(),
+                    'nights' => $nights,
+                    'nombre_personnes' => $reservation->nombre_personnes,
+                    'statut' => $reservation->statut,
+                    'total' => $sousTotal + $fee,
+                ];
+            }),
+        ]);
+    }
+
     /**
      * Crée la réservation du client connecté (auth + role:client, cf. routes).
      * Revalide tout côté serveur — jamais fait confiance à ce que la page checkout affichait.
@@ -45,7 +86,7 @@ class ReservationController extends Controller
 
         $client = $this->syncClient($request, $data);
 
-        Reservation::create([
+        $reservation = Reservation::create([
             'appartement_id' => $appartement->id,
             'client_id' => $client->id,
             'date_debut' => $data['date_debut'],
@@ -54,6 +95,9 @@ class ReservationController extends Controller
             'nombre_personnes' => $data['nombre_personnes'] ?? null,
             'notes' => $data['notes'] ?? null,
         ]);
+
+        $reservation->load('appartement');
+        $request->user()->notify(new ReservationConfirmee($reservation));
 
         return redirect()->route('checkout.client', [
             'apt_id' => $appartement->id,

@@ -38,10 +38,7 @@ class CheckoutController extends Controller
             $nights = (int) Carbon::parse($checkin)->diffInDays(Carbon::parse($checkout));
         }
 
-        $base = $nights * (float) $appartement->prix_nuit;
-        $reduction = $nights > 0 ? $appartement->reductionApplicable($nights) : null;
-        $discount = $reduction ? $reduction->montantPour($base) : 0;
-        $sousTotal = $base - $discount;
+        ['base' => $base, 'reduction' => $reduction, 'discount' => $discount, 'sous_total' => $sousTotal] = $appartement->prixPour($nights);
 
         $parametres = ParametreFacturation::actuel();
         $fee = $parametres->frais_service_actif ? round($sousTotal * (float) $parametres->taux_frais_service) : 0;

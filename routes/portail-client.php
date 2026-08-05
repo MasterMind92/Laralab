@@ -6,6 +6,7 @@ use App\Http\Controllers\PortailClient\HomeController;
 use App\Http\Controllers\PortailClient\PasswordController;
 use App\Http\Controllers\PortailClient\RegisterController;
 use App\Http\Controllers\PortailClient\ReservationController;
+use App\Http\Controllers\Settings\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -35,4 +36,9 @@ Route::get('connexion/reinitialiser-mot-de-passe/{token}', [PasswordController::
 Route::middleware(['auth', 'verified', 'role:client'])->group(function () {
     Route::get('checkout', [CheckoutController::class, 'index'])->name('checkout.client');
     Route::post('checkout', [ReservationController::class, 'store'])->name('reservations.store.client');
+
+    Route::get('mes-reservations', [ReservationController::class, 'index'])->name('client.reservations.index');
+
+    Route::get('mon-compte/profil', [ProfileController::class, 'edit'])->name('client.profile.edit');
+    Route::patch('mon-compte/profil', [ProfileController::class, 'updateClient'])->name('client.profile.update');
 });

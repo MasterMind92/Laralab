@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, usePage} from "@inertiajs/react";
-import { LogOut, Menu, User, X, Lock } from "lucide-react";
+import { LogOut, Menu, User, X, Lock, CalendarCheck, UserCog } from "lucide-react";
 import { logout } from "@/routes";
 import { cn } from "@/lib/utils";
 
@@ -10,9 +10,10 @@ const NAV_LINKS = [
 ];
 
 export default function Navbar() {
-  const { url, props } = usePage<{ auth: { user: { name: string } | null } }>();
+  const { url, props } = usePage<{ auth: { user: { name: string; role: string } | null } }>();
   const [open, setOpen] = useState(false);
   const user = props.auth.user;
+  const isClient = user?.role === "client";
 
   return (
     <nav className="sticky top-0 z-50 bg-[rgb(var(--dark))] border-b border-[rgb(var(--gold))]/10">
@@ -45,6 +46,28 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-3">
           {user ? (
             <>
+              {isClient && (
+                <>
+                  <Link
+                    href="/mes-reservations"
+                    className={cn(
+                      "text-[11px] tracking-[0.1em] uppercase px-3 py-1.5 rounded transition-colors duration-200 flex items-center gap-1.5",
+                      url === "/mes-reservations" ? "text-[rgb(var(--gold))]" : "text-white/55 hover:text-[rgb(var(--gold))]"
+                    )}
+                  >
+                    <CalendarCheck size={12} /> Mes réservations
+                  </Link>
+                  <Link
+                    href="/mon-compte/profil"
+                    className={cn(
+                      "text-[11px] tracking-[0.1em] uppercase px-3 py-1.5 rounded transition-colors duration-200 flex items-center gap-1.5",
+                      url === "/mon-compte/profil" ? "text-[rgb(var(--gold))]" : "text-white/55 hover:text-[rgb(var(--gold))]"
+                    )}
+                  >
+                    <UserCog size={12} /> Mon compte
+                  </Link>
+                </>
+              )}
               <span className="text-[11px] tracking-[0.08em] uppercase text-white/55 flex items-center gap-1.5">
                 <User size={12} className="text-[rgb(var(--gold))]" /> {user.name}
               </span>
@@ -95,14 +118,40 @@ export default function Navbar() {
             </Link>
           ))}
           {user ? (
-            <Link
-              href={logout()}
-              as="button"
-              onClick={() => setOpen(false)}
-              className="btn-outline-gold mt-2 w-full justify-center"
-            >
-              <LogOut size={11} /> Déconnexion ({user.name})
-            </Link>
+            <>
+              {isClient && (
+                <>
+                  <Link
+                    href="/mes-reservations"
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "text-[11px] tracking-[0.1em] uppercase py-2 transition-colors duration-200",
+                      url === "/mes-reservations" ? "text-[rgb(var(--gold))]" : "text-white/55"
+                    )}
+                  >
+                    Mes réservations
+                  </Link>
+                  <Link
+                    href="/mon-compte/profil"
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "text-[11px] tracking-[0.1em] uppercase py-2 transition-colors duration-200",
+                      url === "/mon-compte/profil" ? "text-[rgb(var(--gold))]" : "text-white/55"
+                    )}
+                  >
+                    Mon compte
+                  </Link>
+                </>
+              )}
+              <Link
+                href={logout()}
+                as="button"
+                onClick={() => setOpen(false)}
+                className="btn-outline-gold mt-2 w-full justify-center"
+              >
+                <LogOut size={11} /> Déconnexion ({user.name})
+              </Link>
+            </>
           ) : (
             <Link
               href="/connexion"

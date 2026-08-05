@@ -133,6 +133,22 @@ class Appartement extends Model
             ->first();
     }
 
+    /**
+     * Base, réduction applicable et sous-total pour un séjour de $nights nuits.
+     * Les frais de service (dépendent de ParametreFacturation, pas de l'appartement)
+     * restent à calculer par l'appelant, sur ce sous-total.
+     *
+     * @return array{base: float, reduction: ?Reduction, discount: float, sous_total: float}
+     */
+    public function prixPour(int $nights): array
+    {
+        $base = $nights * (float) $this->prix_nuit;
+        $reduction = $nights > 0 ? $this->reductionApplicable($nights) : null;
+        $discount = $reduction ? $reduction->montantPour($base) : 0;
+
+        return ['base' => $base, 'reduction' => $reduction, 'discount' => $discount, 'sous_total' => $base - $discount];
+    }
+
     public function interventions(): HasMany
     {
         return $this->hasMany(Intervention::class);
