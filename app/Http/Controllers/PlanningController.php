@@ -15,7 +15,13 @@ class PlanningController extends Controller
         return Inertia::render('receptionniste/planning', [
             'appartements' => Appartement::orderBy('numero')->get(['id', 'numero', 'capacite', 'prix_nuit']),
             'clients' => Client::orderBy('nom')->get(['id', 'nom', 'prenom', 'telephone', 'email']),
-            'reservations' => Reservation::with(['appartement:id,numero', 'client:id,nom,prenom', 'sejour:id,reservation_id,statut'])
+            'reservations' => Reservation::with([
+                'appartement:id,numero',
+                'appartement.equipements:id,nom,appartement_id',
+                'client:id,nom,prenom',
+                'sejour:id,reservation_id,statut',
+                'sejour.demandes',
+            ])
                 ->orderBy('date_debut')
                 ->get(['id', 'appartement_id', 'client_id', 'date_debut', 'date_fin', 'statut']),
         ]);

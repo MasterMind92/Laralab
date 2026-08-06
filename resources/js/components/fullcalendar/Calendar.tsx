@@ -10,7 +10,10 @@ import timeGridPlugin from '@fullcalendar/react/timegrid'
 import interactionPlugin from '@fullcalendar/react/interaction'
 import { type FormEvent, useState } from 'react'
 import ReservationController from '@/actions/App/Http/Controllers/ReservationController'
+import { CheckCircle2, XCircle } from 'lucide-react'
 import SejourController from '@/actions/App/Http/Controllers/SejourController'
+import EtatLieuxDialog from '@/components/fullcalendar/EtatLieuxDialog'
+import DemandesServiceSection, { type DemandeServiceResume } from '@/components/fullcalendar/DemandesServiceSection'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -53,9 +56,9 @@ type CalendarReservation = {
   date_debut: string
   date_fin: string
   statut: Statut
-  appartement: { id: number; numero: string } | null
+  appartement: { id: number; numero: string; equipements: { id: number; nom: string }[] } | null
   client: { id: number; nom: string; prenom: string } | null
-  sejour: { id: number; statut: 'en_cours' | 'cloture' } | null
+  sejour: { id: number; statut: 'en_cours' | 'cloture'; demandes: DemandeServiceResume[] } | null
 }
 
 const STATUT_LABELS: Record<Statut, string> = {
@@ -77,10 +80,10 @@ function formatDateTime(value: string): string {
 }
 
 const STATUT_COLORS: Record<Statut, string> = {
-  en_attente: '#d97706',
+  en_attente: '#eab308',
   validee: '#16a34a',
   annulee: '#dc2626',
-  terminee: '#6b7280',
+  terminee: '#38bdf8',
 }
 
 const NEW_CLIENT_VALUE = '__new__'
@@ -106,6 +109,10 @@ export default function Calendar({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedReservation, setSelectedReservation] = useState<CalendarReservation | null>(null)
   const [checkinProcessing, setCheckinProcessing] = useState(false)
+  const [statutProcessing, setStatutProcessing] = useState(false)
+  const [checkinDialogOpen, setCheckinDialogOpen] = useState(false)
+  const [checkoutProcessing, setCheckoutProcessing] = useState(false)
+  const [checkoutDialogOpen, setCheckoutDialogOpen] = useState(false)
 
   const form = useForm<ReservationFormValues>({
     appartement_id: '',
@@ -146,15 +153,48 @@ export default function Calendar({
     if (reservation) setSelectedReservation(reservation)
   }
 
-  function checkin(reservation: CalendarReservation) {
+  function updateStatut(reservation: CalendarReservation, statut: 'validee' | 'annulee') {
+    setStatutProcessing(true)
+    router.patch(
+      ReservationController.updateStatut(reservation.id).url,
+      { statut },
+      {
+        preserveScroll: true,
+        onFinish: () => setStatutProcessing(false),
+        onSuccess: () => setSelectedReservation(null),
+      },
+    )
+  }
+
+  function checkin(reservation: CalendarReservation, etatLieuxEntree: string) {
     setCheckinProcessing(true)
     router.post(
       SejourController.store().url,
-      { reservation_id: reservation.id },
+      { reservation_id: reservation.id, etat_lieux_entree: etatLieuxEntree },
       {
         preserveScroll: true,
         onFinish: () => setCheckinProcessing(false),
-        onSuccess: () => setSelectedReservation(null),
+        onSuccess: () => {
+          setCheckinDialogOpen(false)
+          setSelectedReservation(null)
+        },
+      },
+    )
+  }
+
+  function checkout(reservation: CalendarReservation, etatLieuxSortie: string, casses?: string) {
+    if (!reservation.sejour) return
+    setCheckoutProcessing(true)
+    router.patch(
+      SejourController.checkout(reservation.sejour.id).url,
+      { etat_lieux_sortie: etatLieuxSortie, casses },
+      {
+        preserveScroll: true,
+        onFinish: () => setCheckoutProcessing(false),
+        onSuccess: () => {
+          setCheckoutDialogOpen(false)
+          setSelectedReservation(null)
+        },
       },
     )
   }
@@ -355,17 +395,64 @@ export default function Calendar({
                   : 'Pas encore de check-in'}
               </p>
 
+              {selectedReservation.sejour?.statut === 'en_cours' && (
+                <DemandesServiceSection sejourId={selectedReservation.sejour.id} demandes={selectedReservation.sejour.demandes} />
+              )}
+
+              {selectedReservation.statut === 'en_attente' && (
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => updateStatut(selectedReservation, 'annulee')}
+                    disabled={statutProcessing}
+                  >
+                    <XCircle className="text-red-600" /> Annuler
+                  </Button>
+                  <Button onClick={() => updateStatut(selectedReservation, 'validee')} disabled={statutProcessing}>
+                    <CheckCircle2 /> Confirmer
+                  </Button>
+                </DialogFooter>
+              )}
+
               {selectedReservation.statut === 'validee' && !selectedReservation.sejour && (
                 <DialogFooter>
-                  <Button onClick={() => checkin(selectedReservation)} disabled={checkinProcessing}>
-                    {checkinProcessing ? 'Check-in...' : 'Effectuer le check-in'}
-                  </Button>
+                  <Button onClick={() => setCheckinDialogOpen(true)}>Effectuer le check-in</Button>
+                </DialogFooter>
+              )}
+
+              {selectedReservation.sejour?.statut === 'en_cours' && (
+                <DialogFooter>
+                  <Button onClick={() => setCheckoutDialogOpen(true)}>Effectuer le check-out</Button>
                 </DialogFooter>
               )}
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {selectedReservation && (
+        <>
+          <EtatLieuxDialog
+            open={checkinDialogOpen}
+            onOpenChange={setCheckinDialogOpen}
+            title={`Check-in — ${selectedReservation.appartement?.numero ?? ''}`}
+            submitLabel="Valider le check-in"
+            processing={checkinProcessing}
+            equipements={selectedReservation.appartement?.equipements ?? []}
+            onSubmit={({ etatLieux }) => checkin(selectedReservation, etatLieux)}
+          />
+          <EtatLieuxDialog
+            open={checkoutDialogOpen}
+            onOpenChange={setCheckoutDialogOpen}
+            title={`Check-out — ${selectedReservation.appartement?.numero ?? ''}`}
+            submitLabel="Valider le check-out"
+            processing={checkoutProcessing}
+            equipements={selectedReservation.appartement?.equipements ?? []}
+            showCasses
+            onSubmit={({ etatLieux, casses }) => checkout(selectedReservation, etatLieux, casses)}
+          />
+        </>
+      )}
     </div>
   )
 }

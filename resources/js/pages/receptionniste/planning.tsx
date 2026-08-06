@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { dashboard } from '@/routes';
 import Calendar from '@/components/fullcalendar/Calendar';
+import type { DemandeServiceResume } from '@/components/fullcalendar/DemandesServiceSection';
 
 type PlanningAppartement = {
     id: number;
@@ -20,9 +21,9 @@ type PlanningReservation = {
     date_debut: string;
     date_fin: string;
     statut: 'en_attente' | 'validee' | 'annulee' | 'terminee';
-    appartement: PlanningAppartement | null;
+    appartement: (PlanningAppartement & { equipements: { id: number; nom: string }[] }) | null;
     client: { id: number; nom: string; prenom: string } | null;
-    sejour: { id: number; statut: 'en_cours' | 'cloture' } | null;
+    sejour: { id: number; statut: 'en_cours' | 'cloture'; demandes: DemandeServiceResume[] } | null;
 };
 
 export default function Dashboard({

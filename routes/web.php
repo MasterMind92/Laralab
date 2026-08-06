@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AppartementController;
+use App\Http\Controllers\DemandeServiceController;
+use App\Http\Controllers\InterventionController;
 use App\Http\Controllers\ParametreFacturationController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ReservationController;
@@ -52,8 +54,32 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
         ->name('reservations.store')
         ->middleware('role:receptionniste');
 
+    Route::patch('reservations/{reservation}/statut', [ReservationController::class, 'updateStatut'])
+        ->name('reservations.update-statut')
+        ->middleware('role:receptionniste');
+
     Route::post('sejours', [SejourController::class, 'store'])
         ->name('sejours.store')
+        ->middleware('role:receptionniste');
+
+    Route::patch('sejours/{sejour}/checkout', [SejourController::class, 'checkout'])
+        ->name('sejours.checkout')
+        ->middleware('role:receptionniste');
+
+    Route::get('equipements-suivi', [InterventionController::class, 'index'])
+        ->name('receptionniste.equipements')
+        ->middleware('role:receptionniste');
+
+    Route::post('interventions', [InterventionController::class, 'store'])
+        ->name('interventions.store')
+        ->middleware('role:receptionniste');
+
+    Route::post('demandes-service', [DemandeServiceController::class, 'store'])
+        ->name('demandes-service.store')
+        ->middleware('role:receptionniste');
+
+    Route::patch('demandes-service/{demandeService}', [DemandeServiceController::class, 'update'])
+        ->name('demandes-service.update')
         ->middleware('role:receptionniste');
 
     // Catalogue des appartements : réservé à proprietaire/gerant (accès total via EnsureUserHasRole).

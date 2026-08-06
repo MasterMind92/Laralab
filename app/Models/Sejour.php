@@ -27,4 +27,9 @@ class Sejour extends Model
     {
         return $this->hasMany(Facture::class);
     }
+
+    public function demandes(): HasMany
+    {
+        return $this->hasMany(DemandeService::class);
+    }
 }

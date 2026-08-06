@@ -36,35 +36,35 @@ const mainNavItems: NavItem[] = [
         roles: ['proprietaire'],
         sub:[
             {
-                title: "dashboard",
+                title: "dashboard", // KPI proprietaire en fin de parcours
                 url:"#",
             },
             {
-                title: "Appartements",
+                title: "Appartements", // listes appartements lie a l'utilisateur + CRUD
                 url:"/admin/appartements",
             },
             {
-                title: "Recrutement",
+                title: "Recrutement", // Elements du pole RH
                 url:"#",
             },
             {
-                title: "Entretien",
+                title: "Entretien",// Elements du pole RH
                 url:"#",
             },
             {
-                title: "Contrats",
+                title: "Contrats",// Elements du pole RH
                 url:"#",
             },
             {
-                title: "Salaires",
+                title: "Salaires",// Elements du pole RH
                 url:"#",
             },
             {
-                title: "Conges",
+                title: "Conges",// Elements du pole RH
                 url:"#",
             },
             {
-                title: "Licenciement",
+                title: "Licenciement",// Elements du pole RH
                 url:"#",
             },
         ]
@@ -211,39 +211,46 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
         roles: ['receptionniste'],
         sub:[
-            {
+            {   
+                // Interface d'edition/gestion de reservation (changement etat de la reservation (check-in/check-out) )
                 title: "Planning",
                 url:"/admin/planning",
             },
             {
+                // Interface de reception / gestion des Reservations dans le planning (appel de confirmation + confirmation / annulation)
                 title: "Traitement  Reservation-Client",
-                url:"#",
+                url:"/admin/planning",
             },
             {
                 title: "Accueils Client",
-                url:"#",
+                url:"/admin/planning",
             },
             {
+                // Interface de suivi de l'accueil client + etat des lieux (check-in)
                 title: "Etats des lieux d'entrees",
-                url:"#",
+                url:"/admin/planning",
             },
             {
+                // Suivi des services supplementaires octroyer au client durant son sejour
                 title: "Suivi des besoins",
-                url:"#",
+                url:"/admin/planning",
             },
             {
                 title: "Gestion des casse",
-                url:"#",
+                url:"/admin/planning",
             },
             {
+                // Interface de signalement de pannes concernant les equipements de chaque appartements
                 title: "Signalement des pannes",
-                url:"#",
+                url:"/admin/equipements-suivi",
             },
             {
+                // Interface suivi de checkout
                 title: "Etats des lieux de sortie",
-                url:"#",
+                url:"/admin/planning",
             },
             {
+                // Interface d'edition de la facture proformat du sejour
                 title: "Devis du Sejour",
                 url:"#",
             },
