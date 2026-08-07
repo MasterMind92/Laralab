@@ -4,6 +4,7 @@ use App\Http\Controllers\AppartementController;
 use App\Http\Controllers\DemandeServiceController;
 use App\Http\Controllers\InterventionController;
 use App\Http\Controllers\ParametreFacturationController;
+use App\Http\Controllers\PartenaireController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\SejourController;
@@ -50,12 +51,32 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
         ->name('receptionniste.planning')
         ->middleware('role:receptionniste');
 
+    Route::get('reservations', [ReservationController::class, 'index'])
+        ->name('reservations.index')
+        ->middleware('role:receptionniste');
+
+    Route::get('reservations/export', [ReservationController::class, 'export'])
+        ->name('reservations.export')
+        ->middleware('role:receptionniste');
+
     Route::post('reservations', [ReservationController::class, 'store'])
         ->name('reservations.store')
         ->middleware('role:receptionniste');
 
     Route::patch('reservations/{reservation}/statut', [ReservationController::class, 'updateStatut'])
         ->name('reservations.update-statut')
+        ->middleware('role:receptionniste');
+
+    Route::delete('reservations/{reservation}', [ReservationController::class, 'destroy'])
+        ->name('reservations.destroy')
+        ->middleware('role:receptionniste');
+
+    Route::get('sejours', [SejourController::class, 'index'])
+        ->name('sejours.index')
+        ->middleware('role:receptionniste');
+
+    Route::get('sejours/export', [SejourController::class, 'export'])
+        ->name('sejours.export')
         ->middleware('role:receptionniste');
 
     Route::post('sejours', [SejourController::class, 'store'])
@@ -66,12 +87,32 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
         ->name('sejours.checkout')
         ->middleware('role:receptionniste');
 
+    Route::delete('sejours/{sejour}', [SejourController::class, 'destroy'])
+        ->name('sejours.destroy')
+        ->middleware('role:receptionniste');
+
     Route::get('equipements-suivi', [InterventionController::class, 'index'])
         ->name('receptionniste.equipements')
         ->middleware('role:receptionniste');
 
+    Route::get('equipements-suivi/export', [InterventionController::class, 'export'])
+        ->name('interventions.export')
+        ->middleware('role:receptionniste');
+
     Route::post('interventions', [InterventionController::class, 'store'])
         ->name('interventions.store')
+        ->middleware('role:receptionniste');
+
+    Route::delete('interventions/{intervention}', [InterventionController::class, 'destroy'])
+        ->name('interventions.destroy')
+        ->middleware('role:receptionniste');
+
+    Route::get('demandes-service', [DemandeServiceController::class, 'index'])
+        ->name('demandes-service.index')
+        ->middleware('role:receptionniste');
+
+    Route::get('demandes-service/export', [DemandeServiceController::class, 'export'])
+        ->name('demandes-service.export')
         ->middleware('role:receptionniste');
 
     Route::post('demandes-service', [DemandeServiceController::class, 'store'])
@@ -80,6 +121,14 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
     Route::patch('demandes-service/{demandeService}', [DemandeServiceController::class, 'update'])
         ->name('demandes-service.update')
+        ->middleware('role:receptionniste');
+
+    Route::delete('demandes-service/{demandeService}', [DemandeServiceController::class, 'destroy'])
+        ->name('demandes-service.destroy')
+        ->middleware('role:receptionniste');
+
+    Route::post('partenaires', [PartenaireController::class, 'store'])
+        ->name('partenaires.store')
         ->middleware('role:receptionniste');
 
     // Catalogue des appartements : réservé à proprietaire/gerant (accès total via EnsureUserHasRole).

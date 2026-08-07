@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ExportsCsv;
 use App\Models\Equipement;
 use App\Models\Intervention;
 use Illuminate\Http\RedirectResponse;
@@ -9,9 +10,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InterventionController extends Controller
 {
+    use ExportsCsv;
+
     /**
      * Liste les équipements affectés à un appartement (le catalogue, appartement_id
      * null, ne concerne pas le réceptionniste) avec leur historique d'interventions.
@@ -55,5 +59,45 @@ class InterventionController extends Controller
         });
 
         return back();
+    }
+
+    /**
+     * Supprime (soft delete) une intervention — corrige une saisie erronée.
+     */
+    public function destroy(Intervention $intervention): RedirectResponse
+    {
+        $intervention->delete();
+
+        return back();
+    }
+
+    /**
+     * Exporte les interventions signalées dans la plage de dates donnée.
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        $data = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $interventions = Intervention::with(['equipement:id,nom', 'appartement:id,numero'])
+            ->when($data['from'] ?? null, fn ($q, $from) => $q->whereDate('date_signalement', '>=', $from))
+            ->when($data['to'] ?? null, fn ($q, $to) => $q->whereDate('date_signalement', '<=', $to))
+            ->orderByDesc('date_signalement')
+            ->get();
+
+        return $this->streamCsv(
+            'interventions.csv',
+            ['ID', 'Appartement', 'Équipement', 'Description', 'Statut', 'Signalée le'],
+            $interventions->map(fn (Intervention $i) => [
+                $i->id,
+                $i->appartement?->numero,
+                $i->equipement?->nom,
+                $i->description_panne,
+                $i->statut,
+                $i->date_signalement->toDateString(),
+            ]),
+        );
     }
 }

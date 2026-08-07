@@ -12,7 +12,7 @@ import { type FormEvent, useState } from 'react'
 import ReservationController from '@/actions/App/Http/Controllers/ReservationController'
 import { CheckCircle2, XCircle } from 'lucide-react'
 import SejourController from '@/actions/App/Http/Controllers/SejourController'
-import EtatLieuxDialog from '@/components/fullcalendar/EtatLieuxDialog'
+import EtatLieuxDialog, { type DommageRow } from '@/components/fullcalendar/EtatLieuxDialog'
 import DemandesServiceSection, { type DemandeServiceResume } from '@/components/fullcalendar/DemandesServiceSection'
 import { Button } from '@/components/ui/button'
 import {
@@ -182,12 +182,12 @@ export default function Calendar({
     )
   }
 
-  function checkout(reservation: CalendarReservation, etatLieuxSortie: string, casses?: string) {
+  function checkout(reservation: CalendarReservation, etatLieuxSortie: string, dommages?: DommageRow[]) {
     if (!reservation.sejour) return
     setCheckoutProcessing(true)
     router.patch(
       SejourController.checkout(reservation.sejour.id).url,
-      { etat_lieux_sortie: etatLieuxSortie, casses },
+      { etat_lieux_sortie: etatLieuxSortie, dommages },
       {
         preserveScroll: true,
         onFinish: () => setCheckoutProcessing(false),
@@ -448,8 +448,8 @@ export default function Calendar({
             submitLabel="Valider le check-out"
             processing={checkoutProcessing}
             equipements={selectedReservation.appartement?.equipements ?? []}
-            showCasses
-            onSubmit={({ etatLieux, casses }) => checkout(selectedReservation, etatLieux, casses)}
+            showDommages
+            onSubmit={({ etatLieux, dommages }) => checkout(selectedReservation, etatLieux, dommages)}
           />
         </>
       )}

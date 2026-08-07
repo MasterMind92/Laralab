@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable(['equipement_id', 'appartement_id', 'employe_id', 'description_panne', 'date_signalement', 'date_resolution', 'statut'])]
 class Intervention extends Model
 {
+    use SoftDeletes;
+
     protected function casts(): array
     {
         return [

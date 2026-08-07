@@ -3,6 +3,7 @@ import { type FormEvent, useState } from 'react';
 import InterventionController from '@/actions/App/Http/Controllers/InterventionController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ExportDialog } from '@/components/data-table/export-dialog';
 import {
     Dialog,
     DialogContent,
@@ -80,7 +81,10 @@ export default function EquipementsSuivi({ equipements }: { equipements: Equipem
         <>
             <Head title="Suivi des équipements" />
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
-                <h1 className="text-2xl font-semibold">Suivi des équipements</h1>
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-semibold">Suivi des équipements</h1>
+                    <ExportDialog exportUrl={InterventionController.export().url} />
+                </div>
 
                 <div className="overflow-hidden rounded-md border">
                     <Table>

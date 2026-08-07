@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['sejour_id', 'designation', 'quantite', 'prix_unitaire', 'statut'])]
+#[Fillable(['sejour_id', 'appartement_id', 'partenaire_id', 'designation', 'quantite', 'prix_unitaire', 'statut'])]
 class DemandeService extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'demandes_service';
 
     protected function casts(): array
@@ -21,6 +24,16 @@ class DemandeService extends Model
     public function sejour(): BelongsTo
     {
         return $this->belongsTo(Sejour::class);
+    }
+
+    public function appartement(): BelongsTo
+    {
+        return $this->belongsTo(Appartement::class);
+    }
+
+    public function partenaire(): BelongsTo
+    {
+        return $this->belongsTo(Partenaire::class);
     }
 
     public function montant(): float

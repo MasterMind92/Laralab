@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ExportsCsv;
 use App\Http\Requests\StoreReservationRequest;
 use App\Models\Client;
 use App\Models\Reservation;
@@ -11,9 +12,31 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Inertia\Inertia;
+use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReservationController extends Controller
 {
+    use ExportsCsv;
+
+    /**
+     * Liste des réservations pour le datatable Réceptionniste.
+     */
+    public function index(): Response
+    {
+        return Inertia::render('receptionniste/reservations', [
+            'reservations' => Reservation::with([
+                'appartement:id,numero',
+                'appartement.equipements:id,nom,appartement_id',
+                'client:id,nom,prenom',
+                'sejour:id,reservation_id,statut',
+            ])
+                ->orderByDesc('date_debut')
+                ->get(['id', 'appartement_id', 'client_id', 'date_debut', 'date_fin', 'statut', 'created_at']),
+        ]);
+    }
+
     /**
      * Store a newly created reservation, en refusant tout chevauchement de dates
      * sur le même appartement (statuts en_attente/validee uniquement).
@@ -74,5 +97,47 @@ class ReservationController extends Controller
         }
 
         return back();
+    }
+
+    /**
+     * Supprime (soft delete) une réservation — corrige une saisie erronée, distinct
+     * de l'annulation métier (statut 'annulee') qui reste tracée dans l'historique.
+     */
+    public function destroy(Reservation $reservation): RedirectResponse
+    {
+        $reservation->delete();
+
+        return back();
+    }
+
+    /**
+     * Exporte les réservations créées dans la plage de dates donnée.
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        $data = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $reservations = Reservation::with(['appartement:id,numero', 'client:id,nom,prenom'])
+            ->when($data['from'] ?? null, fn ($q, $from) => $q->whereDate('created_at', '>=', $from))
+            ->when($data['to'] ?? null, fn ($q, $to) => $q->whereDate('created_at', '<=', $to))
+            ->orderBy('date_debut')
+            ->get();
+
+        return $this->streamCsv(
+            'reservations.csv',
+            ['ID', 'Appartement', 'Client', 'Arrivée', 'Départ', 'Statut', 'Créée le'],
+            $reservations->map(fn (Reservation $r) => [
+                $r->id,
+                $r->appartement?->numero,
+                trim(($r->client?->nom ?? '').' '.($r->client?->prenom ?? '')),
+                $r->date_debut->toDateString(),
+                $r->date_fin->toDateString(),
+                $r->statut,
+                $r->created_at->toDateString(),
+            ]),
+        );
     }
 }

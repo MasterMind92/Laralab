@@ -211,33 +211,25 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
         roles: ['receptionniste'],
         sub:[
-            {   
-                // Interface d'edition/gestion de reservation (changement etat de la reservation (check-in/check-out) )
+            {
+                // Vue calendrier (visuelle) des reservations/sejours — complement du datatable Reservations
                 title: "Planning",
                 url:"/admin/planning",
             },
             {
-                // Interface de reception / gestion des Reservations dans le planning (appel de confirmation + confirmation / annulation)
-                title: "Traitement  Reservation-Client",
-                url:"/admin/planning",
+                // Datatable: confirmer/annuler/check-in — fusionne l'ancien "Traitement Reservation-Client" + "Accueils Client"
+                title: "Réservations",
+                url:"/admin/reservations",
             },
             {
-                title: "Accueils Client",
-                url:"/admin/planning",
+                // Datatable: check-in/check-out + dommages — fusionne l'ancien "Etats des lieux d'entrees/sortie" + "Gestion des casse"
+                title: "Séjours",
+                url:"/admin/sejours",
             },
             {
-                // Interface de suivi de l'accueil client + etat des lieux (check-in)
-                title: "Etats des lieux d'entrees",
-                url:"/admin/planning",
-            },
-            {
-                // Suivi des services supplementaires octroyer au client durant son sejour
-                title: "Suivi des besoins",
-                url:"/admin/planning",
-            },
-            {
-                title: "Gestion des casse",
-                url:"/admin/planning",
+                // Datatable — remplace l'ancien "Suivi des besoins"
+                title: "Demandes de service",
+                url:"/admin/demandes-service",
             },
             {
                 // Interface de signalement de pannes concernant les equipements de chaque appartements
@@ -245,12 +237,7 @@ const mainNavItems: NavItem[] = [
                 url:"/admin/equipements-suivi",
             },
             {
-                // Interface suivi de checkout
-                title: "Etats des lieux de sortie",
-                url:"/admin/planning",
-            },
-            {
-                // Interface d'edition de la facture proformat du sejour
+                // Interface d'edition de la facture proformat du sejour — Phase 03
                 title: "Devis du Sejour",
                 url:"#",
             },
