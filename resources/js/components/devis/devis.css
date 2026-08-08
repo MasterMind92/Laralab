@@ -1,0 +1,318 @@
+/* ==========================================================================
+   Devis - Résidence hôtelière
+   Scopée sous .devis-document pour ne pas fuiter sur le reste de l'admin
+   (même piège que le thème portail en Phase 02 — cf. mémoire projet : un
+   CSS non scopé importé côté JS avait écrasé les styles globaux admin).
+   ========================================================================== */
+
+.devis-document,
+.devis-document * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.devis-document {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background: #f5f5f5;
+}
+
+@media print {
+  .devis-document {
+    background: white;
+  }
+  .devis-document .page {
+    page-break-after: always;
+  }
+}
+
+/* Page (format A4) ---------------------------------------------------- */
+
+.devis-document .page {
+  width: 210mm;
+  min-height: 297mm;
+  background: white;
+  padding: 16mm;
+  margin: 20px auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ==========================================================================
+   Page 1
+   ========================================================================== */
+
+.devis-document .header {
+  margin-bottom: 24px;
+}
+
+.devis-document .header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+.devis-document .header p {
+  font-size: 11px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.devis-document .info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e5e5e5;
+  padding-bottom: 16px;
+  font-size: 12px;
+}
+
+.devis-document .info-grid-item label {
+  color: #666;
+  margin-bottom: 2px;
+  display: block;
+}
+
+.devis-document .info-grid-item span {
+  font-weight: 500;
+}
+
+.devis-document .client-stay-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+  font-size: 12px;
+}
+
+.devis-document .client-stay-grid .label {
+  color: #666;
+  margin-bottom: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.devis-document .client-stay-grid .name {
+  font-weight: 500;
+}
+
+.devis-document .client-stay-grid .detail {
+  color: #666;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.devis-document .section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.devis-document table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 24px;
+  font-size: 11px;
+}
+
+.devis-document thead tr {
+  border-bottom: 1px solid #333;
+}
+
+.devis-document th {
+  text-align: left;
+  padding: 8px 0;
+  font-weight: 600;
+  color: #333;
+}
+
+.devis-document th.right {
+  text-align: right;
+}
+
+.devis-document td {
+  padding: 8px 0;
+}
+
+.devis-document td.center {
+  text-align: center;
+}
+
+.devis-document td.right {
+  text-align: right;
+}
+
+.devis-document tbody tr {
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.devis-document tbody tr.highlight {
+  background: #f9f9f9;
+}
+
+.devis-document tbody tr.highlight td {
+  font-weight: 600;
+}
+
+.devis-document .subtotal {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.devis-document .guarantee-box {
+  margin-bottom: 24px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-left: 2px solid #333;
+}
+
+.devis-document .guarantee-box .section-title {
+  margin-bottom: 8px;
+}
+
+.devis-document .guarantee-box p {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #444;
+}
+
+.devis-document .guarantee-box strong {
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   Page 2
+   ========================================================================== */
+
+.devis-document .page2-header {
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.devis-document .page2-header h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.devis-document .page2-header .number {
+  font-size: 10px;
+  color: #666;
+  margin-top: 2px;
+}
+
+.devis-document .summary-table {
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+
+.devis-document .summary-table tr td:first-child {
+  text-align: left;
+}
+
+.devis-document .summary-table tr td:last-child {
+  text-align: right;
+  padding-right: 0;
+}
+
+.devis-document .summary-table tr.total-ht {
+  border-top: 2px solid #333;
+  border-bottom: 1px solid #e5e5e5;
+  background: #f9f9f9;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.devis-document .summary-table tr.total-ttc {
+  background: #f9f9f9;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.devis-document .summary-table tr.total-ttc td:last-child {
+  color: #000;
+}
+
+.devis-document .conditions {
+  margin-bottom: 32px;
+  font-size: 10px;
+  line-height: 1.8;
+  color: #444;
+}
+
+.devis-document .conditions div {
+  margin-bottom: 10px;
+}
+
+.devis-document .conditions strong {
+  font-weight: 600;
+}
+
+.devis-document .damage-box {
+  margin-bottom: 32px;
+  padding: 12px;
+  background: #fafafa;
+  border: 1px solid #e5e5e5;
+}
+
+.devis-document .damage-box .section-title {
+  margin-bottom: 10px;
+  color: #666;
+}
+
+.devis-document .damage-table {
+  font-size: 9px;
+  margin-bottom: 8px;
+}
+
+.devis-document .damage-table th {
+  padding: 6px 0;
+  font-size: 9px;
+  color: #666;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+.devis-document .damage-table td {
+  padding: 4px 0;
+}
+
+.devis-document .damage-note {
+  font-size: 9px;
+  color: #666;
+  font-style: italic;
+}
+
+.devis-document .signature-section {
+  margin-top: 48px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.devis-document .signature-label {
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 24px;
+}
+
+.devis-document .signature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  font-size: 10px;
+  color: #444;
+}
+
+.devis-document .signature-box {
+  border-top: 1px solid #333;
+  padding-top: 8px;
+}
+
+.devis-document .signature-grid .right {
+  text-align: right;
+}
