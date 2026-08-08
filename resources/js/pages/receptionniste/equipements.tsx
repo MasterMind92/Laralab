@@ -1,8 +1,11 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
+import { type ColumnDef } from '@tanstack/react-table';
+import { ArrowUpDown } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import InterventionController from '@/actions/App/Http/Controllers/InterventionController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DataTable } from '@/components/data-table/data-table';
 import { ExportDialog } from '@/components/data-table/export-dialog';
 import {
     Dialog,
@@ -11,15 +14,15 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 
 type StatutEquipement = 'stock' | 'affecte' | 'en_panne';
 
@@ -40,6 +43,15 @@ type EquipementResume = {
     interventions: InterventionResume[];
 };
 
+type Appartement = { id: number; numero: string };
+
+type Filters = {
+    appartement_id?: string | number | null;
+    statut?: StatutEquipement | null;
+    date_debut?: string | null;
+    date_fin?: string | null;
+};
+
 const STATUT_LABELS: Record<StatutEquipement, string> = {
     stock: 'En stock',
     affecte: 'Affecté',
@@ -52,13 +64,28 @@ const STATUT_VARIANTS: Record<StatutEquipement, 'default' | 'secondary' | 'destr
     en_panne: 'destructive',
 };
 
+const ALL_STATUTS_VALUE = '__all__';
+
 function fmt(d: string): string {
     return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-export default function EquipementsSuivi({ equipements }: { equipements: EquipementResume[] }) {
+export default function EquipementsSuivi({
+    equipements,
+    appartements,
+    filters,
+}: {
+    equipements: EquipementResume[];
+    appartements: Appartement[];
+    filters: Filters;
+}) {
     const [details, setDetails] = useState<EquipementResume | null>(null);
     const [signalement, setSignalement] = useState<EquipementResume | null>(null);
+
+    const [dateDebut, setDateDebut] = useState(filters.date_debut ?? '');
+    const [dateFin, setDateFin] = useState(filters.date_fin ?? '');
+    const [appartementId, setAppartementId] = useState(filters.appartement_id ? String(filters.appartement_id) : ALL_STATUTS_VALUE);
+    const [statut, setStatut] = useState<string>(filters.statut ?? ALL_STATUTS_VALUE);
 
     const form = useForm({ equipement_id: '', description_panne: '' });
     const { data, setData, errors, processing } = form;
@@ -77,6 +104,70 @@ export default function EquipementsSuivi({ equipements }: { equipements: Equipem
         });
     }
 
+    function appliquerFiltres(e: FormEvent) {
+        e.preventDefault();
+        router.get(
+            InterventionController.index().url,
+            {
+                date_debut: dateDebut || undefined,
+                date_fin: dateFin || undefined,
+                appartement_id: appartementId === ALL_STATUTS_VALUE ? undefined : appartementId,
+                statut: statut === ALL_STATUTS_VALUE ? undefined : statut,
+            },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    }
+
+    function reinitialiserFiltres() {
+        setDateDebut('');
+        setDateFin('');
+        setAppartementId(ALL_STATUTS_VALUE);
+        setStatut(ALL_STATUTS_VALUE);
+        router.get(InterventionController.index().url, {}, { preserveState: true, preserveScroll: true, replace: true });
+    }
+
+    const columns: ColumnDef<EquipementResume>[] = [
+        {
+            id: 'appartement',
+            header: ({ column }) => (
+                <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+                    Appartement <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            ),
+            accessorFn: (e) => e.appartement?.numero ?? '',
+        },
+        {
+            accessorKey: 'nom',
+            header: ({ column }) => (
+                <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+                    Équipement <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            ),
+        },
+        { accessorKey: 'type', header: 'Type' },
+        {
+            accessorKey: 'statut',
+            header: 'Statut',
+            cell: ({ row }) => <Badge variant={STATUT_VARIANTS[row.original.statut]}>{STATUT_LABELS[row.original.statut]}</Badge>,
+        },
+        {
+            id: 'actions',
+            cell: ({ row }) => {
+                const equipement = row.original;
+                return (
+                    <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setDetails(equipement)}>
+                            Détails
+                        </Button>
+                        <Button size="sm" onClick={() => openSignalement(equipement)}>
+                            Signaler une panne
+                        </Button>
+                    </div>
+                );
+            },
+        },
+    ];
+
     return (
         <>
             <Head title="Suivi des équipements" />
@@ -86,46 +177,58 @@ export default function EquipementsSuivi({ equipements }: { equipements: Equipem
                     <ExportDialog exportUrl={InterventionController.export().url} />
                 </div>
 
-                <div className="overflow-hidden rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Appartement</TableHead>
-                                <TableHead>Équipement</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Statut</TableHead>
-                                <TableHead className="w-48" />
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {equipements.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                                        Aucun équipement affecté à un appartement pour le moment.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                            {equipements.map((equipement) => (
-                                <TableRow key={equipement.id}>
-                                    <TableCell className="font-medium">{equipement.appartement?.numero ?? '—'}</TableCell>
-                                    <TableCell>{equipement.nom}</TableCell>
-                                    <TableCell>{equipement.type}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={STATUT_VARIANTS[equipement.statut]}>{STATUT_LABELS[equipement.statut]}</Badge>
-                                    </TableCell>
-                                    <TableCell className="flex justify-end gap-2">
-                                        <Button variant="outline" size="sm" onClick={() => setDetails(equipement)}>
-                                            Détails
-                                        </Button>
-                                        <Button size="sm" onClick={() => openSignalement(equipement)}>
-                                            Signaler une panne
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
+                <form onSubmit={appliquerFiltres} className="grid grid-cols-2 gap-3 rounded-md border p-3 md:grid-cols-5 md:items-end">
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="date_debut">Signalée du</Label>
+                        <Input id="date_debut" type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
+                    </div>
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="date_fin">au</Label>
+                        <Input id="date_fin" type="date" value={dateFin} onChange={(e) => setDateFin(e.target.value)} />
+                    </div>
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="appartement_id">Appartement</Label>
+                        <Select value={appartementId} onValueChange={setAppartementId}>
+                            <SelectTrigger id="appartement_id">
+                                <SelectValue placeholder="Tous" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={ALL_STATUTS_VALUE}>Tous</SelectItem>
+                                {appartements.map((a) => (
+                                    <SelectItem key={a.id} value={String(a.id)}>
+                                        {a.numero}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="statut">Statut équipement</Label>
+                        <Select value={statut} onValueChange={setStatut}>
+                            <SelectTrigger id="statut">
+                                <SelectValue placeholder="Tous" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={ALL_STATUTS_VALUE}>Tous</SelectItem>
+                                <SelectItem value="stock">En stock</SelectItem>
+                                <SelectItem value="affecte">Affecté</SelectItem>
+                                <SelectItem value="en_panne">En panne</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button type="submit">Filtrer</Button>
+                        <Button type="button" variant="outline" onClick={reinitialiserFiltres}>
+                            Réinitialiser
+                        </Button>
+                    </div>
+                </form>
+
+                <DataTable
+                    columns={columns}
+                    data={equipements}
+                    searchPlaceholder="Rechercher un équipement..."
+                />
             </div>
 
             <Dialog open={details !== null} onOpenChange={(open) => !open && setDetails(null)}>
