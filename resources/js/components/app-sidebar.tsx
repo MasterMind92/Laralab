@@ -120,22 +120,28 @@ const mainNavItems: NavItem[] = [
         roles: ['compta'],
         sub:[
             {
+                // Fusionne "Consultation Devis" + "Cloture Sejours" + "Facture du sejour" +
+                // "Encaissements factures" : le statut de chaque facture (brouillon a
+                // valider/rejeter, validee a encaisser, payee = sejour cloture cote
+                // comptable) porte a lui seul ce qui distinguait ces 4 ecrans.
                 title: "Consultation Devis",
-                url:"#",
+                url:"/admin/factures",
             },
             {
                 title: "Cloture Sejours",
-                url:"#",
+                url:"/admin/factures",
             },
             {
                 title: "Facture du sejour",
-                url:"#",
+                url:"/admin/factures",
             },
             {
                 title: "Encaissements factures",
-                url:"#",
+                url:"/admin/factures",
             },
             {
+                // Suivi des impayes/relances — different du flux valider/encaisser,
+                // differe a un futur reporting.
                 title: "Recouvrements factures",
                 url:"#",
             },

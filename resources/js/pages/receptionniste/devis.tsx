@@ -55,6 +55,7 @@ type SejourRow = {
         id: number;
         statut: StatutFacture;
         montant_ttc: string;
+        motif_rejet: string | null;
         devis: DevisData;
     } | null;
 };
@@ -139,14 +140,18 @@ export default function DevisIndex({ sejours }: { sejours: SejourRow[] }) {
         {
             id: 'statut',
             header: 'Devis',
-            cell: ({ row }) =>
-                row.original.facture ? (
-                    <Badge variant={STATUT_VARIANTS[row.original.facture.statut]}>
-                        {STATUT_LABELS[row.original.facture.statut]}
-                    </Badge>
-                ) : (
-                    <span className="text-muted-foreground text-sm">Aucun</span>
-                ),
+            cell: ({ row }) => {
+                const facture = row.original.facture;
+                if (!facture) return <span className="text-muted-foreground text-sm">Aucun</span>;
+                return (
+                    <div>
+                        <Badge variant={STATUT_VARIANTS[facture.statut]}>{STATUT_LABELS[facture.statut]}</Badge>
+                        {facture.statut === 'annulee' && facture.motif_rejet && (
+                            <p className="text-muted-foreground mt-1 max-w-48 text-xs">Motif : {facture.motif_rejet}</p>
+                        )}
+                    </div>
+                );
+            },
         },
         {
             id: 'montant',

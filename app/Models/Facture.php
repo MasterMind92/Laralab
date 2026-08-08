@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['sejour_id', 'numero_facture', 'montant_ht', 'montant_ttc', 'statut', 'date_edition', 'date_echeance'])]
+#[Fillable(['sejour_id', 'numero_facture', 'montant_ht', 'montant_ttc', 'statut', 'motif_rejet', 'date_edition', 'date_echeance'])]
 class Facture extends Model
 {
     protected function casts(): array
@@ -33,5 +33,15 @@ class Facture extends Model
     public function lignes(): HasMany
     {
         return $this->hasMany(FactureLigne::class);
+    }
+
+    public function montantPaye(): float
+    {
+        return (float) $this->paiements()->sum('montant');
+    }
+
+    public function soldeRestant(): float
+    {
+        return max((float) $this->montant_ttc - $this->montantPaye(), 0);
     }
 }

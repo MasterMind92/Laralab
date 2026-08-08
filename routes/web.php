@@ -5,6 +5,7 @@ use App\Http\Controllers\DemandeServiceController;
 use App\Http\Controllers\DommageController;
 use App\Http\Controllers\FactureController;
 use App\Http\Controllers\InterventionController;
+use App\Http\Controllers\PaiementController;
 use App\Http\Controllers\ParametreFacturationController;
 use App\Http\Controllers\PartenaireController;
 use App\Http\Controllers\PlanningController;
@@ -143,7 +144,23 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
     Route::get('sejours/{sejour}/devis/imprimer', [FactureController::class, 'imprimer'])
         ->name('factures.imprimer')
-        ->middleware('role:receptionniste');
+        ->middleware('role:receptionniste,compta');
+
+    Route::get('factures', [FactureController::class, 'indexCompta'])
+        ->name('factures.index')
+        ->middleware('role:compta');
+
+    Route::patch('factures/{facture}/valider', [FactureController::class, 'valider'])
+        ->name('factures.valider')
+        ->middleware('role:compta');
+
+    Route::patch('factures/{facture}/rejeter', [FactureController::class, 'rejeter'])
+        ->name('factures.rejeter')
+        ->middleware('role:compta');
+
+    Route::post('factures/{facture}/paiements', [PaiementController::class, 'store'])
+        ->name('paiements.store')
+        ->middleware('role:compta');
 
     Route::post('sejours/{sejour}/dommages', [DommageController::class, 'store'])
         ->name('dommages.store')
