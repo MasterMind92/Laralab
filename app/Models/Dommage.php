@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['sejour_id', 'description', 'montant'])]
+#[Fillable(['sejour_id', 'equipement_id', 'description', 'montant'])]
 class Dommage extends Model
 {
     use SoftDeletes;
@@ -22,5 +22,10 @@ class Dommage extends Model
     public function sejour(): BelongsTo
     {
         return $this->belongsTo(Sejour::class);
+    }
+
+    public function equipement(): BelongsTo
+    {
+        return $this->belongsTo(Equipement::class);
     }
 }

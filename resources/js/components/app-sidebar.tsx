@@ -237,9 +237,9 @@ const mainNavItems: NavItem[] = [
                 url:"/admin/equipements-suivi",
             },
             {
-                // Interface d'edition de la facture proformat du sejour — Phase 03
+                // Generation du devis (facture brouillon) depuis un sejour cloture — Phase 03 etape A
                 title: "Devis du Sejour",
-                url:"#",
+                url:"/admin/devis",
             },
         ]
     },

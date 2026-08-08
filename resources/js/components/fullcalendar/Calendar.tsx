@@ -187,7 +187,10 @@ export default function Calendar({
     setCheckoutProcessing(true)
     router.patch(
       SejourController.checkout(reservation.sejour.id).url,
-      { etat_lieux_sortie: etatLieuxSortie, dommages },
+      {
+        etat_lieux_sortie: etatLieuxSortie,
+        dommages: dommages?.map((d) => ({ ...d, equipement_id: d.equipement_id || undefined })),
+      },
       {
         preserveScroll: true,
         onFinish: () => setCheckoutProcessing(false),

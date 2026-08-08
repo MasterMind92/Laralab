@@ -78,6 +78,7 @@ class SejourController extends Controller
         $data = $request->validate([
             'etat_lieux_sortie' => ['nullable', 'string'],
             'dommages' => ['nullable', 'array'],
+            'dommages.*.equipement_id' => ['nullable', 'integer', 'exists:equipements,id'],
             'dommages.*.description' => ['required_with:dommages', 'string', 'max:255'],
             'dommages.*.montant' => ['nullable', 'numeric', 'min:0'],
         ]);

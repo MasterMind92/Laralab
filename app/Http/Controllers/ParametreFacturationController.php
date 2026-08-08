@@ -25,6 +25,10 @@ class ParametreFacturationController extends Controller
         $data = $request->validate([
             'frais_service_actif' => ['required', 'boolean'],
             'taux_frais_service' => ['required', 'numeric', 'min:0', 'max:1'],
+            'tva_active' => ['required', 'boolean'],
+            'taux_tva' => ['required', 'numeric', 'min:0', 'max:1'],
+            'depot_garantie_defaut' => ['required', 'numeric', 'min:0'],
+            'delai_restitution_jours' => ['required', 'integer', 'min:0'],
         ]);
 
         ParametreFacturation::actuel()->update($data);

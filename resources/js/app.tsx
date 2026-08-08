@@ -20,6 +20,9 @@ createInertiaApp({
                 return AuthLayout;
             case name.startsWith('settings/'):
                 return [AppLayout, SettingsLayout];
+            case name.startsWith('impression/'):
+                // Page nue (aucun layout) : documents imprimables ouverts dans un nouvel onglet.
+                return [];
             default:
                 return AppLayout;
         }

@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AppartementController;
 use App\Http\Controllers\DemandeServiceController;
+use App\Http\Controllers\DommageController;
+use App\Http\Controllers\FactureController;
 use App\Http\Controllers\InterventionController;
 use App\Http\Controllers\ParametreFacturationController;
 use App\Http\Controllers\PartenaireController;
@@ -129,6 +131,26 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
     Route::post('partenaires', [PartenaireController::class, 'store'])
         ->name('partenaires.store')
+        ->middleware('role:receptionniste');
+
+    Route::get('devis', [FactureController::class, 'index'])
+        ->name('receptionniste.devis')
+        ->middleware('role:receptionniste');
+
+    Route::post('sejours/{sejour}/devis', [FactureController::class, 'generer'])
+        ->name('factures.generer')
+        ->middleware('role:receptionniste');
+
+    Route::get('sejours/{sejour}/devis/imprimer', [FactureController::class, 'imprimer'])
+        ->name('factures.imprimer')
+        ->middleware('role:receptionniste');
+
+    Route::post('sejours/{sejour}/dommages', [DommageController::class, 'store'])
+        ->name('dommages.store')
+        ->middleware('role:receptionniste');
+
+    Route::delete('dommages/{dommage}', [DommageController::class, 'destroy'])
+        ->name('dommages.destroy')
         ->middleware('role:receptionniste');
 
     // Catalogue des appartements : réservé à proprietaire/gerant (accès total via EnsureUserHasRole).

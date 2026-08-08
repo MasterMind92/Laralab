@@ -29,4 +29,9 @@ class Facture extends Model
     {
         return $this->hasMany(Paiement::class);
     }
+
+    public function lignes(): HasMany
+    {
+        return $this->hasMany(FactureLigne::class);
+    }
 }

@@ -10,9 +10,10 @@ type EtatGeneral = 'Bon' | 'Correct' | 'À signaler'
 
 export type EtatLieuxEquipement = { id: number; nom: string }
 
-export type DommageRow = { description: string; montant: string }
+export type DommageRow = { equipement_id: string; description: string; montant: string }
 
-const emptyDommage: DommageRow = { description: '', montant: '' }
+const emptyDommage: DommageRow = { equipement_id: '', description: '', montant: '' }
+const AUCUN_EQUIPEMENT = '__aucun__'
 
 // État des lieux d'entrée (check-in) et de sortie (check-out) partagent la même
 // structure (état général + checklist équipements + remarques) — seul le check-out
@@ -76,7 +77,11 @@ export default function EtatLieuxDialog({
 
     onSubmit({
       etatLieux: lignes.join('\n'),
-      dommages: showDommages ? dommages.filter((d) => d.description.trim() !== '') : undefined,
+      dommages: showDommages
+        ? dommages
+            .filter((d) => d.description.trim() !== '')
+            .map((d) => ({ ...d, equipement_id: d.equipement_id === AUCUN_EQUIPEMENT ? '' : d.equipement_id }))
+        : undefined,
     })
   }
 
@@ -139,25 +144,45 @@ export default function EtatLieuxDialog({
                   <p className="text-xs text-muted-foreground">Aucun dommage signalé.</p>
                 )}
                 {dommages.map((dommage, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <Input
-                      placeholder="Description"
-                      className="flex-1"
-                      value={dommage.description}
-                      onChange={(e) => updateDommage(index, { description: e.target.value })}
-                    />
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      placeholder="Montant FCFA"
-                      className="w-36"
-                      value={dommage.montant}
-                      onChange={(e) => updateDommage(index, { montant: e.target.value })}
-                    />
-                    <Button type="button" variant="ghost" size="sm" onClick={() => removeDommage(index)}>
-                      Retirer
-                    </Button>
+                  <div key={index} className="space-y-2 rounded-md border p-2">
+                    {equipements.length > 0 && (
+                      <Select
+                        value={dommage.equipement_id || AUCUN_EQUIPEMENT}
+                        onValueChange={(value) => updateDommage(index, { equipement_id: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Équipement concerné (optionnel)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={AUCUN_EQUIPEMENT}>Aucun équipement précis</SelectItem>
+                          {equipements.map((eq) => (
+                            <SelectItem key={eq.id} value={String(eq.id)}>
+                              {eq.nom}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="Description"
+                        className="flex-1"
+                        value={dommage.description}
+                        onChange={(e) => updateDommage(index, { description: e.target.value })}
+                      />
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        placeholder="Montant FCFA"
+                        className="w-36"
+                        value={dommage.montant}
+                        onChange={(e) => updateDommage(index, { montant: e.target.value })}
+                      />
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeDommage(index)}>
+                        Retirer
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

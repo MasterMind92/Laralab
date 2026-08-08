@@ -18,6 +18,11 @@ export interface LigneService {
   montantHT: string;
 }
 
+export interface LigneDommage {
+  description: string;
+  montantHT: string;
+}
+
 export interface ArticleDegradation {
   article: string;
   prix: string; // ex: "10 000-15 000 FCFA"
@@ -40,10 +45,14 @@ export interface DevisData {
   services: LigneService[];
   sousTotalServicesHT: string;
 
+  dommages: LigneDommage[];
+  sousTotalDommagesHT: string;
+
   depotGarantieHT: string;
   delaiRestitutionJours: number;
 
   totalHT: string;
+  montantTvaHT?: string | null; // absent/null si la TVA n'est pas applicable
   totalTTC: string;
 
   conditionVersement: string;
@@ -110,6 +119,9 @@ const DEFAULT_DATA: DevisData = {
     },
   ],
   sousTotalServicesHT: "230 000 FCFA",
+
+  dommages: [],
+  sousTotalDommagesHT: "0 FCFA",
 
   depotGarantieHT: "300 000 FCFA",
   delaiRestitutionJours: 7,
@@ -239,8 +251,34 @@ export default function Devis({ data = DEFAULT_DATA }: DevisProps) {
           </table>
         </div>
 
+        {data.dommages.length > 0 && (
+          <div>
+            <div className="section-title">3. Dommages constatés</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th className="right">Montant HT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.dommages.map((ligne, i) => (
+                  <tr key={i}>
+                    <td>{ligne.description}</td>
+                    <td className="right">{ligne.montantHT}</td>
+                  </tr>
+                ))}
+                <tr className="highlight">
+                  <td style={{ textAlign: "right" }}>Sous-total dommages</td>
+                  <td className="right subtotal">{data.sousTotalDommagesHT}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
         <div className="guarantee-box">
-          <div className="section-title">3. Dépôt de garantie</div>
+          <div className="section-title">4. Dépôt de garantie</div>
           <p>
             Caution demandée à l&apos;arrivée :{" "}
             <strong>{data.depotGarantieHT}</strong> (non prélevée sauf
@@ -260,7 +298,7 @@ export default function Devis({ data = DEFAULT_DATA }: DevisProps) {
         </div>
 
         <div>
-          <div className="section-title">4. Récapitulatif</div>
+          <div className="section-title">5. Récapitulatif</div>
           <table className="summary-table">
             <tbody>
               <tr>
@@ -275,6 +313,12 @@ export default function Devis({ data = DEFAULT_DATA }: DevisProps) {
                 <td>Total HT</td>
                 <td>{data.totalHT}</td>
               </tr>
+              {data.montantTvaHT && (
+                <tr>
+                  <td>TVA</td>
+                  <td>{data.montantTvaHT}</td>
+                </tr>
+              )}
               <tr className="total-ttc">
                 <td>Total TTC</td>
                 <td>{data.totalTTC}</td>
@@ -284,7 +328,7 @@ export default function Devis({ data = DEFAULT_DATA }: DevisProps) {
         </div>
 
         <div className="conditions">
-          <div className="section-title">5. Conditions générales</div>
+          <div className="section-title">6. Conditions générales</div>
           <div>
             <strong>Versement :</strong> {data.conditionVersement}
           </div>

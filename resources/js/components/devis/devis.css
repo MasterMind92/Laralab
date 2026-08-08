@@ -20,11 +20,25 @@
 }
 
 @media print {
+  /* N'imprime que le devis, même rendu à l'intérieur d'une modale (aperçu) —
+     technique classique "print just this element", indépendante de la structure
+     du dialog qui l'entoure. */
+  body * {
+    visibility: hidden;
+  }
+  .devis-document,
+  .devis-document * {
+    visibility: visible;
+  }
   .devis-document {
+    position: absolute;
+    inset: 0;
     background: white;
   }
   .devis-document .page {
     page-break-after: always;
+    box-shadow: none;
+    margin: 0 auto;
   }
 }
 
