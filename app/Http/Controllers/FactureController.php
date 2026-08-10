@@ -10,9 +10,13 @@ use App\Notifications\FactureValidee;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Browsershot\Browsershot;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class FactureController extends Controller
 {
@@ -110,6 +114,22 @@ class FactureController extends Controller
      */
     public function imprimer(Sejour $sejour): Response|RedirectResponse
     {
+        return $this->renderApercu($sejour);
+    }
+
+    /**
+     * Même page que imprimer(), servie via la route signée pour Browsershot (Chrome
+     * headless, sans session) — méthode séparée exprès : deux routes vers une même
+     * méthode de contrôleur cassent la génération Wayfinder côté front (même piège
+     * que la collision GET/POST /logout déjà connue sur ce projet).
+     */
+    public function pdfSource(Sejour $sejour): Response|RedirectResponse
+    {
+        return $this->renderApercu($sejour);
+    }
+
+    private function renderApercu(Sejour $sejour): Response|RedirectResponse
+    {
         $facture = $sejour->facture;
 
         if (! $facture) {
@@ -122,9 +142,35 @@ class FactureController extends Controller
     }
 
     /**
+     * Télécharge le devis/facture en PDF généré côté serveur (Browsershot) — à la
+     * différence de l'aperçu navigateur (imprimer()), pas besoin d'impression manuelle.
+     */
+    public function telechargerPdf(Sejour $sejour): SymfonyResponse|RedirectResponse
+    {
+        $facture = $sejour->facture;
+
+        if (! $facture) {
+            return back()->withErrors(['sejour' => "Aucun devis n'a encore été généré pour ce séjour."]);
+        }
+
+        $pdf = $this->genererPdf($sejour);
+
+        if ($pdf === null) {
+            return back()->withErrors(['sejour' => "La génération du PDF a échoué, réessayez ou utilisez l'aperçu navigateur."]);
+        }
+
+        $nom = $facture->numero_facture ?? 'brouillon-'.$facture->id;
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="devis-'.$nom.'.pdf"',
+        ]);
+    }
+
+    /**
      * Valide un devis (brouillon) en facture définitive : attribue le numéro et la
      * date d'édition (les lignes/montants restent ceux figés à la génération), puis
-     * notifie le client par e-mail.
+     * notifie le client par e-mail avec le PDF en pièce jointe.
      */
     public function valider(Facture $facture): RedirectResponse
     {
@@ -143,11 +189,41 @@ class FactureController extends Controller
         $facture->load('sejour.reservation.client');
         $client = $facture->sejour->reservation->client;
 
+        // La génération PDF ne doit jamais empêcher la validation elle-même si
+        // Browsershot échoue (Chrome indisponible, timeout...) — on log et on envoie
+        // l'e-mail sans pièce jointe plutôt que de bloquer toute la transaction.
+        $pdf = $this->genererPdf($facture->sejour);
+
         if ($client->email) {
-            Notification::route('mail', $client->email)->notify(new FactureValidee($facture));
+            Notification::route('mail', $client->email)->notify(new FactureValidee($facture, $pdf));
         }
 
         return back();
+    }
+
+    /**
+     * Génère le PDF du devis via Browsershot (Chrome headless) en pointant vers une
+     * URL signée de la page d'impression déjà construite — évite de dupliquer le
+     * template, et une signature Laravel remplace l'authentification par session
+     * (inaccessible à un navigateur headless).
+     */
+    private function genererPdf(Sejour $sejour): ?string
+    {
+        try {
+            $url = URL::temporarySignedRoute('factures.pdf-source', now()->addMinutes(5), ['sejour' => $sejour->id]);
+
+            $browsershot = Browsershot::url($url)->noSandbox()->waitUntilNetworkIdle();
+
+            if ($chromePath = config('services.browsershot.chrome_path')) {
+                $browsershot->setChromePath($chromePath);
+            }
+
+            return $browsershot->pdf();
+        } catch (\Throwable $e) {
+            Log::error('Génération PDF devis échouée', ['sejour_id' => $sejour->id, 'message' => $e->getMessage()]);
+
+            return null;
+        }
     }
 
     /**

@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'browsershot' => [
+        // Chemin vers un Chrome/Chromium déjà installé, pour éviter à Puppeteer de
+        // télécharger son propre Chromium. Laissé vide, Browsershot utilise le sien.
+        'chrome_path' => env('BROWSERSHOT_CHROME_PATH'),
+    ],
+
 ];

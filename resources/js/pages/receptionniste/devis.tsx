@@ -98,6 +98,10 @@ export default function DevisIndex({ sejours }: { sejours: SejourRow[] }) {
         window.open(FactureController.imprimer(sejour.id).url, '_blank', 'noopener');
     }
 
+    function telechargerPdf(sejour: SejourRow) {
+        window.location.href = FactureController.telechargerPdf(sejour.id).url;
+    }
+
     function submitDommage(e: FormEvent) {
         e.preventDefault();
         if (!dommagesTarget) return;
@@ -177,9 +181,14 @@ export default function DevisIndex({ sejours }: { sejours: SejourRow[] }) {
                                 {sejour.facture ? 'Régénérer le devis' : 'Générer le devis'}
                             </DropdownMenuItem>
                             {sejour.facture && (
-                                <DropdownMenuItem onClick={() => ouvrirApercu(sejour)}>
-                                    Aperçu / imprimer (nouvel onglet)
-                                </DropdownMenuItem>
+                                <>
+                                    <DropdownMenuItem onClick={() => ouvrirApercu(sejour)}>
+                                        Aperçu / imprimer (nouvel onglet)
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => telechargerPdf(sejour)}>
+                                        Télécharger le PDF
+                                    </DropdownMenuItem>
+                                </>
                             )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => setDommagesTarget(sejour)}>Gérer les dommages</DropdownMenuItem>

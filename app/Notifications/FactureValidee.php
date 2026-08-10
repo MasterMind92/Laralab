@@ -8,7 +8,11 @@ use Illuminate\Notifications\Notification;
 
 class FactureValidee extends Notification
 {
-    public function __construct(private readonly Facture $facture)
+    /**
+     * @param  string|null  $pdf  Binaire PDF déjà généré (Browsershot) — null si la
+     *                            génération a échoué, l'e-mail part alors sans pièce jointe.
+     */
+    public function __construct(private readonly Facture $facture, private readonly ?string $pdf = null)
     {
     }
 
@@ -24,7 +28,7 @@ class FactureValidee extends Notification
         $client = $sejour->reservation->client;
         $titre = $appartement->titre ?? $appartement->numero;
 
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject('Votre facture '.$this->facture->numero_facture.' — LuxStay')
             ->greeting('Bonjour '.$client->prenom.',')
             ->line("Votre facture pour le séjour à {$titre} est disponible.")
@@ -32,5 +36,11 @@ class FactureValidee extends Notification
             ->action('Voir mes réservations', route('client.reservations.index'))
             ->line('Notre équipe reste à votre disposition pour toute question.')
             ->theme('luxstay');
+
+        if ($this->pdf !== null) {
+            $mail->attachData($this->pdf, 'facture-'.$this->facture->numero_facture.'.pdf', ['mime' => 'application/pdf']);
+        }
+
+        return $mail;
     }
 }

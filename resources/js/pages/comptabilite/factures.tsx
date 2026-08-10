@@ -78,6 +78,10 @@ export default function FacturesIndex({ factures }: { factures: FactureRow[] }) 
         window.open(FactureController.imprimer(facture.sejour_id).url, '_blank', 'noopener');
     }
 
+    function telechargerPdf(facture: FactureRow) {
+        window.location.href = FactureController.telechargerPdf(facture.sejour_id).url;
+    }
+
     function valider(facture: FactureRow) {
         if (!confirm(`Valider la facture pour ${facture.appartement} — ${facture.client} ?`)) return;
         router.patch(FactureController.valider(facture.id).url, {}, { preserveScroll: true });
@@ -162,6 +166,7 @@ export default function FacturesIndex({ factures }: { factures: FactureRow[] }) 
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => ouvrirApercu(facture)}>Aperçu / imprimer</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => telechargerPdf(facture)}>Télécharger le PDF</DropdownMenuItem>
                             {facture.statut === 'brouillon' && (
                                 <>
                                     <DropdownMenuSeparator />

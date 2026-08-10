@@ -146,6 +146,10 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
         ->name('factures.imprimer')
         ->middleware('role:receptionniste,compta');
 
+    Route::get('sejours/{sejour}/devis/telecharger', [FactureController::class, 'telechargerPdf'])
+        ->name('factures.telecharger')
+        ->middleware('role:receptionniste,compta');
+
     Route::get('factures', [FactureController::class, 'indexCompta'])
         ->name('factures.index')
         ->middleware('role:compta');
@@ -183,6 +187,12 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
         ->name('parametres-facturation.update')
         ->middleware('role:compta');
 });
+
+// Source HTML pour la génération PDF serveur (Browsershot, Chrome headless) : pas de
+// session côté navigateur headless, donc protégée par signature plutôt que par 'auth'.
+Route::get('sejours/{sejour}/devis/pdf-source', [FactureController::class, 'pdfSource'])
+    ->name('factures.pdf-source')
+    ->middleware('signed');
 
 require __DIR__.'/portail-client.php';
 require __DIR__.'/settings.php';
