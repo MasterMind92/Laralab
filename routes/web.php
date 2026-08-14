@@ -1,14 +1,22 @@
 <?php
 
 use App\Http\Controllers\AppartementController;
+use App\Http\Controllers\CandidatController;
+use App\Http\Controllers\CongeController;
+use App\Http\Controllers\ContratTravailController;
 use App\Http\Controllers\DemandeServiceController;
 use App\Http\Controllers\DommageController;
+use App\Http\Controllers\EmployeController;
+use App\Http\Controllers\EntretienController;
 use App\Http\Controllers\FactureController;
 use App\Http\Controllers\InterventionController;
+use App\Http\Controllers\LicenciementController;
+use App\Http\Controllers\OnboardingTacheController;
 use App\Http\Controllers\PaiementController;
 use App\Http\Controllers\ParametreFacturationController;
 use App\Http\Controllers\PartenaireController;
 use App\Http\Controllers\PlanningController;
+use App\Http\Controllers\RecrutementController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\SejourController;
 use Illuminate\Support\Facades\Route;
@@ -30,7 +38,7 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
         ->name('receptionniste')
         ->middleware('role:receptionniste');
 
-    Route::inertia('ressources-humaine', 'dashboard')
+    Route::redirect('ressources-humaine', '/admin/employes')
         ->name('ressource')
         ->middleware('role:rh');
 
@@ -179,6 +187,134 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
         ->except(['create', 'edit', 'show'])
         ->middleware('role:proprietaire');
 
+    Route::get('employes', [EmployeController::class, 'index'])
+        ->name('employes.index')
+        ->middleware('role:rh');
+
+    Route::get('employes/export', [EmployeController::class, 'export'])
+        ->name('employes.export')
+        ->middleware('role:rh');
+
+    Route::post('employes', [EmployeController::class, 'store'])
+        ->name('employes.store')
+        ->middleware('role:rh');
+
+    Route::put('employes/{employe}', [EmployeController::class, 'update'])
+        ->name('employes.update')
+        ->middleware('role:rh');
+
+    Route::delete('employes/{employe}', [EmployeController::class, 'destroy'])
+        ->name('employes.destroy')
+        ->middleware('role:rh');
+
+    Route::get('recrutements', [RecrutementController::class, 'index'])
+        ->name('recrutements.index')
+        ->middleware('role:rh');
+
+    Route::get('recrutements/export', [RecrutementController::class, 'export'])
+        ->name('recrutements.export')
+        ->middleware('role:rh');
+
+    Route::post('recrutements', [RecrutementController::class, 'store'])
+        ->name('recrutements.store')
+        ->middleware('role:rh');
+
+    Route::get('recrutements/{recrutement}', [RecrutementController::class, 'show'])
+        ->name('recrutements.show')
+        ->middleware('role:rh');
+
+    Route::put('recrutements/{recrutement}', [RecrutementController::class, 'update'])
+        ->name('recrutements.update')
+        ->middleware('role:rh');
+
+    Route::patch('recrutements/{recrutement}/soumettre', [RecrutementController::class, 'soumettre'])
+        ->name('recrutements.soumettre')
+        ->middleware('role:rh');
+
+    Route::patch('recrutements/{recrutement}/valider', [RecrutementController::class, 'valider'])
+        ->name('recrutements.valider')
+        ->middleware('role:rh');
+
+    Route::patch('recrutements/{recrutement}/rejeter', [RecrutementController::class, 'rejeter'])
+        ->name('recrutements.rejeter')
+        ->middleware('role:rh');
+
+    Route::patch('recrutements/{recrutement}/cloturer', [RecrutementController::class, 'cloturer'])
+        ->name('recrutements.cloturer')
+        ->middleware('role:rh');
+
+    Route::post('recrutements/{recrutement}/candidats', [CandidatController::class, 'store'])
+        ->name('candidats.store')
+        ->middleware('role:rh');
+
+    Route::patch('candidats/{candidat}', [CandidatController::class, 'update'])
+        ->name('candidats.update')
+        ->middleware('role:rh');
+
+    Route::delete('candidats/{candidat}', [CandidatController::class, 'destroy'])
+        ->name('candidats.destroy')
+        ->middleware('role:rh');
+
+    Route::post('candidats/{candidat}/entretiens', [EntretienController::class, 'store'])
+        ->name('entretiens.store')
+        ->middleware('role:rh');
+
+    Route::patch('entretiens/{entretien}', [EntretienController::class, 'update'])
+        ->name('entretiens.update')
+        ->middleware('role:rh');
+
+    Route::delete('entretiens/{entretien}', [EntretienController::class, 'destroy'])
+        ->name('entretiens.destroy')
+        ->middleware('role:rh');
+
+    Route::get('contrats', [ContratTravailController::class, 'index'])
+        ->name('contrats.index')
+        ->middleware('role:rh');
+
+    Route::get('contrats/export', [ContratTravailController::class, 'export'])
+        ->name('contrats.export')
+        ->middleware('role:rh');
+
+    Route::post('contrats', [ContratTravailController::class, 'store'])
+        ->name('contrats.store')
+        ->middleware('role:rh');
+
+    Route::put('contrats/{contratTravail}', [ContratTravailController::class, 'update'])
+        ->name('contrats.update')
+        ->middleware('role:rh');
+
+    Route::delete('contrats/{contratTravail}', [ContratTravailController::class, 'destroy'])
+        ->name('contrats.destroy')
+        ->middleware('role:rh');
+
+    Route::post('candidats/{candidat}/embaucher', [ContratTravailController::class, 'embaucher'])
+        ->name('candidats.embaucher')
+        ->middleware('role:rh');
+
+    Route::get('conges', [CongeController::class, 'index'])
+        ->name('conges.index')
+        ->middleware('role:rh');
+
+    Route::get('conges/export', [CongeController::class, 'export'])
+        ->name('conges.export')
+        ->middleware('role:rh');
+
+    Route::post('conges', [CongeController::class, 'store'])
+        ->name('conges.store')
+        ->middleware('role:rh');
+
+    Route::patch('conges/{conge}', [CongeController::class, 'update'])
+        ->name('conges.update')
+        ->middleware('role:rh');
+
+    Route::post('employes/{employe}/licenciement', [LicenciementController::class, 'store'])
+        ->name('licenciements.store')
+        ->middleware('role:rh');
+
+    Route::patch('onboarding-taches/{onboardingTache}', [OnboardingTacheController::class, 'update'])
+        ->name('onboarding-taches.update')
+        ->middleware('role:rh');
+
     Route::get('parametres-facturation', [ParametreFacturationController::class, 'edit'])
         ->name('parametres-facturation.edit')
         ->middleware('role:compta');
@@ -195,4 +331,5 @@ Route::get('sejours/{sejour}/devis/pdf-source', [FactureController::class, 'pdfS
     ->middleware('signed');
 
 require __DIR__.'/portail-client.php';
+require __DIR__.'/portail-recrutement.php';
 require __DIR__.'/settings.php';

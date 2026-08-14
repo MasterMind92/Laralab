@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const NAV_LINKS = [
   { label: "Accueil",       to: "/" },
   { label: "Appartements",  to: "/appartements" },
+  { label: "Carrières",     to: "/carrieres" },
 ];
 
 export default function Navbar() {

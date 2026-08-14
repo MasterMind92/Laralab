@@ -44,28 +44,20 @@ const mainNavItems: NavItem[] = [
                 url:"/admin/appartements",
             },
             {
-                title: "Recrutement", // Elements du pole RH
-                url:"#",
+                title: "Employés", // Elements du pole RH
+                url:"/admin/employes",
             },
             {
-                title: "Entretien",// Elements du pole RH
-                url:"#",
+                title: "Recrutements",// Elements du pole RH
+                url:"/admin/recrutements",
             },
             {
                 title: "Contrats",// Elements du pole RH
-                url:"#",
+                url:"/admin/contrats",
             },
             {
-                title: "Salaires",// Elements du pole RH
-                url:"#",
-            },
-            {
-                title: "Conges",// Elements du pole RH
-                url:"#",
-            },
-            {
-                title: "Licenciement",// Elements du pole RH
-                url:"#",
+                title: "Congés",// Elements du pole RH
+                url:"/admin/conges",
             },
         ]
     },
@@ -83,33 +75,25 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'RH',
-        href: "/admin/ressources-humaine",
+        href: "/admin/employes",
         icon: LayoutGrid,
         roles: ['rh'],
         sub:[
             {
-                title: "Recrutement",
-                url:"#",
+                title: "Employés",
+                url:"/admin/employes",
             },
             {
-                title: "Entretien",
-                url:"#",
+                title: "Recrutements",
+                url:"/admin/recrutements",
             },
             {
                 title: "Contrats",
-                url:"#",
+                url:"/admin/contrats",
             },
             {
-                title: "Salaires",
-                url:"#",
-            },
-            {
-                title: "Conges",
-                url:"#",
-            },
-            {
-                title: "Licenciement",
-                url:"#",
+                title: "Congés",
+                url:"/admin/conges",
             },
         ]
     },
