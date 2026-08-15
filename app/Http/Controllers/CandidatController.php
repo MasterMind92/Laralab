@@ -56,7 +56,7 @@ class CandidatController extends Controller
             'prenom' => ['sometimes', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'telephone' => ['nullable', 'string', 'max:20'],
-            'etape' => ['sometimes', 'in:recu,a_analyser,preselectionne,entretien,evaluation,retenu,offre,embauche'],
+            'etape' => ['sometimes', 'in:recu,entretien,decision,offre,embauche'],
             'statut' => ['sometimes', 'in:en_cours,rejete,offre_refusee'],
             'salaire_propose' => ['nullable', 'numeric', 'min:0'],
         ]);

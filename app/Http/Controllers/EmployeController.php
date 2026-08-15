@@ -40,7 +40,7 @@ class EmployeController extends Controller
             'prenom' => ['required', 'string', 'max:255'],
             'poste' => ['required', 'string', 'max:255'],
             'date_embauche' => ['required', 'date'],
-            'salaire_base' => ['required', 'numeric', 'min:0'],
+            'salaire_base' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         Employe::create([...$data, 'actif' => true]);

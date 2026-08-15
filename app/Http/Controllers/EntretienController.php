@@ -10,8 +10,10 @@ use Illuminate\Http\Request;
 class EntretienController extends Controller
 {
     /**
-     * Planifie un entretien pour un candidat présélectionné (règle 2 : le
-     * recrutement doit être validé) — fait avancer le candidat à l'étape entretien.
+     * Planifie un entretien pour un candidat (règle 2 : le recrutement doit être
+     * validé) — fait avancer le candidat de "reçue" à l'étape entretien. Un tour
+     * supplémentaire planifié plus tard (candidat déjà en entretien/décision) ne
+     * fait pas régresser l'étape.
      */
     public function store(Request $request, Candidat $candidat): RedirectResponse
     {
@@ -40,7 +42,7 @@ class EntretienController extends Controller
             $entretien->intervieweurs()->sync($data['intervieweurs']);
         }
 
-        if ($candidat->etape === 'preselectionne') {
+        if ($candidat->etape === 'recu') {
             $candidat->update(['etape' => 'entretien']);
         }
 

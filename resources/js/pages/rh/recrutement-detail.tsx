@@ -34,7 +34,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
-type Etape = 'recu' | 'a_analyser' | 'preselectionne' | 'entretien' | 'evaluation' | 'retenu' | 'offre' | 'embauche';
+type Etape = 'recu' | 'entretien' | 'decision' | 'offre' | 'embauche';
 type StatutCandidat = 'en_cours' | 'rejete' | 'offre_refusee';
 type StatutRecrutement = 'brouillon' | 'en_attente_validation' | 'validee' | 'rejetee' | 'clos';
 
@@ -85,11 +85,8 @@ type Employe = { id: number; nom: string; prenom: string };
 
 const COLONNES: { id: Etape; titre: string }[] = [
     { id: 'recu', titre: 'Candidature reçue' },
-    { id: 'a_analyser', titre: 'À analyser' },
-    { id: 'preselectionne', titre: 'Présélectionnée' },
     { id: 'entretien', titre: 'Entretien' },
-    { id: 'evaluation', titre: 'Évaluation' },
-    { id: 'retenu', titre: 'Retenue' },
+    { id: 'decision', titre: 'Décision' },
     { id: 'offre', titre: 'Offre' },
     { id: 'embauche', titre: 'Embauche' },
 ];
@@ -186,7 +183,7 @@ export default function RecrutementDetail({ recrutement, employes }: { recruteme
 
     const peutModifier = recrutement.statut === 'validee';
     const aucunEnSuspens = recrutement.candidats.every(
-        (c) => c.statut === 'rejete' || c.statut === 'offre_refusee' || ['retenu', 'offre', 'embauche'].includes(c.etape),
+        (c) => c.statut === 'rejete' || c.statut === 'offre_refusee' || ['offre', 'embauche'].includes(c.etape),
     );
 
     return (
@@ -352,10 +349,6 @@ function CandidatDialog({
         router.patch(CandidatController.update(candidat.id).url, { statut: 'rejete' }, { preserveScroll: true, onSuccess: onClose });
     }
 
-    function marquerRetenu() {
-        router.patch(CandidatController.update(candidat.id).url, { etape: 'retenu' }, { preserveScroll: true, onSuccess: onClose });
-    }
-
     function envoyerOffre(e: FormEvent) {
         e.preventDefault();
         salaireForm.transform((data) => ({ ...data, etape: 'offre' }));
@@ -383,13 +376,10 @@ function CandidatDialog({
                     {peutModifier && candidat.statut === 'en_cours' && (
                         <div className="flex gap-2 border-t pt-3">
                             <Button size="sm" variant="outline" onClick={rejeter}>Rejeter</Button>
-                            {candidat.etape === 'evaluation' && (
-                                <Button size="sm" onClick={marquerRetenu}>Marquer retenu</Button>
-                            )}
                         </div>
                     )}
 
-                    {peutModifier && candidat.etape === 'retenu' && candidat.statut === 'en_cours' && (
+                    {peutModifier && candidat.etape === 'decision' && candidat.statut === 'en_cours' && (
                         <form onSubmit={envoyerOffre} className="space-y-2 border-t pt-3">
                             <Label htmlFor="salaire_propose">Envoyer une offre — salaire proposé (FCFA)</Label>
                             <div className="flex gap-2">
@@ -449,7 +439,7 @@ function CandidatDialog({
                             ))}
                         </div>
 
-                        {peutModifier && candidat.statut === 'en_cours' && !['retenu', 'offre', 'embauche'].includes(candidat.etape) && (
+                        {peutModifier && candidat.statut === 'en_cours' && !['offre', 'embauche'].includes(candidat.etape) && (
                             <form onSubmit={submitEntretien} className="space-y-2 rounded-md border p-2">
                                 <p className="text-xs font-medium">Planifier un entretien</p>
                                 <div className="grid grid-cols-2 gap-2">

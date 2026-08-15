@@ -116,7 +116,7 @@ class RecrutementController extends Controller
 
     /**
      * validee -> clos : fige la "liste définitive" (règle 3). Refuse si des candidats
-     * encore en_cours n'ont pas atteint une décision (retenu/offre/embauche ou rejete).
+     * encore en_cours n'ont pas atteint une décision (offre/embauche ou rejete).
      */
     public function cloturer(Recrutement $recrutement): RedirectResponse
     {
@@ -126,7 +126,7 @@ class RecrutementController extends Controller
 
         $enSuspens = $recrutement->candidats()
             ->where('statut', 'en_cours')
-            ->whereIn('etape', ['recu', 'a_analyser', 'preselectionne', 'entretien', 'evaluation'])
+            ->whereIn('etape', ['recu', 'entretien', 'decision'])
             ->exists();
 
         if ($enSuspens) {

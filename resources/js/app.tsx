@@ -15,6 +15,7 @@ createInertiaApp({
     layout: (name) => {
         switch (true) {
             case name.startsWith('portail-client/'):
+            case name.startsWith('portail-recrutement/'):
                 return [ClientLayout];
             case name.startsWith('auth/'):
                 return AuthLayout;
