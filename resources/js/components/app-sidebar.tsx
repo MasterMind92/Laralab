@@ -126,6 +126,10 @@ const mainNavItems: NavItem[] = [
                 url:"/admin/factures",
             },
             {
+                title: "Avances reçues",
+                url:"/admin/paiements-reservations",
+            },
+            {
                 // Suivi des impayes/relances — different du flux valider/encaisser,
                 // differe a un futur reporting.
                 title: "Recouvrements factures",

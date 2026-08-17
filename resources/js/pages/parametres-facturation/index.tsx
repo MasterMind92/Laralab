@@ -13,6 +13,7 @@ type Parametres = {
     taux_tva: string;
     depot_garantie_defaut: string;
     delai_restitution_jours: number;
+    acompte_actif: boolean;
 };
 
 export default function ParametresFacturationEdit({ parametres }: { parametres: Parametres }) {
@@ -23,6 +24,7 @@ export default function ParametresFacturationEdit({ parametres }: { parametres: 
         taux_tva: parametres.taux_tva,
         depot_garantie_defaut: parametres.depot_garantie_defaut,
         delai_restitution_jours: parametres.delai_restitution_jours,
+        acompte_actif: parametres.acompte_actif,
     });
 
     // Les taux sont stockés en fraction (0.12) mais édités en pourcentage (12) pour plus de clarté.
@@ -125,6 +127,20 @@ export default function ParametresFacturationEdit({ parametres }: { parametres: 
                             <p className="text-sm text-destructive">{errors.delai_restitution_jours}</p>
                         )}
                     </div>
+
+                    <div className="flex items-center gap-3 border-t pt-6">
+                        <Checkbox
+                            id="acompte_actif"
+                            checked={data.acompte_actif}
+                            onCheckedChange={(checked) => setData('acompte_actif', checked === true)}
+                        />
+                        <Label htmlFor="acompte_actif">Exiger un paiement à la réservation (portail client)</Label>
+                    </div>
+                    <p className="-mt-4 text-sm text-muted-foreground">
+                        Montant minimum : une nuitée (la totalité si le séjour ne dure qu'une nuit). Le client choisit
+                        de régler l'acompte ou la totalité ; le paiement est simulé mais enregistré immédiatement et
+                        déduit de la facture finale.
+                    </p>
 
                     <Button type="submit" disabled={processing}>
                         {processing ? 'Enregistrement...' : 'Enregistrer'}

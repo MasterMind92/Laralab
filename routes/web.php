@@ -16,6 +16,7 @@ use App\Http\Controllers\InterventionController;
 use App\Http\Controllers\LicenciementController;
 use App\Http\Controllers\OnboardingTacheController;
 use App\Http\Controllers\PaiementController;
+use App\Http\Controllers\PaiementReservationController;
 use App\Http\Controllers\ParametreFacturationController;
 use App\Http\Controllers\PartenaireController;
 use App\Http\Controllers\PlanningController;
@@ -179,6 +180,10 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
     Route::post('factures/{facture}/paiements', [PaiementController::class, 'store'])
         ->name('paiements.store')
+        ->middleware('role:compta');
+
+    Route::get('paiements-reservations', [PaiementReservationController::class, 'index'])
+        ->name('paiements-reservations.index')
         ->middleware('role:compta');
 
     Route::post('sejours/{sejour}/dommages', [DommageController::class, 'store'])

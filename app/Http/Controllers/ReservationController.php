@@ -31,6 +31,7 @@ class ReservationController extends Controller
                 'appartement.equipements:id,nom,appartement_id',
                 'client:id,nom,prenom',
                 'sejour:id,reservation_id,statut',
+                'paiementInitial:id,reservation_id,montant,mode_paiement,date_paiement',
             ])
                 ->orderByDesc('date_debut')
                 ->get(['id', 'appartement_id', 'client_id', 'date_debut', 'date_fin', 'statut', 'created_at']),

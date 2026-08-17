@@ -55,4 +55,14 @@ class Reservation extends Model
     {
         return $this->hasOne(Sejour::class);
     }
+
+    /**
+     * Paiement simulé (acompte ou totalité) effectué au moment de la réservation sur
+     * le portail client — rattaché à la Facture une fois celle-ci générée (voir
+     * FactureController::generer()), jamais dupliqué.
+     */
+    public function paiementInitial(): HasOne
+    {
+        return $this->hasOne(Paiement::class);
+    }
 }

@@ -29,6 +29,7 @@ class ParametreFacturationController extends Controller
             'taux_tva' => ['required', 'numeric', 'min:0', 'max:1'],
             'depot_garantie_defaut' => ['required', 'numeric', 'min:0'],
             'delai_restitution_jours' => ['required', 'integer', 'min:0'],
+            'acompte_actif' => ['required', 'boolean'],
         ]);
 
         ParametreFacturation::actuel()->update($data);

@@ -6,7 +6,7 @@ use App\Models\Concerns\BelongsToEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['frais_service_actif', 'taux_frais_service', 'tva_active', 'taux_tva', 'depot_garantie_defaut', 'delai_restitution_jours', 'entreprise_id'])]
+#[Fillable(['frais_service_actif', 'taux_frais_service', 'tva_active', 'taux_tva', 'depot_garantie_defaut', 'delai_restitution_jours', 'acompte_actif', 'entreprise_id'])]
 class ParametreFacturation extends Model
 {
     use BelongsToEntreprise;
@@ -21,6 +21,7 @@ class ParametreFacturation extends Model
             'tva_active' => 'boolean',
             'taux_tva' => 'decimal:4',
             'depot_garantie_defaut' => 'decimal:2',
+            'acompte_actif' => 'boolean',
         ];
     }
 

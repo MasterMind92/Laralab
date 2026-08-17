@@ -351,6 +351,14 @@ class FactureController extends Controller
                 'montant_ttc' => $montantHt + $tva,
                 'date_edition' => now()->toDateString(),
             ]);
+
+            // Le paiement simulé à la réservation (portail client, voir
+            // PortailClient\ReservationController::store()) est rattaché à la facture
+            // qui vient d'être générée plutôt que dupliqué — même ligne, jamais recréée.
+            $paiementInitial = $sejour->reservation?->paiementInitial;
+            if ($paiementInitial && $paiementInitial->facture_id !== $facture->id) {
+                $paiementInitial->update(['facture_id' => $facture->id]);
+            }
         });
 
         return back();
@@ -411,6 +419,8 @@ class FactureController extends Controller
             'totalHT' => $fmt($facture->montant_ht),
             'montantTvaHT' => $parametres->tva_active ? $fmt($facture->montant_ttc - $facture->montant_ht) : null,
             'totalTTC' => $fmt($facture->montant_ttc),
+            'acompteVerseHT' => $facture->montantPaye() > 0 ? $fmt($facture->montantPaye()) : null,
+            'resteAPayerHT' => $facture->montantPaye() > 0 ? $fmt($facture->soldeRestant()) : null,
             'conditionVersement' => 'Solde intégral exigible à la clôture du séjour.',
             'conditionAnnulation' => 'Selon les conditions générales de réservation en vigueur.',
             'conditionEtatDesLieux' => 'Réalisés contradictoirement à l\'entrée et à la sortie.',

@@ -54,6 +54,8 @@ export interface DevisData {
   totalHT: string;
   montantTvaHT?: string | null; // absent/null si la TVA n'est pas applicable
   totalTTC: string;
+  acompteVerseHT?: string | null; // absent/null si aucun paiement encore perçu
+  resteAPayerHT?: string | null;
 
   conditionVersement: string;
   conditionAnnulation: string;
@@ -323,6 +325,18 @@ export default function Devis({ data = DEFAULT_DATA }: DevisProps) {
                 <td>Total TTC</td>
                 <td>{data.totalTTC}</td>
               </tr>
+              {data.acompteVerseHT && (
+                <tr>
+                  <td>Acompte déjà versé</td>
+                  <td>-{data.acompteVerseHT}</td>
+                </tr>
+              )}
+              {data.resteAPayerHT && (
+                <tr className="total-ttc">
+                  <td>Reste à payer</td>
+                  <td>{data.resteAPayerHT}</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

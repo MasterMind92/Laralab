@@ -61,6 +61,14 @@ class ReservationController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        // Résolu avant la validation complète car les règles conditionnelles
+        // (mode_reglement/mode_paiement) dépendent des paramètres de facturation
+        // de l'entreprise propriétaire de l'appartement (Phase 09, multi-tenant) —
+        // find() plutôt que findOrFail() : un id invalide sera de toute façon
+        // rejeté proprement par la règle exists:appartements,id ci-dessous.
+        $appartement = Appartement::find($request->input('appartement_id'));
+        $parametres = ParametreFacturation::actuel($appartement?->entreprise_id);
+
         $data = $request->validate([
             'appartement_id' => ['required', 'integer', 'exists:appartements,id'],
             'date_debut' => ['required', 'date'],
@@ -71,9 +79,9 @@ class ReservationController extends Controller
             'nom' => ['required', 'string', 'max:255'],
             'telephone' => ['nullable', 'string', 'max:20'],
             'email' => ['required', 'email', 'max:255'],
+            'mode_reglement' => [$parametres->acompte_actif ? 'required' : 'nullable', 'in:acompte,total'],
+            'mode_paiement' => [$parametres->acompte_actif ? 'required' : 'nullable', 'in:cb,paypal,mobile_money'],
         ]);
-
-        $appartement = Appartement::findOrFail($data['appartement_id']);
 
         if ($appartement->statut_entretien !== 'propre') {
             return back()->withErrors([
@@ -98,6 +106,21 @@ class ReservationController extends Controller
             'nombre_personnes' => $data['nombre_personnes'] ?? null,
             'notes' => $data['notes'] ?? null,
         ]);
+
+        if ($parametres->acompte_actif) {
+            $nights = (int) $reservation->date_debut->diffInDays($reservation->date_fin);
+            ['sous_total' => $sousTotal] = $appartement->prixPour($nights);
+            $fee = $parametres->frais_service_actif ? round($sousTotal * (float) $parametres->taux_frais_service) : 0;
+            $total = $sousTotal + $fee;
+            $acompte = min((float) $appartement->prix_nuit, $total);
+
+            $reservation->paiementInitial()->create([
+                'montant' => $data['mode_reglement'] === 'total' ? $total : $acompte,
+                'mode_paiement' => $data['mode_paiement'],
+                'reference_transaction' => 'RESA-'.$reservation->id,
+                'date_paiement' => now(),
+            ]);
+        }
 
         $reservation->load('appartement');
         $request->user()->notify(new ReservationConfirmee($reservation));

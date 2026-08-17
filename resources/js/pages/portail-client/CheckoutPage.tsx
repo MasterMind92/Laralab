@@ -45,6 +45,8 @@ type Pricing = {
   reduction: PricingReduction | null;
   fee: number;
   total: number;
+  acompte_actif: boolean;
+  acompte: number;
 };
 
 function labelReduction(r: PricingReduction): string {
@@ -244,7 +246,6 @@ export default function CheckoutPage({
   client: CheckoutClient;
   confirmed: boolean;
 }) {
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [cardName, setCardName] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
@@ -261,7 +262,18 @@ export default function CheckoutPage({
     date_debut: checkin,
     date_fin: checkout,
     nombre_personnes: guests ? Number(guests) : undefined,
+    mode_reglement: (nights === 1 ? "total" : "acompte") as "acompte" | "total",
+    mode_paiement: "cb" as "cb" | "paypal" | "mobile_money",
   });
+
+  const paymentMethod: PaymentMethod =
+    data.mode_paiement === "cb" ? "card" : data.mode_paiement === "mobile_money" ? "mobile" : "paypal";
+
+  function setPaymentMethod(v: PaymentMethod) {
+    setData("mode_paiement", v === "card" ? "cb" : v === "mobile" ? "mobile_money" : "paypal");
+  }
+
+  const montantARegler = data.mode_reglement === "total" ? pricing.total : pricing.acompte;
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -373,107 +385,151 @@ export default function CheckoutPage({
               </div>
             </div>
 
-            {/* ── 2. Paiement (décoratif — Phase 03) ── */}
-            <div className="bg-white rounded-xl border border-[rgb(var(--gold))]/12 p-6 mb-5">
-              <h3 className="font-['Cormorant_Garamond'] text-2xl flex items-center gap-2 mb-5 pb-3 border-b border-[rgb(var(--gold))]/10">
-                <CreditCard size={16} className="text-[rgb(var(--gold))]" /> Mode de paiement
-              </h3>
+            {/* ── 2. Paiement ── */}
+            {pricing.acompte_actif && nights > 0 && (
+              <div className="bg-white rounded-xl border border-[rgb(var(--gold))]/12 p-6 mb-5">
+                <h3 className="font-['Cormorant_Garamond'] text-2xl flex items-center gap-2 mb-5 pb-3 border-b border-[rgb(var(--gold))]/10">
+                  <Shield size={16} className="text-[rgb(var(--gold))]" /> Acompte à verser pour réservation
+                </h3>
 
-              <div className="flex gap-2 flex-wrap mb-5">
-                <PayMethodBtn icon={CreditCard}  label="Carte bancaire" value="card"    current={paymentMethod} onSelect={setPaymentMethod} />
-                <PayMethodBtn icon={Shield}       label="PayPal"         value="paypal"  current={paymentMethod} onSelect={setPaymentMethod} />
-                <PayMethodBtn icon={Smartphone}   label="Mobile Money"   value="mobile"  current={paymentMethod} onSelect={setPaymentMethod} />
-              </div>
+                {nights === 1 ? (
+                  <p className="text-sm text-stone-500 mb-4">
+                    Le séjour ne comptant qu'une nuit, vous réglez la totalité dès maintenant :{" "}
+                    <strong>{formatPrice(pricing.total)} FCFA</strong>.
+                  </p>
+                ) : (
+                  <div className="flex gap-2 flex-wrap mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setData("mode_reglement", "acompte")}
+                      className={cn(
+                        "flex-1 min-w-45 text-left border-2 rounded-lg px-4 py-3 text-sm transition-all",
+                        data.mode_reglement === "acompte"
+                          ? "border-[rgb(var(--gold))] bg-[rgb(var(--gold))]/5"
+                          : "border-stone-200 hover:border-stone-300"
+                      )}
+                    >
+                      <span className="block font-medium">Payer l'acompte</span>
+                      <span className="block text-stone-500">{formatPrice(pricing.acompte)} FCFA (1 nuit) — solde réglé à la clôture du séjour</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setData("mode_reglement", "total")}
+                      className={cn(
+                        "flex-1 min-w-45 text-left border-2 rounded-lg px-4 py-3 text-sm transition-all",
+                        data.mode_reglement === "total"
+                          ? "border-[rgb(var(--gold))] bg-[rgb(var(--gold))]/5"
+                          : "border-stone-200 hover:border-stone-300"
+                      )}
+                    >
+                      <span className="block font-medium">Payer la totalité</span>
+                      <span className="block text-stone-500">{formatPrice(pricing.total)} FCFA — rien à régler à la clôture</span>
+                    </button>
+                  </div>
+                )}
 
-              {paymentMethod === "card" && (
-                <div className="space-y-4">
-                  <div className="flex gap-2 mb-1">
-                    {["VISA", "Mastercard", "AmEx"].map((b) => (
-                      <span key={b} className="text-[10px] border border-stone-200 rounded px-2 py-0.5 text-stone-400 tracking-wide">{b}</span>
-                    ))}
-                  </div>
-                  <div>
-                    <label className="form-label-ls">Nom sur la carte</label>
-                    <input
-                      value={cardName}
-                      onChange={(e) => setCardName(e.target.value.toUpperCase())}
-                      placeholder="JEAN DUPONT"
-                      className="input-ls uppercase"
-                    />
-                  </div>
-                  <div>
-                    <label className="form-label-ls">Numéro de carte</label>
-                    <div className="relative">
-                      <input
-                        value={cardNumber}
-                        onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                        inputMode="numeric"
-                        autoComplete="cc-number"
-                        placeholder="1234 5678 9012 3456"
-                        maxLength={19}
-                        className="input-ls pr-10 tracking-widest"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-300 text-lg">💳</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="form-label-ls">Date d'expiration</label>
-                      <input
-                        value={cardExpiry}
-                        onChange={(e) => setCardExpiry(formatCardExpiry(e.target.value))}
-                        inputMode="numeric"
-                        autoComplete="cc-exp"
-                        placeholder="MM / AA"
-                        maxLength={7}
-                        className="input-ls"
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label-ls">CVV / CVC</label>
-                      <input
-                        value={cardCvv}
-                        onChange={(e) => setCardCvv(formatCardCvv(e.target.value))}
-                        inputMode="numeric"
-                        autoComplete="cc-csc"
-                        type="password"
-                        placeholder="•••"
-                        maxLength={4}
-                        className="input-ls"
-                      />
-                    </div>
-                  </div>
+                <div className="flex gap-2 flex-wrap mb-5">
+                  <PayMethodBtn icon={CreditCard}  label="Carte bancaire" value="card"    current={paymentMethod} onSelect={setPaymentMethod} />
+                  <PayMethodBtn icon={Shield}       label="PayPal"         value="paypal"  current={paymentMethod} onSelect={setPaymentMethod} />
+                  <PayMethodBtn icon={Smartphone}   label="Mobile Money"   value="mobile"  current={paymentMethod} onSelect={setPaymentMethod} />
                 </div>
-              )}
 
-              {paymentMethod === "paypal" && (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
-                  🅿️ Vous serez redirigé vers <strong>PayPal</strong> pour finaliser le paiement en toute sécurité.
-                </div>
-              )}
-
-              {paymentMethod === "mobile" && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="form-label-ls">Opérateur</label>
-                    <select className="input-ls">
-                      <option value="">Choisir l'opérateur</option>
-                      {["Orange Money", "MTN Mobile Money", "Wave", "Moov Money"].map((o) => (
-                        <option key={o} value={o.toLowerCase().replace(/\s/g, "_")}>{o}</option>
+                {paymentMethod === "card" && (
+                  <div className="space-y-4">
+                    <div className="flex gap-2 mb-1">
+                      {["VISA", "Mastercard", "AmEx"].map((b) => (
+                        <span key={b} className="text-[10px] border border-stone-200 rounded px-2 py-0.5 text-stone-400 tracking-wide">{b}</span>
                       ))}
-                    </select>
+                    </div>
+                    <div>
+                      <label className="form-label-ls">Nom sur la carte</label>
+                      <input
+                        value={cardName}
+                        onChange={(e) => setCardName(e.target.value.toUpperCase())}
+                        placeholder="JEAN DUPONT"
+                        className="input-ls uppercase"
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label-ls">Numéro de carte</label>
+                      <div className="relative">
+                        <input
+                          value={cardNumber}
+                          onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                          inputMode="numeric"
+                          autoComplete="cc-number"
+                          placeholder="1234 5678 9012 3456"
+                          maxLength={19}
+                          className="input-ls pr-10 tracking-widest"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-300 text-lg">💳</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="form-label-ls">Date d'expiration</label>
+                        <input
+                          value={cardExpiry}
+                          onChange={(e) => setCardExpiry(formatCardExpiry(e.target.value))}
+                          inputMode="numeric"
+                          autoComplete="cc-exp"
+                          placeholder="MM / AA"
+                          maxLength={7}
+                          className="input-ls"
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label-ls">CVV / CVC</label>
+                        <input
+                          value={cardCvv}
+                          onChange={(e) => setCardCvv(formatCardCvv(e.target.value))}
+                          inputMode="numeric"
+                          autoComplete="cc-csc"
+                          type="password"
+                          placeholder="•••"
+                          maxLength={4}
+                          className="input-ls"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="form-label-ls">Numéro Mobile Money</label>
-                    <input type="tel" placeholder="+225 07 00 00 00 00" className="input-ls" />
-                  </div>
-                </div>
-              )}
+                )}
 
-              <p className="text-[11px] text-stone-400 mt-4">
-                Le paiement en ligne n'est pas encore actif — cette section deviendra fonctionnelle prochainement.
-              </p>
-            </div>
+                {paymentMethod === "paypal" && (
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
+                    🅿️ Vous serez redirigé vers <strong>PayPal</strong> pour finaliser le paiement en toute sécurité.
+                  </div>
+                )}
+
+                {paymentMethod === "mobile" && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="form-label-ls">Opérateur</label>
+                      <select className="input-ls">
+                        <option value="">Choisir l'opérateur</option>
+                        {["Orange Money", "MTN Mobile Money", "Wave", "Moov Money"].map((o) => (
+                          <option key={o} value={o.toLowerCase().replace(/\s/g, "_")}>{o}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label-ls">Numéro Mobile Money</label>
+                      <input type="tel" placeholder="+225 07 00 00 00 00" className="input-ls" />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center mt-5 pt-4 border-t border-stone-100">
+                  <span className="text-sm text-stone-500">Montant réglé maintenant</span>
+                  <span className="font-['Cormorant_Garamond'] text-xl">{formatPrice(montantARegler)} FCFA</span>
+                </div>
+
+                <p className="text-[11px] text-stone-400 mt-4">
+                  Paiement simulé (pas de passerelle bancaire réelle branchée) — il est néanmoins enregistré
+                  immédiatement et visible par notre Comptabilité.
+                </p>
+              </div>
+            )}
 
             {/* ── 3. CGU ── */}
             <div className="bg-white rounded-xl border border-[rgb(var(--gold))]/12 p-5 mb-6">
@@ -508,7 +564,9 @@ export default function CheckoutPage({
               }
             </button>
             <p className="text-center text-[11px] text-stone-400 mt-3">
-              🔒 Aucun paiement n'est prélevé pour l'instant — votre demande sera confirmée par notre équipe.
+              {pricing.acompte_actif
+                ? `🔒 ${formatPrice(montantARegler)} FCFA seront enregistrés à la validation — votre demande sera ensuite confirmée par notre équipe.`
+                : "🔒 Aucun paiement n'est prélevé pour l'instant — votre demande sera confirmée par notre équipe."}
             </p>
           </form>
 

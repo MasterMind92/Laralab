@@ -71,6 +71,8 @@ class CheckoutController extends Controller
                 ] : null,
                 'fee' => $fee,
                 'total' => $sousTotal + $fee,
+                'acompte_actif' => $parametres->acompte_actif,
+                'acompte' => $parametres->acompte_actif ? min((float) $appartement->prix_nuit, $sousTotal + $fee) : 0,
             ],
             'disponible' => $disponible,
             'client' => [
