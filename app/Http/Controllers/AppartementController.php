@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreAppartementRequest;
 use App\Http\Requests\UpdateAppartementRequest;
 use App\Models\Appartement;
+use App\Models\Entreprise;
 use App\Models\Equipement;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,12 +19,7 @@ class AppartementController extends Controller
      */
     public function index(): Response
     {
-        return Inertia::render('appartements/index', [
-            'appartements' => Appartement::with(['equipements', 'reductions'])->orderBy('numero')->get(),
-            'equipementsCatalogue' => Equipement::whereNull('appartement_id')
-                ->orderBy('nom')
-                ->get(['id', 'nom', 'icone']),
-        ]);
+        return Inertia::render('appartements/index', $this->indexData());
     }
 
     /**
@@ -30,15 +27,60 @@ class AppartementController extends Controller
      */
     public function store(StoreAppartementRequest $request): RedirectResponse
     {
-        $data = $request->safe()->except('photos');
+        $this->creerAppartement($request, $request->safe()->except('photos'));
 
+        return back();
+    }
+
+    /**
+     * Provisioning administrateur (entreprises/{entreprise}/appartements) — methode
+     * dediee plutot que reutiliser index()/store() : pointer deux routes sur la meme
+     * methode de controleur casse le Wayfinder genere (index/store deviendraient des
+     * dictionnaires par URI au lieu de fonctions, cf. gotcha connu du projet).
+     */
+    public function indexPourEntreprise(Entreprise $entreprise): Response
+    {
+        return Inertia::render('appartements/index', [
+            ...$this->indexData(),
+            'appartements' => Appartement::where('entreprise_id', $entreprise->id)
+                ->with(['equipements', 'reductions'])
+                ->orderBy('numero')
+                ->get(),
+        ]);
+    }
+
+    public function storePourEntreprise(StoreAppartementRequest $request, Entreprise $entreprise): RedirectResponse
+    {
+        $this->creerAppartement($request, [...$request->safe()->except('photos'), 'entreprise_id' => $entreprise->id]);
+
+        return back();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function indexData(): array
+    {
+        return [
+            'appartements' => Appartement::with(['equipements', 'reductions'])->orderBy('numero')->get(),
+            'equipementsCatalogue' => Equipement::whereNull('appartement_id')
+                ->orderBy('nom')
+                ->get(['id', 'nom', 'icone']),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function creerAppartement(Request $request, array $data): Appartement
+    {
         $appartement = Appartement::create($data);
 
         if ($request->hasFile('photos')) {
             $appartement->update(['photos' => $this->uploadPhotos($request->file('photos'))]);
         }
 
-        return back();
+        return $appartement;
     }
 
     /**

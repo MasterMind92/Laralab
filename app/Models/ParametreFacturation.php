@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['frais_service_actif', 'taux_frais_service', 'tva_active', 'taux_tva', 'depot_garantie_defaut', 'delai_restitution_jours'])]
+#[Fillable(['frais_service_actif', 'taux_frais_service', 'tva_active', 'taux_tva', 'depot_garantie_defaut', 'delai_restitution_jours', 'entreprise_id'])]
 class ParametreFacturation extends Model
 {
+    use BelongsToEntreprise;
+
     protected $table = 'parametres_facturation';
 
     protected function casts(): array
@@ -22,10 +25,14 @@ class ParametreFacturation extends Model
     }
 
     /**
-     * Ligne unique de paramètres (créée avec les valeurs par défaut de la migration au premier appel).
+     * Ligne de paramètres par entreprise (créée avec les valeurs par défaut de la
+     * migration au premier appel) — chaque entreprise a ses propres taux TVA/acompte
+     * depuis la Phase 09 (multi-tenant), ce réglage n'est plus une ligne globale unique.
      */
-    public static function actuel(): self
+    public static function actuel(?int $entrepriseId = null): self
     {
-        return static::query()->firstOrCreate([]);
+        $entrepriseId ??= auth()->user()?->entreprise_id;
+
+        return static::query()->firstOrCreate(['entreprise_id' => $entrepriseId]);
     }
 }

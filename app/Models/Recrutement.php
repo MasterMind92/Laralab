@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,11 +13,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'poste', 'departement', 'responsable_id', 'profil_recherche', 'description', 'competences',
     'nombre_postes', 'type_contrat_propose', 'date_souhaitee', 'budget_min', 'budget_max',
     'priorite', 'motif', 'date_limite_candidature', 'lieu', 'statut', 'motif_rejet',
-    'valide_par_id', 'date_validation',
+    'valide_par_id', 'date_validation', 'entreprise_id',
 ])]
 class Recrutement extends Model
 {
     use SoftDeletes;
+    use BelongsToEntreprise;
 
     protected function casts(): array
     {

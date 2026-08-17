@@ -40,6 +40,9 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
+                // Source unique cote serveur (evite la duplication de FULL_ACCESS_ROLES
+                // qui existait cote frontend avant la Phase 09).
+                'fullAccess' => in_array($request->user()?->role, ['administrateur', 'proprietaire', 'gerant'], true),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

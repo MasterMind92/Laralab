@@ -276,7 +276,7 @@ class FactureController extends Controller
         $existante = $derniere && $derniere->statut === 'brouillon' ? $derniere : null;
 
         $appartement = $sejour->reservation->appartement;
-        $parametres = ParametreFacturation::actuel();
+        $parametres = ParametreFacturation::actuel($appartement->entreprise_id);
 
         DB::transaction(function () use ($sejour, $existante, $appartement, $parametres) {
             $facture = $existante ?? Facture::create([
@@ -367,7 +367,7 @@ class FactureController extends Controller
         $reservation = $sejour->reservation;
         $appartement = $reservation?->appartement;
         $client = $reservation?->client;
-        $parametres = ParametreFacturation::actuel();
+        $parametres = ParametreFacturation::actuel($appartement?->entreprise_id);
 
         $fmt = fn ($n) => number_format((float) $n, 0, ',', ' ').' FCFA';
 

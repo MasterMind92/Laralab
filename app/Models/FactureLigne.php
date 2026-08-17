@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['facture_id', 'type', 'designation', 'quantite', 'prix_unitaire', 'montant'])]
 class FactureLigne extends Model
 {
+    use ScopedThroughEntreprise;
+
     protected $table = 'facture_lignes';
+
+    public static function entrepriseRelationPath(): string
+    {
+        return 'facture.sejour.reservation.appartement';
+    }
 
     protected function casts(): array
     {

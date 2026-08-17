@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\EntrepriseController as AdminEntrepriseController;
+use App\Http\Controllers\Admin\PartenaireController as AdminPartenaireController;
+use App\Http\Controllers\Admin\UtilisateurController as AdminUtilisateurController;
 use App\Http\Controllers\AppartementController;
 use App\Http\Controllers\CandidatController;
 use App\Http\Controllers\CongeController;
@@ -16,6 +19,10 @@ use App\Http\Controllers\PaiementController;
 use App\Http\Controllers\ParametreFacturationController;
 use App\Http\Controllers\PartenaireController;
 use App\Http\Controllers\PlanningController;
+use App\Http\Controllers\Proprietaire\DashboardController as ProprietaireDashboardController;
+use App\Http\Controllers\Proprietaire\EncaissementController as ProprietaireEncaissementController;
+use App\Http\Controllers\Proprietaire\EquipementController as ProprietaireEquipementController;
+use App\Http\Controllers\Proprietaire\PartenaireController as ProprietairePartenaireController;
 use App\Http\Controllers\RecrutementController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\SejourController;
@@ -322,6 +329,71 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
     Route::put('parametres-facturation', [ParametreFacturationController::class, 'update'])
         ->name('parametres-facturation.update')
         ->middleware('role:compta');
+
+    // Provisioning Administrateur (Phase 09, multi-tenant) — namespace App\Http\Controllers\Admin.
+    Route::middleware('role:administrateur')->group(function () {
+        Route::get('entreprises', [AdminEntrepriseController::class, 'index'])
+            ->name('admin.entreprises.index');
+
+        Route::post('entreprises', [AdminEntrepriseController::class, 'store'])
+            ->name('admin.entreprises.store');
+
+        Route::put('entreprises/{entreprise}', [AdminEntrepriseController::class, 'update'])
+            ->name('admin.entreprises.update');
+
+        Route::delete('entreprises/{entreprise}', [AdminEntrepriseController::class, 'destroy'])
+            ->name('admin.entreprises.destroy');
+
+        Route::prefix('entreprises/{entreprise}')->group(function () {
+            Route::get('appartements', [AppartementController::class, 'indexPourEntreprise'])
+                ->name('admin.appartements.index');
+
+            Route::post('appartements', [AppartementController::class, 'storePourEntreprise'])
+                ->name('admin.appartements.store');
+
+            Route::get('utilisateurs', [AdminUtilisateurController::class, 'index'])
+                ->name('admin.utilisateurs.index');
+
+            Route::post('utilisateurs', [AdminUtilisateurController::class, 'store'])
+                ->name('admin.utilisateurs.store');
+
+            Route::put('utilisateurs/{utilisateur}', [AdminUtilisateurController::class, 'update'])
+                ->name('admin.utilisateurs.update');
+
+            Route::delete('utilisateurs/{utilisateur}', [AdminUtilisateurController::class, 'destroy'])
+                ->name('admin.utilisateurs.destroy');
+        });
+
+        Route::get('admin-partenaires', [AdminPartenaireController::class, 'index'])
+            ->name('admin.partenaires.index');
+
+        Route::post('admin-partenaires', [AdminPartenaireController::class, 'store'])
+            ->name('admin.partenaires.store');
+
+        Route::put('admin-partenaires/{partenaire}', [AdminPartenaireController::class, 'update'])
+            ->name('admin.partenaires.update');
+
+        Route::delete('admin-partenaires/{partenaire}', [AdminPartenaireController::class, 'destroy'])
+            ->name('admin.partenaires.destroy');
+    });
+
+    // Tableaux de bord Propriétaire/Gérant, scopés à leur entreprise (Phase 09).
+    Route::middleware('role:proprietaire,gerant')->group(function () {
+        Route::get('proprietaire', [ProprietaireDashboardController::class, 'index'])
+            ->name('proprietaire.dashboard');
+
+        Route::get('encaissements', [ProprietaireEncaissementController::class, 'index'])
+            ->name('proprietaire.encaissements.index');
+
+        Route::get('encaissements/export', [ProprietaireEncaissementController::class, 'export'])
+            ->name('proprietaire.encaissements.export');
+
+        Route::get('equipements-statut', [ProprietaireEquipementController::class, 'index'])
+            ->name('proprietaire.equipements.index');
+
+        Route::get('partenaires-catalogue', [ProprietairePartenaireController::class, 'index'])
+            ->name('proprietaire.partenaires.index');
+    });
 });
 
 // Source HTML pour la génération PDF serveur (Browsershot, Chrome headless) : pas de

@@ -31,7 +31,7 @@ class DemoSeeder extends Seeder
     public function run(): void
     {
         // 0) Comptes staff (au cas où ce seeder tourne seul sur une base fraîche)
-        foreach (['proprietaire', 'gerant', 'commercial', 'rh', 'compta', 'logistique', 'maintenance', 'receptionniste'] as $role) {
+        foreach (['administrateur', 'proprietaire', 'gerant', 'commercial', 'rh', 'compta', 'logistique', 'maintenance', 'receptionniste'] as $role) {
             User::firstOrCreate(
                 ['email' => "{$role}@laralab.test"],
                 ['name' => ucfirst($role), 'password' => Hash::make('12345678'), 'role' => $role, 'email_verified_at' => now()],

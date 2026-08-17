@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,10 +12,12 @@ use Carbon\CarbonInterface;
 #[Fillable([
     'numero', 'capacite', 'prix_nuit', 'statut_entretien',
     'titre', 'description', 'adresse', 'type', 'photos',
-    'chambres', 'salles_de_bain', 'surface_m2',
+    'chambres', 'salles_de_bain', 'surface_m2', 'entreprise_id',
 ])]
 class Appartement extends Model
 {
+    use BelongsToEntreprise;
+
     /**
      * Gère automatiquement `indisponible_depuis` quand `statut_entretien` change
      * (jamais à la création, seulement lors d'une vraie transition de statut).

@@ -21,15 +21,18 @@ class ReservationController extends Controller
     public function index(Request $request): Response
     {
         $client = $request->user()->client;
-        $parametres = ParametreFacturation::actuel();
 
         $reservations = $client
             ? $client->reservations()->with('appartement.reductions')->orderByDesc('date_debut')->get()
             : collect();
 
         return Inertia::render('portail-client/MyReservationsPage', [
-            'reservations' => $reservations->map(function (Reservation $reservation) use ($parametres) {
+            // Chaque appartement peut appartenir à une entreprise différente
+            // (client global) — les paramètres de facturation se résolvent par
+            // appartement, pas une seule fois pour toute la liste (Phase 09).
+            'reservations' => $reservations->map(function (Reservation $reservation) {
                 $appartement = $reservation->appartement;
+                $parametres = ParametreFacturation::actuel($appartement->entreprise_id);
                 $nights = (int) $reservation->date_debut->diffInDays($reservation->date_fin);
                 ['sous_total' => $sousTotal] = $appartement->prixPour($nights);
                 $fee = $parametres->frais_service_actif ? round($sousTotal * (float) $parametres->taux_frais_service) : 0;

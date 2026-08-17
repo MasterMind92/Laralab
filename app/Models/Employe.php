@@ -2,16 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['user_id', 'nom', 'prenom', 'poste', 'date_embauche', 'salaire_base', 'actif'])]
+#[Fillable(['user_id', 'nom', 'prenom', 'poste', 'date_embauche', 'salaire_base', 'actif', 'entreprise_id'])]
 class Employe extends Model
 {
     use SoftDeletes;
+    use BelongsToEntreprise;
 
     protected function casts(): array
     {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['sejour_id', 'numero_facture', 'montant_ht', 'montant_ttc', 'statut', 'motif_rejet', 'date_edition', 'date_echeance'])]
 class Facture extends Model
 {
+    use ScopedThroughEntreprise;
+
+    public static function entrepriseRelationPath(): string
+    {
+        return 'sejour.reservation.appartement';
+    }
     protected function casts(): array
     {
         return [

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['appartement_id', 'nuits_min', 'type', 'valeur'])]
 class Reduction extends Model
 {
+    use ScopedThroughEntreprise;
+
+    public static function entrepriseRelationPath(): string
+    {
+        return 'appartement';
+    }
     protected function casts(): array
     {
         return [

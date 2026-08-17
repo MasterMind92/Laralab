@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $roles = [
+            'administrateur',
             'proprietaire',
             'gerant',
             'commercial',

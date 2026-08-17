@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +14,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Sejour extends Model
 {
     use SoftDeletes;
+    use ScopedThroughEntreprise;
+
+    public static function entrepriseRelationPath(): string
+    {
+        return 'reservation.appartement';
+    }
 
     protected function casts(): array
     {

@@ -24,25 +24,44 @@ import {
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 
-// Rôles ayant accès à tous les pôles, quel que soit leur `roles` déclaré ci-dessous
-// (doit rester synchronisé avec App\Http\Middleware\EnsureUserHasRole côté backend).
-const FULL_ACCESS_ROLES = ['proprietaire', 'gerant'];
+// Items scopes a l'entreprise du proprietaire/gerant connecte (Phase 09, multi-tenant)
+// — communs aux deux roles, qui partagent desormais les memes vues.
+const itemsPatrimoine: NonNullable<NavItem['sub']> = [
+    { title: 'Tableau de bord', url: '/admin/proprietaire' },
+    { title: 'Appartements', url: '/admin/appartements' },
+    { title: 'Planning', url: '/admin/planning' },
+    { title: 'Encaissements', url: '/admin/encaissements' },
+    { title: 'Équipements', url: '/admin/equipements-statut' },
+    { title: 'Partenaires', url: '/admin/partenaires-catalogue' },
+    { title: 'Achats', url: '#' }, // Phase 06 (Comptabilité avancée)
+    { title: 'Dépenses', url: '#' }, // Phase 06
+    { title: 'États Financiers', url: '#' }, // Phase 06
+];
 
 const mainNavItems: NavItem[] = [
+    {
+        title: 'Administrateur',
+        href: '/admin/entreprises',
+        icon: LayoutGrid,
+        roles: ['administrateur'],
+        sub:[
+            {
+                title: "Entreprises",
+                url:"/admin/entreprises",
+            },
+            {
+                title: "Partenaires",
+                url:"/admin/admin-partenaires",
+            },
+        ]
+    },
     {
         title: 'Proprietaire',
         href: dashboard(),
         icon: LayoutGrid,
         roles: ['proprietaire'],
         sub:[
-            {
-                title: "dashboard", // KPI proprietaire en fin de parcours
-                url:"#",
-            },
-            {
-                title: "Appartements", // listes appartements lie a l'utilisateur + CRUD
-                url:"/admin/appartements",
-            },
+            ...itemsPatrimoine,
             {
                 title: "Employés", // Elements du pole RH
                 url:"/admin/employes",
@@ -66,12 +85,7 @@ const mainNavItems: NavItem[] = [
         href: dashboard(),
         icon: LayoutGrid,
         roles: ['gerant'],
-        sub:[
-            {
-                title: "Appartements",
-                url:"/admin/appartements",
-            }
-        ]
+        sub: itemsPatrimoine,
     },
     {
         title: 'RH',
@@ -109,18 +123,6 @@ const mainNavItems: NavItem[] = [
                 // valider/rejeter, validee a encaisser, payee = sejour cloture cote
                 // comptable) porte a lui seul ce qui distinguait ces 4 ecrans.
                 title: "Consultation Devis",
-                url:"/admin/factures",
-            },
-            {
-                title: "Cloture Sejours",
-                url:"/admin/factures",
-            },
-            {
-                title: "Facture du sejour",
-                url:"/admin/factures",
-            },
-            {
-                title: "Encaissements factures",
                 url:"/admin/factures",
             },
             {
@@ -249,13 +251,18 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-    const { auth } = usePage<{ auth: { user: { role: string } | null } }>().props;
+    const { auth } = usePage<{ auth: { user: { role: string } | null; fullAccess: boolean } }>().props;
     const role = auth.user?.role;
 
+    // fullAccess (administrateur+proprietaire+gerant, calcule cote serveur — voir
+    // HandleInertiaRequests) bypass tous les poles operationnels, mais jamais le
+    // bloc Administrateur lui-meme : un proprietaire/gerant n'a pas a le voir,
+    // seul un compte administrateur y accede (via la correspondance de role normale).
     const visibleNavItems = mainNavItems.filter(
         (item) =>
             !item.roles ||
-            (role !== undefined && (FULL_ACCESS_ROLES.includes(role) || item.roles.includes(role))),
+            (role !== undefined && item.roles.includes(role)) ||
+            (auth.fullAccess && !item.roles.includes('administrateur')),
     );
 
     return (

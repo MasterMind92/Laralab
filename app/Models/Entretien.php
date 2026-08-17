@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Entretien extends Model
 {
     use SoftDeletes;
+    use ScopedThroughEntreprise;
+
+    public static function entrepriseRelationPath(): string
+    {
+        return 'candidat.recrutement';
+    }
 
     protected function casts(): array
     {

@@ -25,7 +25,7 @@ class ReservationConfirmee extends Notification
 
         ['discount' => $discount, 'sous_total' => $sousTotal] = $appartement->prixPour($nights);
 
-        $parametres = ParametreFacturation::actuel();
+        $parametres = ParametreFacturation::actuel($appartement->entreprise_id);
         $fee = $parametres->frais_service_actif ? round($sousTotal * (float) $parametres->taux_frais_service) : 0;
         $total = $sousTotal + $fee;
 
