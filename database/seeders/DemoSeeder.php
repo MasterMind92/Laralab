@@ -10,6 +10,7 @@ use App\Models\ContratTravail;
 use App\Models\DemandeService;
 use App\Models\Dommage;
 use App\Models\Employe;
+use App\Models\Entreprise;
 use App\Models\Entretien;
 use App\Models\Equipement;
 use App\Models\Facture;
@@ -161,6 +162,10 @@ class DemoSeeder extends Seeder
         // employés/contrats/congés/licenciement
         $this->seedRh();
 
+        // 10) Phase 09 (multi-tenant) : 2 entreprises pleinement isolées + 1 dormante,
+        // pour QA de la scope automatique (BelongsToEntreprise/ScopedThroughEntreprise)
+        $this->seedMultiTenant($clientVedette);
+
         $this->command?->info('Démo prête — client@laralab.test / 12345678 (vérifié), réservations '.
             "en_attente=#{$resEnAttente->id} validee=#{$resValidee->id} en_cours=#{$resEnCours->id}");
     }
@@ -271,11 +276,11 @@ class DemoSeeder extends Seeder
      * Reproduit la logique de FactureController::generer() (lignes figées + totaux)
      * sans passer par le contrôleur — appelé directement en seeder, hors contexte HTTP.
      */
-    private function genererFactureDemo(Sejour $sejour, string $statutCible): Facture
+    private function genererFactureDemo(Sejour $sejour, string $statutCible, ?int $entrepriseId = null): Facture
     {
         $sejour->loadMissing(['reservation.appartement.reductions', 'demandes', 'dommages']);
         $appartement = $sejour->reservation->appartement;
-        $parametres = ParametreFacturation::actuel();
+        $parametres = ParametreFacturation::actuel($entrepriseId);
 
         $facture = Facture::updateOrCreate(
             ['sejour_id' => $sejour->id],
@@ -526,5 +531,160 @@ class DemoSeeder extends Seeder
 
         $this->command?->info('Données RH prêtes — recrutement "Réceptionniste polyvalent" #'.$recrutRecept->id.
             " couvre les 5 étapes du Kanban ; candidat #{$cAEmbaucher->id} (Bakayoko Fatoumata) prêt pour l'embauche (page Contrats).");
+    }
+
+    /**
+     * Phase 09 (multi-tenant) : 2 entreprises actives, chacune avec son propre
+     * propriétaire/gérant, appartements, employé, recrutement, paramètres de
+     * facturation et un séjour facturé/payé ce mois-ci (pour peupler le tableau de
+     * bord Propriétaire) — de quoi vérifier que chaque compte ne voit QUE les
+     * données de sa propre entreprise (BelongsToEntreprise/ScopedThroughEntreprise),
+     * que l'administrateur les voit toutes, et qu'un compte orphelin (les comptes
+     * @laralab.test créés à l'étape 0, sans entreprise_id) ne voit que les données
+     * elles-mêmes orphelines déjà seedées plus haut (comportement fail-open). Une
+     * 3ᵉ entreprise volontairement vide/suspendue teste le cas "créée mais jamais
+     * onboardée" côté admin.
+     */
+    private function seedMultiTenant(Client $client): void
+    {
+        $catalogue = Equipement::whereNull('appartement_id')->get()->keyBy('nom');
+        $affecter = function (Appartement $appartement, string $nom, string $statut = 'affecte') use ($catalogue) {
+            $modele = $catalogue[$nom] ?? null;
+            if (! $modele) {
+                return null;
+            }
+
+            return Equipement::firstOrCreate(
+                ['appartement_id' => $appartement->id, 'nom' => $nom],
+                ['type' => $modele->type, 'icone' => $modele->icone, 'statut' => $statut],
+            );
+        };
+
+        // ── Entreprise A : Résidences Konan (active) ──────────────────────────
+        $konan = Entreprise::updateOrCreate(
+            ['nom' => 'Résidences Konan'],
+            ['email_contact' => 'contact@residences-konan.test', 'telephone_contact' => '0707001122', 'adresse' => 'Cocody, Abidjan', 'statut' => 'active', 'date_activation' => now()->subMonths(6)],
+        );
+
+        User::updateOrCreate(
+            ['email' => 'proprietaire.konan@laralab.test'],
+            ['name' => 'Konan Yao', 'password' => Hash::make('12345678'), 'role' => 'proprietaire', 'entreprise_id' => $konan->id, 'actif' => true, 'email_verified_at' => now()],
+        );
+        User::updateOrCreate(
+            ['email' => 'gerant.konan@laralab.test'],
+            ['name' => 'Adjoua Marie', 'password' => Hash::make('12345678'), 'role' => 'gerant', 'entreprise_id' => $konan->id, 'actif' => true, 'email_verified_at' => now()],
+        );
+
+        $kApt1 = Appartement::updateOrCreate(
+            ['numero' => 'K-201'],
+            ['entreprise_id' => $konan->id, 'titre' => 'Duplex Konan', 'type' => 't3', 'capacite' => 5, 'chambres' => 2, 'salles_de_bain' => 2, 'surface_m2' => 85, 'prix_nuit' => 20000, 'adresse' => 'Cocody, Abidjan', 'statut_entretien' => 'propre'],
+        );
+        $kApt2 = Appartement::updateOrCreate(
+            ['numero' => 'K-202'],
+            ['entreprise_id' => $konan->id, 'titre' => 'Studio Konan', 'type' => 'studio', 'capacite' => 2, 'chambres' => 1, 'salles_de_bain' => 1, 'surface_m2' => 25, 'prix_nuit' => 8000, 'adresse' => 'Cocody, Abidjan', 'statut_entretien' => 'en_maintenance'],
+        );
+        $affecter($kApt1, 'Wifi haut débit');
+        if ($climKonan = $affecter($kApt1, 'Climatisation')) {
+            $climKonan->update(['statut' => 'en_panne']);
+        }
+
+        $userReceptionKonan = User::updateOrCreate(
+            ['email' => 'receptionniste.konan@laralab.test'],
+            ['name' => 'Aya N\'Dri', 'password' => Hash::make('12345678'), 'role' => 'receptionniste', 'entreprise_id' => $konan->id, 'actif' => true, 'email_verified_at' => now()],
+        );
+        Employe::updateOrCreate(
+            ['user_id' => $userReceptionKonan->id],
+            ['entreprise_id' => $konan->id, 'nom' => "N'Dri", 'prenom' => 'Aya', 'poste' => 'Réceptionniste', 'date_embauche' => now()->subMonths(4)->toDateString(), 'salaire_base' => null, 'actif' => true],
+        );
+
+        Recrutement::updateOrCreate(
+            ['poste' => 'Femme de chambre', 'departement' => 'Housekeeping', 'entreprise_id' => $konan->id],
+            ['nombre_postes' => 1, 'type_contrat_propose' => 'cdd', 'priorite' => 'normale', 'motif' => 'renforcement_equipe', 'lieu' => 'Cocody, Abidjan', 'statut' => 'validee', 'date_validation' => now()->subDays(5)->toDateString()],
+        );
+
+        ParametreFacturation::actuel($konan->id)->update([
+            'frais_service_actif' => true, 'taux_frais_service' => 0.10,
+            'tva_active' => true, 'taux_tva' => 0.18,
+            'acompte_actif' => true,
+        ]);
+
+        $kRes = Reservation::updateOrCreate(
+            ['appartement_id' => $kApt1->id, 'client_id' => $client->id, 'date_debut' => now()->subDays(6)->toDateString(), 'date_fin' => now()->subDays(3)->toDateString()],
+            ['statut' => 'validee', 'nombre_personnes' => 3],
+        );
+        $kSejour = Sejour::updateOrCreate(
+            ['reservation_id' => $kRes->id],
+            ['date_entree' => now()->subDays(6)->toDateString(), 'date_sortie' => now()->subDays(3)->toDateString(), 'etat_lieux_entree' => "État général : Bon\nRAS", 'etat_lieux_sortie' => "État général : Bon\nRAS", 'statut' => 'cloture'],
+        );
+        $kFacture = $this->genererFactureDemo($kSejour, 'validee', $konan->id);
+        Paiement::updateOrCreate(
+            ['facture_id' => $kFacture->id, 'reference_transaction' => 'DEMO-KONAN-'.$kFacture->id],
+            ['montant' => $kFacture->montant_ttc, 'mode_paiement' => 'mobile_money', 'date_paiement' => now()->subDays(3)],
+        );
+        $kFacture->update(['statut' => 'payee']);
+
+        // ── Entreprise B : Hôtel Bayo (essai) ─────────────────────────────────
+        $bayo = Entreprise::updateOrCreate(
+            ['nom' => 'Hôtel Bayo'],
+            ['email_contact' => 'contact@hotel-bayo.test', 'telephone_contact' => '0759332211', 'adresse' => 'Marcory, Abidjan', 'statut' => 'essai', 'date_activation' => now()->subDays(20)],
+        );
+
+        User::updateOrCreate(
+            ['email' => 'proprietaire.bayo@laralab.test'],
+            ['name' => 'Bayo Ibrahim', 'password' => Hash::make('12345678'), 'role' => 'proprietaire', 'entreprise_id' => $bayo->id, 'actif' => true, 'email_verified_at' => now()],
+        );
+        User::updateOrCreate(
+            ['email' => 'gerant.bayo@laralab.test'],
+            ['name' => 'Diallo Aminata', 'password' => Hash::make('12345678'), 'role' => 'gerant', 'entreprise_id' => $bayo->id, 'actif' => true, 'email_verified_at' => now()],
+        );
+
+        $bApt1 = Appartement::updateOrCreate(
+            ['numero' => 'B-301'],
+            ['entreprise_id' => $bayo->id, 'titre' => 'Chambre Bayo', 'type' => 'studio', 'capacite' => 2, 'chambres' => 1, 'salles_de_bain' => 1, 'surface_m2' => 22, 'prix_nuit' => 7000, 'adresse' => 'Marcory, Abidjan', 'statut_entretien' => 'propre'],
+        );
+        $affecter($bApt1, 'Climatisation');
+
+        $userAgentBayo = User::updateOrCreate(
+            ['email' => 'maintenance.bayo@laralab.test'],
+            ['name' => 'Traore Karim', 'password' => Hash::make('12345678'), 'role' => 'maintenance', 'entreprise_id' => $bayo->id, 'actif' => true, 'email_verified_at' => now()],
+        );
+        Employe::updateOrCreate(
+            ['user_id' => $userAgentBayo->id],
+            ['entreprise_id' => $bayo->id, 'nom' => 'Traore', 'prenom' => 'Karim', 'poste' => "Agent d'entretien", 'date_embauche' => now()->subMonths(2)->toDateString(), 'salaire_base' => null, 'actif' => true],
+        );
+
+        Recrutement::updateOrCreate(
+            ['poste' => 'Gérant adjoint', 'departement' => 'Direction', 'entreprise_id' => $bayo->id],
+            ['nombre_postes' => 1, 'type_contrat_propose' => 'cdi', 'priorite' => 'haute', 'motif' => 'creation_poste', 'lieu' => 'Marcory, Abidjan', 'statut' => 'en_attente_validation'],
+        );
+
+        ParametreFacturation::actuel($bayo->id)->update([
+            'frais_service_actif' => true, 'taux_frais_service' => 0.08,
+            'tva_active' => false,
+            'acompte_actif' => false,
+        ]);
+
+        $bRes = Reservation::updateOrCreate(
+            ['appartement_id' => $bApt1->id, 'client_id' => $client->id, 'date_debut' => now()->subDays(8)->toDateString(), 'date_fin' => now()->subDays(6)->toDateString()],
+            ['statut' => 'validee', 'nombre_personnes' => 1],
+        );
+        $bSejour = Sejour::updateOrCreate(
+            ['reservation_id' => $bRes->id],
+            ['date_entree' => now()->subDays(8)->toDateString(), 'date_sortie' => now()->subDays(6)->toDateString(), 'etat_lieux_entree' => "État général : Bon\nRAS", 'etat_lieux_sortie' => "État général : Bon\nRAS", 'statut' => 'cloture'],
+        );
+        $bFacture = $this->genererFactureDemo($bSejour, 'validee', $bayo->id);
+        Paiement::updateOrCreate(
+            ['facture_id' => $bFacture->id, 'reference_transaction' => 'DEMO-BAYO-'.$bFacture->id],
+            ['montant' => $bFacture->montant_ttc, 'mode_paiement' => 'especes', 'date_paiement' => now()->subDays(6)],
+        );
+        $bFacture->update(['statut' => 'payee']);
+
+        // ── Entreprise C : Villa Émeraude (suspendue, jamais onboardée) ───────
+        Entreprise::updateOrCreate(
+            ['nom' => 'Villa Émeraude'],
+            ['email_contact' => null, 'telephone_contact' => null, 'adresse' => 'Assinie', 'statut' => 'suspendue', 'date_activation' => null, 'notes' => 'Dossier en pause — aucun compte propriétaire créé pour l\'instant.'],
+        );
+
+        $this->command?->info("Multi-tenant prêt — Résidences Konan (#{$konan->id}, active) et Hôtel Bayo (#{$bayo->id}, essai) isolées l'une de l'autre ; Villa Émeraude (suspendue, sans compte) pour tester l'onboarding admin.");
     }
 }

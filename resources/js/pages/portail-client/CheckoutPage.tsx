@@ -389,7 +389,7 @@ export default function CheckoutPage({
             {pricing.acompte_actif && nights > 0 && (
               <div className="bg-white rounded-xl border border-[rgb(var(--gold))]/12 p-6 mb-5">
                 <h3 className="font-['Cormorant_Garamond'] text-2xl flex items-center gap-2 mb-5 pb-3 border-b border-[rgb(var(--gold))]/10">
-                  <Shield size={16} className="text-[rgb(var(--gold))]" /> Acompte à verser pour réservation
+                  <Shield size={16} className="text-[rgb(var(--gold))]" /> Confirmer votre reservation
                 </h3>
 
                 {nights === 1 ? (
