@@ -24,14 +24,28 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 
-type StatutEquipement = 'stock' | 'affecte' | 'en_panne';
+type StatutEquipement = 'stock' | 'affecte' | 'en_panne' | 'reforme';
+
+type EtapeIntervention =
+    | 'signalee' | 'planifiee' | 'technicien_affecte' | 'en_cours' | 'reparee' | 'controlee' | 'cloturee' | 'reformee';
 
 type InterventionResume = {
     id: number;
     description_panne: string;
     date_signalement: string;
     date_resolution: string | null;
-    statut: 'signalee' | 'en_cours' | 'resolue';
+    etape: EtapeIntervention;
+};
+
+const ETAPE_LABELS: Record<EtapeIntervention, string> = {
+    signalee: 'Signalée',
+    planifiee: 'Planifiée',
+    technicien_affecte: 'Technicien affecté',
+    en_cours: 'En cours',
+    reparee: 'Réparée',
+    controlee: 'Contrôlée',
+    cloturee: 'Clôturée',
+    reformee: 'Réformée',
 };
 
 type EquipementResume = {
@@ -56,12 +70,14 @@ const STATUT_LABELS: Record<StatutEquipement, string> = {
     stock: 'En stock',
     affecte: 'Affecté',
     en_panne: 'En panne',
+    reforme: 'Réformé',
 };
 
 const STATUT_VARIANTS: Record<StatutEquipement, 'default' | 'secondary' | 'destructive'> = {
     stock: 'secondary',
     affecte: 'default',
     en_panne: 'destructive',
+    reforme: 'destructive',
 };
 
 const ALL_STATUTS_VALUE = '__all__';
@@ -213,6 +229,7 @@ export default function EquipementsSuivi({
                                 <SelectItem value="stock">En stock</SelectItem>
                                 <SelectItem value="affecte">Affecté</SelectItem>
                                 <SelectItem value="en_panne">En panne</SelectItem>
+                                <SelectItem value="reforme">Réformé</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -260,8 +277,8 @@ export default function EquipementsSuivi({
                                             <div key={intervention.id} className="rounded-md border p-2 text-xs">
                                                 <div className="flex items-center justify-between mb-1">
                                                     <span className="font-medium">{fmt(intervention.date_signalement)}</span>
-                                                    <Badge variant={intervention.statut === 'resolue' ? 'default' : 'secondary'}>
-                                                        {intervention.statut}
+                                                    <Badge variant={['cloturee', 'reformee'].includes(intervention.etape) ? 'default' : 'secondary'}>
+                                                        {ETAPE_LABELS[intervention.etape]}
                                                     </Badge>
                                                 </div>
                                                 <p>{intervention.description_panne}</p>

@@ -27,7 +27,7 @@ class InterventionController extends Controller
     {
         $filters = $request->validate([
             'appartement_id' => ['nullable', 'integer', 'exists:appartements,id'],
-            'statut' => ['nullable', 'in:stock,affecte,en_panne'],
+            'statut' => ['nullable', 'in:stock,affecte,en_panne,reforme'],
             'date_debut' => ['nullable', 'date'],
             'date_fin' => ['nullable', 'date'],
         ]);
@@ -72,10 +72,10 @@ class InterventionController extends Controller
             Intervention::create([
                 'equipement_id' => $equipement->id,
                 'appartement_id' => $equipement->appartement_id,
-                'employe_id' => $request->user()->employe?->id,
+                'declarant_employe_id' => $request->user()->employe?->id,
                 'description_panne' => $data['description_panne'],
                 'date_signalement' => now(),
-                'statut' => 'signalee',
+                'etape' => 'signalee',
             ]);
 
             $equipement->update(['statut' => 'en_panne']);
@@ -112,13 +112,13 @@ class InterventionController extends Controller
 
         return $this->streamCsv(
             'interventions.csv',
-            ['ID', 'Appartement', 'Équipement', 'Description', 'Statut', 'Signalée le'],
+            ['ID', 'Appartement', 'Équipement', 'Description', 'Étape', 'Signalée le'],
             $interventions->map(fn (Intervention $i) => [
                 $i->id,
                 $i->appartement?->numero,
                 $i->equipement?->nom,
                 $i->description_panne,
-                $i->statut,
+                $i->etape,
                 $i->date_signalement->toDateString(),
             ]),
         );

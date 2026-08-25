@@ -5,7 +5,7 @@ import { DataTable } from '@/components/data-table/data-table';
 
 type InterventionResume = {
     id: number;
-    statut: 'signalee' | 'en_cours' | 'resolue';
+    etape: 'signalee' | 'planifiee' | 'technicien_affecte' | 'en_cours' | 'reparee' | 'controlee' | 'cloturee' | 'reformee';
     description_panne: string | null;
     date_signalement: string;
 };
@@ -14,16 +14,17 @@ type EquipementResume = {
     id: number;
     nom: string;
     type: string | null;
-    statut: 'stock' | 'affecte' | 'en_panne';
+    statut: 'stock' | 'affecte' | 'en_panne' | 'reforme';
     appartement: { id: number; numero: string; titre: string | null } | null;
     interventions: InterventionResume[];
 };
 
-const STATUT_LABELS: Record<string, string> = { stock: 'En stock', affecte: 'Affecté', en_panne: 'En panne' };
+const STATUT_LABELS: Record<string, string> = { stock: 'En stock', affecte: 'Affecté', en_panne: 'En panne', reforme: 'Réformé' };
 const STATUT_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive'> = {
     stock: 'secondary',
     affecte: 'default',
     en_panne: 'destructive',
+    reforme: 'destructive',
 };
 
 export default function Equipements({ equipements }: { equipements: EquipementResume[] }) {

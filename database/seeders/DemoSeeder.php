@@ -144,14 +144,14 @@ class DemoSeeder extends Seeder
         if ($equipA101) {
             Intervention::updateOrCreate(
                 ['equipement_id' => $equipA101->id, 'description_panne' => 'Télécommande ne répond plus'],
-                ['appartement_id' => $a['A-101']->id, 'date_signalement' => now()->subDay(), 'statut' => 'signalee'],
+                ['appartement_id' => $a['A-101']->id, 'date_signalement' => now()->subDay(), 'etape' => 'signalee', 'priorite' => 'normale'],
             );
             $equipA101->update(['statut' => 'en_panne']);
         }
         if ($equipA103) {
             Intervention::updateOrCreate(
                 ['equipement_id' => $equipA103->id, 'description_panne' => 'Filtration bruyante la nuit'],
-                ['appartement_id' => $a['A-103']->id, 'date_signalement' => now()->subDays(3), 'date_resolution' => now()->subDay(), 'statut' => 'resolue'],
+                ['appartement_id' => $a['A-103']->id, 'date_signalement' => now()->subDays(3), 'date_resolution' => now()->subDay(), 'etape' => 'cloturee', 'priorite' => 'basse'],
             );
         }
 

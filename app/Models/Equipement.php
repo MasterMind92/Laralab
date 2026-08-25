@@ -16,13 +16,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * explicitement faire ->whereNotNull('appartement_id')->whereHas('appartement') — ce
  * whereHas beneficie quand meme du scope automatique d'Appartement (Phase 09).
  */
-#[Fillable(['nom', 'type', 'icone', 'date_achat', 'statut', 'employe_id', 'appartement_id'])]
+#[Fillable([
+    'nom', 'type', 'icone', 'date_achat', 'statut', 'employe_id', 'appartement_id',
+    'numero_serie', 'garantie_fin', 'contrat_maintenance', 'contrat_reference', 'contrat_echeance', 'date_reforme',
+])]
 class Equipement extends Model
 {
     protected function casts(): array
     {
         return [
             'date_achat' => 'date',
+            'garantie_fin' => 'date',
+            'contrat_maintenance' => 'boolean',
+            'contrat_echeance' => 'date',
+            'date_reforme' => 'date',
         ];
     }
 
@@ -39,5 +46,20 @@ class Equipement extends Model
     public function interventions(): HasMany
     {
         return $this->hasMany(Intervention::class);
+    }
+
+    /**
+     * Garantie en cours au moment de l'appel (R7) — distinct de Intervention.sous_garantie,
+     * qui fige cette même information au moment où une panne est déclarée et ne doit
+     * jamais être recalculée rétroactivement.
+     */
+    public function estSousGarantie(): bool
+    {
+        return $this->garantie_fin !== null && $this->garantie_fin->isFuture();
+    }
+
+    public function aContratMaintenanceActif(): bool
+    {
+        return $this->contrat_maintenance && (! $this->contrat_echeance || $this->contrat_echeance->isFuture());
     }
 }

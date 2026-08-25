@@ -44,9 +44,18 @@ class Employe extends Model
         return $this->hasMany(Equipement::class);
     }
 
+    /**
+     * Interventions déclarées par cet employé (Phase 05) — employe_id a été éclaté en
+     * declarant_employe_id/technicien_employe_id, cette relation suit le déclarant.
+     */
     public function interventions(): HasMany
     {
-        return $this->hasMany(Intervention::class);
+        return $this->hasMany(Intervention::class, 'declarant_employe_id');
+    }
+
+    public function interventionsRepareesEnTantQueTechnicien(): HasMany
+    {
+        return $this->hasMany(Intervention::class, 'technicien_employe_id');
     }
 
     public function depensesValidees(): HasMany
