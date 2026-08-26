@@ -18,10 +18,13 @@ export function ExportDialog({ exportUrl }: { exportUrl: string }) {
     const [to, setTo] = useState('');
 
     function download() {
-        const params = new URLSearchParams();
-        if (from) params.set('from', from);
-        if (to) params.set('to', to);
-        window.location.href = params.size ? `${exportUrl}?${params.toString()}` : exportUrl;
+        // exportUrl peut deja porter des filtres (ex. la page Suivi interventions y
+        // reporte ses criteres d'ecran) : on fusionne dans la query existante au lieu
+        // de concatener un second '?', qui casserait l'URL.
+        const url = new URL(exportUrl, window.location.origin);
+        if (from) url.searchParams.set('from', from);
+        if (to) url.searchParams.set('to', to);
+        window.location.href = url.toString();
         setOpen(false);
     }
 

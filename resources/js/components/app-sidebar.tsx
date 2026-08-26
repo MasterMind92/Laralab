@@ -187,18 +187,25 @@ const mainNavItems: NavItem[] = [
         roles: ['maintenance'],
         sub:[
             {
+                title: "Tableau de bord",
+                url:"/admin/maintenance",
+            },
+            {
                 title: "Prise en charge pannes",
-                url:"#",
+                url:"/admin/maintenance/pannes",
             },
             {
                 title: "Suivi interventions",
-                url:"#",
+                url:"/admin/maintenance/interventions",
             },
             {
                 title: "Reparations",
+                url:"/admin/maintenance/reparations",
+            },
+            {
+                title: "Parc equipements", // Phase 05 (etape C) : garantie, contrat, reforme
                 url:"#",
             },
-
         ]
     },
     {

@@ -6,6 +6,8 @@ use App\Http\Controllers\Concerns\ExportsCsv;
 use App\Models\Appartement;
 use App\Models\Equipement;
 use App\Models\Intervention;
+use App\Models\ParametreMaintenance;
+use App\Support\HeuresOuvrees;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -58,25 +60,47 @@ class InterventionController extends Controller
      * Signale une panne sur un équipement : crée l'Intervention et fait passer
      * l'équipement en 'en_panne' (décision actée — la résolution reste hors périmètre
      * du réceptionniste, qui se contente de signaler).
+     *
+     * C'est ici, et nulle part ailleurs, que sont armés les deux champs que le pôle
+     * Maintenance consomme ensuite sans jamais les recalculer :
+     *  - sla_echeance (R2), dérivée de la priorité déclarée et des heures ouvrées de
+     *    l'entreprise. Figée une fois pour toutes : changer les paramètres SLA ne doit
+     *    pas déplacer rétroactivement l'échéance des pannes déjà déclarées.
+     *  - sous_garantie (R7), photographie de l'état de garantie de l'équipement à
+     *    l'instant du signalement. Hors Fillable, donc écrit par forceFill().
      */
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'equipement_id' => ['required', 'integer', 'exists:equipements,id'],
             'description_panne' => ['required', 'string'],
+            'priorite' => ['required', 'in:basse,normale,haute,critique'],
         ]);
 
         $equipement = Equipement::findOrFail($data['equipement_id']);
 
         DB::transaction(function () use ($equipement, $data, $request) {
-            Intervention::create([
+            // Paramètres de l'entreprise de l'utilisateur connecté : le réceptionniste
+            // qui signale et l'appartement concerné appartiennent à la même entreprise
+            // (le global scope d'Appartement le garantit sur la liste d'où vient l'appel).
+            $parametres = ParametreMaintenance::actuel();
+            $signalement = now();
+
+            $intervention = new Intervention([
                 'equipement_id' => $equipement->id,
                 'appartement_id' => $equipement->appartement_id,
                 'declarant_employe_id' => $request->user()->employe?->id,
                 'description_panne' => $data['description_panne'],
-                'date_signalement' => now(),
+                'priorite' => $data['priorite'],
+                'date_signalement' => $signalement,
+                'sla_echeance' => HeuresOuvrees::ajouter(
+                    $signalement->copy(),
+                    $parametres->heuresPour($data['priorite']),
+                    $parametres,
+                ),
                 'etape' => 'signalee',
             ]);
+            $intervention->forceFill(['sous_garantie' => $equipement->estSousGarantie()])->save();
 
             $equipement->update(['statut' => 'en_panne']);
         });

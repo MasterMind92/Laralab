@@ -103,7 +103,9 @@ export default function EquipementsSuivi({
     const [appartementId, setAppartementId] = useState(filters.appartement_id ? String(filters.appartement_id) : ALL_STATUTS_VALUE);
     const [statut, setStatut] = useState<string>(filters.statut ?? ALL_STATUTS_VALUE);
 
-    const form = useForm({ equipement_id: '', description_panne: '' });
+    // priorite pilote le SLA de prise en charge cote Maintenance (Phase 05, R2) :
+    // l'echeance est calculee a la declaration et n'est plus jamais recalculee.
+    const form = useForm({ equipement_id: '', description_panne: '', priorite: 'normale' });
     const { data, setData, errors, processing } = form;
 
     function openSignalement(equipement: EquipementResume) {
@@ -298,6 +300,25 @@ export default function EquipementsSuivi({
                         <DialogTitle>Signaler une panne — {signalement?.nom}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={submit} className="space-y-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="priorite">Priorité</Label>
+                            <Select value={data.priorite} onValueChange={(value) => setData('priorite', value)}>
+                                <SelectTrigger id="priorite">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="basse">Basse</SelectItem>
+                                    <SelectItem value="normale">Normale</SelectItem>
+                                    <SelectItem value="haute">Haute</SelectItem>
+                                    <SelectItem value="critique">Critique</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-muted-foreground text-xs">
+                                Détermine le délai de prise en charge attendu de la maintenance.
+                            </p>
+                            {errors.priorite && <p className="text-sm text-destructive">{errors.priorite}</p>}
+                        </div>
+
                         <div className="grid gap-2">
                             <Label htmlFor="description_panne">Description de la panne</Label>
                             <textarea

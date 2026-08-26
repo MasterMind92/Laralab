@@ -12,8 +12,10 @@ use App\Http\Controllers\DommageController;
 use App\Http\Controllers\EmployeController;
 use App\Http\Controllers\EntretienController;
 use App\Http\Controllers\FactureController;
+use App\Http\Controllers\InterventionActionController;
 use App\Http\Controllers\InterventionController;
 use App\Http\Controllers\LicenciementController;
+use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\OnboardingTacheController;
 use App\Http\Controllers\PaiementController;
 use App\Http\Controllers\PaiementReservationController;
@@ -58,9 +60,45 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
         ->name('comptabilite')
         ->middleware('role:compta');
 
-    Route::inertia('maintenance', 'dashboard-maintenance')
-        ->name('maintenance')
-        ->middleware('role:maintenance');
+    // Pole Maintenance (Phase 05, etape B) : les 3 items du menu ont enfin leurs
+    // ecrans. Le middleware est pose une seule fois sur le groupe — 'maintenance'
+    // reste le nom de la route racine, deja cible par le sidebar.
+    Route::middleware('role:maintenance')->group(function () {
+        Route::get('maintenance', [MaintenanceController::class, 'dashboard'])
+            ->name('maintenance');
+
+        Route::get('maintenance/pannes', [MaintenanceController::class, 'pannes'])
+            ->name('maintenance.pannes');
+
+        Route::get('maintenance/interventions', [MaintenanceController::class, 'interventions'])
+            ->name('maintenance.interventions');
+
+        // Declaree avant la route parametree : sinon 'export' serait capture comme un id.
+        Route::get('maintenance/interventions/export', [MaintenanceController::class, 'export'])
+            ->name('maintenance.export');
+
+        Route::get('maintenance/reparations', [MaintenanceController::class, 'reparations'])
+            ->name('maintenance.reparations');
+
+        Route::patch('maintenance/interventions/{intervention}/planifier', [MaintenanceController::class, 'planifier'])
+            ->name('maintenance.planifier');
+
+        Route::patch('maintenance/interventions/{intervention}/affecter', [MaintenanceController::class, 'affecter'])
+            ->name('maintenance.affecter');
+
+        Route::patch('maintenance/interventions/{intervention}/prise-en-charge', [MaintenanceController::class, 'prendreEnCharge'])
+            ->name('maintenance.prise-en-charge');
+
+        // Transition generique du workflow, gardee par Intervention::TRANSITIONS.
+        Route::patch('maintenance/interventions/{intervention}/etape', [MaintenanceController::class, 'changerEtape'])
+            ->name('maintenance.etape');
+
+        Route::post('maintenance/interventions/{intervention}/actions', [InterventionActionController::class, 'store'])
+            ->name('maintenance.actions.store');
+
+        Route::delete('maintenance/actions/{action}', [InterventionActionController::class, 'destroy'])
+            ->name('maintenance.actions.destroy');
+    });
 
     Route::inertia('logistique', 'dashboard-logistique')
         ->name('logistique')

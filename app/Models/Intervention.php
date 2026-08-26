@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,8 +27,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 ])]
 class Intervention extends Model
 {
-    use SoftDeletes;
     use ScopedThroughEntreprise;
+    use SoftDeletes;
 
     /**
      * Source de vérité unique du workflow (Phase 05, R9) — statutMacro() en dérive une
@@ -38,6 +39,12 @@ class Intervention extends Model
     public const ETAPES = [
         'signalee', 'planifiee', 'technicien_affecte', 'en_cours', 'reparee', 'controlee', 'cloturee', 'reformee',
     ];
+
+    /**
+     * Les deux issues terminales (R9) : plus aucune transition possible, et le SLA de
+     * prise en charge n'a plus de sens (voir slaDepasse()).
+     */
+    public const ETAPES_TERMINALES = ['cloturee', 'reformee'];
 
     public const TRANSITIONS = [
         'signalee' => ['planifiee', 'technicien_affecte', 'en_cours'],
@@ -136,11 +143,46 @@ class Intervention extends Model
             return $this->date_prise_en_charge->gt($this->sla_echeance);
         }
 
-        if (in_array($this->etape, ['cloturee', 'reformee'], true)) {
+        if (in_array($this->etape, self::ETAPES_TERMINALES, true)) {
             return false;
         }
 
         return now()->gt($this->sla_echeance);
+    }
+
+    /**
+     * Version SQL de slaDepasse(), pour les compteurs et les filtres de liste : la même
+     * règle ne peut pas s'exprimer en PHP sur une collection déjà chargée quand on veut
+     * la compter en base. Les deux doivent rester alignées — toute modification de l'une
+     * se répercute sur l'autre.
+     *
+     * Nommé horsDelai et non slaDepasse : un scope homonyme d'une méthode d'instance
+     * rendrait Intervention::slaDepasse() impossible en appel statique (PHP trouve la
+     * méthode non statique avant d'atteindre __callStatic, et lève une Error).
+     */
+    public function scopeHorsDelai(Builder $query): Builder
+    {
+        return $query->whereNotNull('sla_echeance')->where(function (Builder $q) {
+            $q->whereColumn('date_prise_en_charge', '>', 'sla_echeance')
+                ->orWhere(fn (Builder $sousRequete) => $sousRequete
+                    ->whereNull('date_prise_en_charge')
+                    ->whereNotIn('etape', self::ETAPES_TERMINALES)
+                    ->where('sla_echeance', '<', now()));
+        });
+    }
+
+    public function scopeOuvertes(Builder $query): Builder
+    {
+        return $query->whereNotIn('etape', self::ETAPES_TERMINALES);
+    }
+
+    /**
+     * Garde unique du workflow : aucune route ne doit écrire `etape` sans passer par ici
+     * (voir MaintenanceController::changerEtape()).
+     */
+    public function peutPasserA(string $etape): bool
+    {
+        return in_array($etape, self::TRANSITIONS[$this->etape] ?? [], true);
     }
 
     public function recalculerCout(): void

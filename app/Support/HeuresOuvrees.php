@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\ParametreMaintenance;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
 /**
@@ -13,7 +14,16 @@ use Illuminate\Support\Carbon;
  */
 class HeuresOuvrees
 {
-    public static function ajouter(Carbon $depart, float $heures, ParametreMaintenance $parametres): Carbon
+    /**
+     * Accepte n'importe quelle implémentation Carbon car l'application enregistre
+     * CarbonImmutable comme classe de date par défaut (AppServiceProvider) : now() et
+     * tous les casts `datetime` des modèles renvoient donc des instances IMMUABLES.
+     * L'algorithme ci-dessous avance un curseur par mutations successives — sur une
+     * instance immuable, addDay()/setTimeFromTimeString() seraient sans effet et
+     * prochainInstantOuvre() boucherait indéfiniment. D'où la normalisation en
+     * Illuminate\Support\Carbon (mutable) dès l'entrée, une fois pour toutes.
+     */
+    public static function ajouter(CarbonInterface $depart, float $heures, ParametreMaintenance $parametres): Carbon
     {
         $joursOuvres = $parametres->jours_ouvres ?? [1, 2, 3, 4, 5, 6];
         $ouverture = $parametres->heure_ouverture;
@@ -23,7 +33,12 @@ class HeuresOuvrees
             throw new \InvalidArgumentException('parametres_maintenance.jours_ouvres ne peut pas être vide (aucun jour ouvré ne permettrait jamais de trouver un instant ouvert).');
         }
 
-        $curseur = self::prochainInstantOuvre($depart->copy(), $joursOuvres, $ouverture, $fermeture);
+        $curseur = self::prochainInstantOuvre(
+            Carbon::instance($depart->toDateTime()),
+            $joursOuvres,
+            $ouverture,
+            $fermeture,
+        );
         $minutesRestantes = (int) round($heures * 60);
 
         while ($minutesRestantes > 0) {
