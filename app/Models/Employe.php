@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,8 +13,22 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['user_id', 'nom', 'prenom', 'poste', 'date_embauche', 'salaire_base', 'actif', 'entreprise_id'])]
 class Employe extends Model
 {
-    use SoftDeletes;
     use BelongsToEntreprise;
+    use SoftDeletes;
+
+    /**
+     * Mots-clés identifiant un poste de technicien du pôle Maintenance, pour ne proposer
+     * qu'eux à l'affectation d'une intervention (Phase 05).
+     *
+     * Filtrage par MOTS-CLÉS et non par liste fermée d'intitulés, parce que `poste` est
+     * un champ texte libre saisi par les RH (décision actée le 2026-08-26 : les rôles
+     * métiers sont des valeurs de `poste`, pas des rôles système). Une liste fermée
+     * ferait silencieusement disparaître du sélecteur tout intitulé légitime mais non
+     * prévu — « Technicienne CVC », « Chargé de maintenance », « Technicien polyvalent ».
+     * Conséquence à connaître : un poste sans aucun de ces mots (ex. « Plombier ») ne
+     * sera PAS proposé ; c'est l'intitulé RH qu'il faut alors ajuster, ou cette liste.
+     */
+    public const MOTSCLES_POSTE_MAINTENANCE = ['technicien', 'maintenance'];
 
     protected function casts(): array
     {
@@ -42,6 +57,20 @@ class Employe extends Model
     public function equipements(): HasMany
     {
         return $this->hasMany(Equipement::class);
+    }
+
+    /**
+     * Les employés affectables à une intervention de maintenance — voir
+     * MOTSCLES_POSTE_MAINTENANCE pour le pourquoi du filtrage par mot-clé.
+     * La casse est ignorée : la collation MySQL du projet est insensible à la casse.
+     */
+    public function scopeTechniciensMaintenance(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            foreach (self::MOTSCLES_POSTE_MAINTENANCE as $motCle) {
+                $q->orWhere('poste', 'like', '%'.$motCle.'%');
+            }
+        });
     }
 
     /**

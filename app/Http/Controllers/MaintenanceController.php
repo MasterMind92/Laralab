@@ -332,11 +332,21 @@ class MaintenanceController extends Controller
     }
 
     /**
+     * Les employés proposables à l'affectation : uniquement les techniciens du pôle
+     * (voir Employe::MOTSCLES_POSTE_MAINTENANCE), et uniquement les actifs. Avant, tout
+     * employé actif était proposé — un réceptionniste pouvait être affecté à une panne.
+     *
+     * Ce filtre ne sécurise RIEN à lui seul : la règle `exists:employes,id` de affecter()
+     * accepte toujours n'importe quel identifiant existant sur une requête forgée. C'est
+     * une aide à la saisie, pas un contrôle d'accès (voir la faille de cloisonnement
+     * consignée pour la Phase 08).
+     *
      * @return array<int, array<string, mixed>>
      */
     private function techniciens(): array
     {
         return Employe::where('actif', true)
+            ->techniciensMaintenance()
             ->orderBy('nom')
             ->get(['id', 'nom', 'prenom', 'poste'])
             ->map(fn (Employe $e) => ['id' => $e->id, 'nom' => $e->nom, 'prenom' => $e->prenom, 'poste' => $e->poste])

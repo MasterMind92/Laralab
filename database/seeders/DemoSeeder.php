@@ -15,16 +15,19 @@ use App\Models\Entretien;
 use App\Models\Equipement;
 use App\Models\Facture;
 use App\Models\Intervention;
+use App\Models\InterventionAction;
 use App\Models\Licenciement;
 use App\Models\OnboardingTache;
-use App\Models\ParametreFacturation;
 use App\Models\Paiement;
+use App\Models\ParametreFacturation;
+use App\Models\ParametreMaintenance;
 use App\Models\Partenaire;
 use App\Models\Recrutement;
 use App\Models\Reduction;
 use App\Models\Reservation;
 use App\Models\Sejour;
 use App\Models\User;
+use App\Support\HeuresOuvrees;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -91,10 +94,16 @@ class DemoSeeder extends Seeder
                 );
             }
         };
-        $affecter($a['A-101'], ['Wifi haut débit', 'Climatisation', 'Smart TV 4K']);
-        $affecter($a['A-102'], ['Wifi haut débit', 'Climatisation']);
-        $affecter($a['A-103'], ['Wifi haut débit', 'Climatisation', 'Piscine privée', 'Parking privé', 'Conciergerie']);
-        $affecter($a['A-105'], ['Wifi haut débit', 'Cuisine équipée', 'Parking privé']);
+        // Parc volontairement fourni : le pole Maintenance a besoin d'assez de materiel
+        // distinct pour que les 8 etapes du workflow soient peuplees simultanement
+        // (voir seedMaintenance()). Les intitules restent ceux du catalogue client —
+        // cette table sert AUSSI la liste d'equipements affichee sur le portail public,
+        // on n'y injecte donc pas de materiel technique qui n'a rien a y faire.
+        $affecter($a['A-101'], ['Wifi haut débit', 'Climatisation', 'Smart TV 4K', 'Cuisine équipée', 'Machine à laver', 'Accès sécurisé']);
+        $affecter($a['A-102'], ['Wifi haut débit', 'Climatisation', 'Smart TV 4K', 'Cuisine équipée']);
+        $affecter($a['A-103'], ['Wifi haut débit', 'Climatisation', 'Smart TV 4K', 'Cuisine équipée', 'Machine à laver', 'Piscine privée', 'Parking privé', 'Conciergerie', 'Accès sécurisé']);
+        $affecter($a['A-104'], ['Wifi haut débit', 'Climatisation', 'Smart TV 4K', 'Cuisine équipée', 'Machine à laver', 'Accès sécurisé', "Vue sur l'océan"]);
+        $affecter($a['A-105'], ['Wifi haut débit', 'Climatisation', 'Smart TV 4K', 'Cuisine équipée', 'Machine à laver', 'Parking privé']);
 
         // 4) Réductions par durée de séjour sur la Villa (tunnel de prix dégressif)
         Reduction::updateOrCreate(['appartement_id' => $a['A-103']->id, 'nuits_min' => 3], ['type' => 'pourcentage', 'valeur' => 10]);
@@ -137,23 +146,9 @@ class DemoSeeder extends Seeder
             ['partenaire_id' => $pressing->id, 'quantite' => 1, 'prix_unitaire' => 8000, 'statut' => 'livree'],
         );
 
-        // 7) Interventions (pannes) sur des équipements affectés, statuts variés
-        $equipA101 = Equipement::where('appartement_id', $a['A-101']->id)->where('nom', 'Smart TV 4K')->first();
-        $equipA103 = Equipement::where('appartement_id', $a['A-103']->id)->where('nom', 'Piscine privée')->first();
-
-        if ($equipA101) {
-            Intervention::updateOrCreate(
-                ['equipement_id' => $equipA101->id, 'description_panne' => 'Télécommande ne répond plus'],
-                ['appartement_id' => $a['A-101']->id, 'date_signalement' => now()->subDay(), 'etape' => 'signalee', 'priorite' => 'normale'],
-            );
-            $equipA101->update(['statut' => 'en_panne']);
-        }
-        if ($equipA103) {
-            Intervention::updateOrCreate(
-                ['equipement_id' => $equipA103->id, 'description_panne' => 'Filtration bruyante la nuit'],
-                ['appartement_id' => $a['A-103']->id, 'date_signalement' => now()->subDays(3), 'date_resolution' => now()->subDay(), 'etape' => 'cloturee', 'priorite' => 'basse'],
-            );
-        }
+        // 7) Pole Maintenance : le pipeline complet, 5 interventions par etape (voir
+        // seedMaintenance()). Appele APRES seedRh(), qui cree le declarant et les
+        // techniciens auxquels ces interventions sont rattachees.
 
         // 8) Comptabilité : séjours clôturés couvrant les états de facture démontrables
         $this->seedComptabilite($a, $clientVedette);
@@ -161,6 +156,8 @@ class DemoSeeder extends Seeder
         // 9) Ressources Humaines : recrutements (5 statuts), pipeline candidat (5 étapes),
         // employés/contrats/congés/licenciement
         $this->seedRh();
+
+        $this->seedMaintenance($a);
 
         // 10) Phase 09 (multi-tenant) : 2 entreprises pleinement isolées + 1 dormante,
         // pour QA de la scope automatique (BelongsToEntreprise/ScopedThroughEntreprise)
@@ -379,9 +376,16 @@ class DemoSeeder extends Seeder
      */
     private function seedRh(): void
     {
+        // user_id rattache la fiche employe au compte de connexion : sans ce lien,
+        // InterventionController::store() enregistre un declarant_employe_id null et
+        // l'ecran Maintenance affiche "Declaree par : —".
         $prisca = Employe::updateOrCreate(
             ['nom' => 'Yao', 'prenom' => 'Prisca'],
-            ['poste' => 'Réceptionniste', 'date_embauche' => now()->subMonths(8)->toDateString(), 'salaire_base' => null, 'actif' => true],
+            [
+                'user_id' => User::where('email', 'receptionniste@laralab.test')->value('id'),
+                'poste' => 'Réceptionniste', 'date_embauche' => now()->subMonths(8)->toDateString(),
+                'salaire_base' => null, 'actif' => true,
+            ],
         );
         ContratTravail::updateOrCreate(
             ['employe_id' => $prisca->id],
@@ -408,6 +412,55 @@ class DemoSeeder extends Seeder
                 ['fait' => $i < 3, 'date_realisation' => $i < 3 ? now()->subMonths(2)->toDateString() : null, 'ordre' => $i + 1],
             );
         }
+
+        // --- Techniciens du pole Maintenance (Phase 05) ---------------------------
+        // Seuls ces employes sont proposes a l'affectation d'une intervention : le
+        // filtre porte sur l'intitule du poste (Employe::MOTSCLES_POSTE_MAINTENANCE),
+        // les roles metiers etant des valeurs de `poste` et non des roles systeme.
+        // Les trois intitules couvrent volontairement les variantes que le filtre doit
+        // accepter : "Technicien", le feminin "Technicienne", et un poste sans le mot
+        // technicien mais avec "maintenance". Prisca (Receptionniste) et Jean (Agent
+        // d'entretien) restent les contre-exemples : ils ne doivent PAS apparaitre.
+        $technicienChef = Employe::updateOrCreate(
+            ['nom' => 'Kone', 'prenom' => 'Ibrahim'],
+            [
+                // Rattache au compte maintenance@laralab.test : c'est lui que
+                // changerEtape() auto-affecte quand une reparation demarre sans
+                // technicien nomme.
+                'user_id' => User::where('email', 'maintenance@laralab.test')->value('id'),
+                'poste' => 'Technicien de maintenance', 'date_embauche' => now()->subMonths(14)->toDateString(),
+                'salaire_base' => null, 'actif' => true,
+            ],
+        );
+        ContratTravail::updateOrCreate(
+            ['employe_id' => $technicienChef->id],
+            ['type_contrat' => 'cdi', 'salaire' => 175000, 'date_debut' => now()->subMonths(14)->toDateString(), 'date_fin' => null],
+        );
+
+        $technicienneCvc = Employe::updateOrCreate(
+            ['nom' => 'Diallo', 'prenom' => 'Mariam'],
+            ['poste' => 'Technicienne CVC (climatisation)', 'date_embauche' => now()->subMonths(6)->toDateString(), 'salaire_base' => null, 'actif' => true],
+        );
+        ContratTravail::updateOrCreate(
+            ['employe_id' => $technicienneCvc->id],
+            ['type_contrat' => 'cdi', 'salaire' => 150000, 'date_debut' => now()->subMonths(6)->toDateString(), 'date_fin' => null],
+        );
+
+        $chargeMaintenance = Employe::updateOrCreate(
+            ['nom' => 'Sangare', 'prenom' => 'Moussa'],
+            ['poste' => 'Charge de maintenance', 'date_embauche' => now()->subMonths(2)->toDateString(), 'salaire_base' => null, 'actif' => true],
+        );
+        ContratTravail::updateOrCreate(
+            ['employe_id' => $chargeMaintenance->id],
+            ['type_contrat' => 'cdd', 'salaire' => 140000, 'date_debut' => now()->subMonths(2)->toDateString(), 'date_fin' => now()->addMonths(10)->toDateString()],
+        );
+
+        // Technicien INACTIF : verifie que le sélecteur filtre bien aussi sur `actif`,
+        // pas seulement sur l'intitule du poste.
+        Employe::updateOrCreate(
+            ['nom' => 'Bakayoko', 'prenom' => 'Seydou'],
+            ['poste' => 'Technicien electricite', 'date_embauche' => now()->subYears(2)->toDateString(), 'salaire_base' => null, 'actif' => false],
+        );
 
         $fatim = Employe::updateOrCreate(
             ['nom' => 'Traore', 'prenom' => 'Fatim'],
@@ -534,12 +587,298 @@ class DemoSeeder extends Seeder
     }
 
     /**
+     * Pannes plausibles par équipement. Trois libellés chacun : le couple
+     * (équipement, description) sert de clé naturelle aux interventions ci-dessous, donc
+     * un équipement ne peut pas porter deux fois la même panne — la répartition garantit
+     * qu'aucun n'est sollicité plus de deux fois.
+     *
+     * Seuls les équipements dont la panne a un sens sont listés : ni « Parking privé »,
+     * ni « Conciergerie », ni « Vue sur l'océan » ne tombent en panne.
+     */
+    private const PANNES_DEMO = [
+        'Wifi haut débit' => ['Plus aucun signal dans la chambre', 'Débit très faible en soirée', 'La box redémarre en boucle'],
+        'Climatisation' => ['Ne refroidit plus du tout', "Fuite d'eau sous l'unité intérieure", 'Bruit métallique au démarrage'],
+        'Smart TV 4K' => ['Télécommande ne répond plus', "L'écran reste noir à l'allumage", 'Plus de son sur toutes les chaînes'],
+        'Cuisine équipée' => ['Plaque de cuisson hors service', "La hotte ne s'allume plus", 'Le four ne monte plus en température'],
+        'Machine à laver' => ['Ne vidange plus en fin de cycle', 'Tambour bloqué', 'Fuite au niveau du hublot'],
+        'Piscine privée' => ['Filtration bruyante la nuit', 'Eau trouble malgré le traitement', 'La pompe ne démarre plus'],
+        'Accès sécurisé' => ["Badge non reconnu à l'entrée", 'Gâche électrique bloquée', 'Interphone muet'],
+    ];
+
+    /**
+     * Pièce type posée selon l'équipement, pour que le journal d'actions (R4) reste
+     * crédible en démo — et pour préfigurer le pont vers le stock de la Phase 10.
+     */
+    private const PIECES_DEMO = [
+        'Wifi haut débit' => ["Point d'accès Wifi 6", 45000],
+        'Climatisation' => ['Condensateur de démarrage 35µF', 28000],
+        'Smart TV 4K' => ["Carte d'alimentation TV", 62000],
+        'Cuisine équipée' => ['Résistance de four 2000W', 35000],
+        'Machine à laver' => ['Pompe de vidange', 32000],
+        'Piscine privée' => ['Moteur de pompe de filtration', 145000],
+        'Accès sécurisé' => ['Gâche électrique 12V', 24000],
+    ];
+
+    /**
+     * Le pipeline de démo : 5 interventions sur CHACUNE des 8 étapes.
+     *
+     * `ages_heures` donne l'ancienneté du signalement de chacune des 5 lignes. C'est ce
+     * qui pilote le dépassement de SLA : une intervention non prise en charge depuis
+     * plus de quelques heures ouvrées est mécaniquement hors délai — d'où, sur l'étape
+     * `signalee`, deux lignes récentes (dans les temps) et trois anciennes (en rouge).
+     */
+    private const PIPELINE_MAINTENANCE = [
+        ['etape' => 'signalee', 'ages_heures' => [2, 5, 30, 54, 76], 'prise_en_charge' => false, 'technicien' => false, 'actions' => 0, 'conformite' => false, 'terminee' => false],
+        ['etape' => 'planifiee', 'ages_heures' => [26, 34, 50, 74, 98], 'prise_en_charge' => true, 'technicien' => false, 'actions' => 0, 'conformite' => false, 'terminee' => false],
+        ['etape' => 'technicien_affecte', 'ages_heures' => [30, 48, 72, 96, 120], 'prise_en_charge' => true, 'technicien' => true, 'actions' => 0, 'conformite' => false, 'terminee' => false],
+        ['etape' => 'en_cours', 'ages_heures' => [50, 74, 98, 122, 146], 'prise_en_charge' => true, 'technicien' => true, 'actions' => 2, 'conformite' => false, 'terminee' => false],
+        ['etape' => 'reparee', 'ages_heures' => [98, 122, 146, 170, 194], 'prise_en_charge' => true, 'technicien' => true, 'actions' => 3, 'conformite' => false, 'terminee' => false],
+        ['etape' => 'controlee', 'ages_heures' => [146, 170, 194, 218, 242], 'prise_en_charge' => true, 'technicien' => true, 'actions' => 3, 'conformite' => true, 'terminee' => false],
+        ['etape' => 'cloturee', 'ages_heures' => [242, 290, 338, 386, 434], 'prise_en_charge' => true, 'technicien' => true, 'actions' => 3, 'conformite' => true, 'terminee' => true],
+        ['etape' => 'reformee', 'ages_heures' => [266, 314, 362, 410, 458], 'prise_en_charge' => true, 'technicien' => true, 'actions' => 2, 'conformite' => false, 'terminee' => true],
+    ];
+
+    private const PRIORITES_DEMO = ['critique', 'haute', 'normale', 'basse', 'haute'];
+
+    /**
+     * Pôle Maintenance (Phase 05) : le pipeline complet, du signalement par la réception
+     * jusqu'aux deux issues terminales. 5 interventions par étape sur les 8 étapes du
+     * workflow interne — de quoi montrer les trois écrans du pôle réellement remplis, la
+     * répartition du tableau de bord, des SLA tenus ET dépassés, un journal d'actions
+     * chiffré, des équipements sous garantie, et la réforme comme sortie alternative.
+     *
+     * Idempotent comme le reste du seeder : la clé naturelle est le couple (équipement,
+     * description de la panne), et le jeu de cas est entièrement déterministe — relancer
+     * le seeder met à jour les mêmes lignes plutôt que d'en empiler de nouvelles.
+     *
+     * Appelé APRÈS seedRh(), dont il consomme le déclarant (Prisca, réception) et les
+     * techniciens (postes filtrés par Employe::MOTSCLES_POSTE_MAINTENANCE).
+     *
+     * @param  array<string, Appartement>  $a  les appartements de la demo (A-101...A-105)
+     */
+    private function seedMaintenance(array $a): void
+    {
+        $parametres = ParametreMaintenance::actuel(null);
+
+        $declarant = Employe::where('nom', 'Yao')->where('prenom', 'Prisca')->first();
+        $techniciens = Employe::where('actif', true)->techniciensMaintenance()->orderBy('id')->get();
+
+        // Parc réparable, ordonné pour que la répartition reste stable d'un run à l'autre.
+        //
+        // Borné aux appartements de la démo : seedMultiTenant() a son propre décor
+        // (Résidences Konan / Hôtel Bayo) dont il pilote lui-même les statuts
+        // d'équipement — il remet notamment une climatisation en panne, et il tourne
+        // APRÈS cette méthode. Sans ce garde-fou, le pipeline Maintenance réformait du
+        // matériel appartenant à ces entreprises, puis se faisait écraser par elles.
+        $parc = Equipement::whereIn('appartement_id', collect($a)->pluck('id'))
+            ->whereIn('nom', array_keys(self::PANNES_DEMO))
+            ->orderBy('appartement_id')
+            ->orderBy('nom')
+            ->get();
+
+        if ($techniciens->isEmpty() || $parc->count() < 10) {
+            $this->command?->warn('seedMaintenance ignoré : il faut au moins un technicien actif et 10 équipements réparables.');
+
+            return;
+        }
+
+        // Garantie / n° de série / contrat sur tout le parc, avec un tiers encore sous
+        // garantie : alimente le badge « Sous garantie » (R7) et préfigure le futur écran
+        // « Parc équipements » de l'étape C.
+        foreach ($parc as $index => $equipement) {
+            $equipement->update([
+                'numero_serie' => 'SN-'.str_pad((string) $equipement->id, 5, '0', STR_PAD_LEFT),
+                'garantie_fin' => $index % 3 === 0
+                    ? now()->addMonths(8)->toDateString()
+                    : now()->subMonths(5)->toDateString(),
+                'contrat_maintenance' => $index % 4 === 0,
+                'contrat_reference' => $index % 4 === 0 ? 'CTR-'.(2000 + $equipement->id) : null,
+                'contrat_echeance' => $index % 4 === 0 ? now()->addYear()->toDateString() : null,
+            ]);
+        }
+
+        // Les 5 derniers équipements sont réservés à la réforme : ils sortent
+        // définitivement du parc, ils ne doivent donc porter aucune autre panne.
+        $aReformer = $parc->slice($parc->count() - 5)->values();
+        $reparables = $parc->slice(0, $parc->count() - 5)->values();
+
+        $curseur = 0;
+        $rotation = 0;
+        $occurrences = [];
+        $recapitulatif = [];
+
+        foreach (self::PIPELINE_MAINTENANCE as $specification) {
+            $reforme = $specification['etape'] === 'reformee';
+
+            foreach ($specification['ages_heures'] as $rang => $ageHeures) {
+                $equipement = $reforme ? $aReformer[$rang] : $reparables[$curseur++ % $reparables->count()];
+
+                $occurrence = $occurrences[$equipement->id] ?? 0;
+                $occurrences[$equipement->id] = $occurrence + 1;
+
+                $priorite = self::PRIORITES_DEMO[$rang];
+                $signalement = now()->subHours($ageHeures);
+                $echeance = HeuresOuvrees::ajouter($signalement, $parametres->heuresPour($priorite), $parametres);
+
+                // Une prise en charge sur quatre est volontairement en retard : le
+                // tableau de bord doit aussi montrer des SLA ratés sur des dossiers déjà
+                // traités, pas seulement sur des pannes laissées de côté.
+                $priseEnCharge = null;
+                if ($specification['prise_en_charge']) {
+                    $priseEnCharge = $rang % 4 === 0
+                        ? $echeance->copy()->addHours(5)
+                        : $signalement->copy()->addMinutes(25);
+                }
+
+                $technicien = $specification['technicien'] ? $techniciens[$rotation++ % $techniciens->count()] : null;
+                $resolution = $specification['terminee'] ? $signalement->copy()->addHours(max($ageHeures - 12, 4)) : null;
+
+                $attributs = [
+                    'appartement_id' => $equipement->appartement_id,
+                    'declarant_employe_id' => $declarant?->id,
+                    'technicien_employe_id' => $technicien?->id,
+                    'priorite' => $priorite,
+                    'date_signalement' => $signalement,
+                    'date_planifiee' => $specification['prise_en_charge'] ? $signalement->copy()->addHours(20) : null,
+                    'date_prise_en_charge' => $priseEnCharge,
+                    'sla_echeance' => $echeance,
+                    'date_resolution' => $resolution,
+                    'etape' => $specification['etape'],
+                ];
+
+                // Toujours ecrites, y compris a null : sans cela une intervention
+                // qui change d'etape d'un run a l'autre conserverait le resultat de
+                // conformite de son etape precedente, et on verrait un dossier
+                // "en cours" deja marque conforme.
+                $attributs['conformite_resultat'] = $specification['conformite'] ? 'conforme' : null;
+                $attributs['conformite_testee_le'] = $specification['conformite'] ? ($resolution ?? $signalement)->copy()->subHours(2) : null;
+                $attributs['conformite_employe_id'] = $specification['conformite'] ? $technicien?->id : null;
+
+                if ($reforme) {
+                    // Coût de remise en état au-dessus du seuil : c'est exactement le cas
+                    // que la règle R6 doit trancher en faveur de la réforme.
+                    $attributs['motif_reforme'] = 'Coût de remise en état supérieur à la valeur résiduelle du matériel.';
+                    $attributs['cout_reparation_estime'] = (float) $parametres->seuil_reforme + 25000;
+                }
+
+                $intervention = Intervention::updateOrCreate(
+                    [
+                        'equipement_id' => $equipement->id,
+                        'description_panne' => self::PANNES_DEMO[$equipement->nom][$occurrence % 3],
+                    ],
+                    $attributs,
+                );
+
+                // sous_garantie est hors Fillable : figée à la déclaration et jamais
+                // recalculée ensuite (R7), d'où le forceFill explicite.
+                $intervention->forceFill(['sous_garantie' => $equipement->estSousGarantie()])->save();
+
+                $this->seedJournalIntervention($intervention, $equipement, $specification['actions']);
+
+                $recapitulatif[$specification['etape']] = ($recapitulatif[$specification['etape']] ?? 0) + 1;
+            }
+        }
+
+        // Cohérence inventaire (R3/R8) recalculée UNE FOIS toutes les interventions
+        // posées, jamais intervention par intervention : un même équipement peut porter
+        // plusieurs pannes, et il ne redevient sain que lorsqu'aucune n'est encore
+        // ouverte — clôturer l'une d'elles ne suffit pas.
+        foreach ($aReformer as $equipement) {
+            $equipement->update([
+                'statut' => 'reforme',
+                'date_reforme' => now()->subDays(9)->toDateString(),
+            ]);
+        }
+        foreach ($reparables as $equipement) {
+            $equipement->update([
+                'statut' => Intervention::where('equipement_id', $equipement->id)->ouvertes()->exists() ? 'en_panne' : 'affecte',
+            ]);
+        }
+
+        // Rattrapage des interventions antérieures à la Phase 05 étape B (et de celles
+        // saisies à la main pendant les tests) : sans échéance, elles afficheraient un
+        // SLA « — » au milieu d'un jeu de démo par ailleurs complet.
+        foreach (Intervention::whereNull('sla_echeance')->whereIn('appartement_id', collect($a)->pluck('id'))->get() as $orpheline) {
+            $orpheline->update([
+                'sla_echeance' => HeuresOuvrees::ajouter(
+                    $orpheline->date_signalement ?? now(),
+                    $parametres->heuresPour($orpheline->priorite ?? 'normale'),
+                    $parametres,
+                ),
+            ]);
+        }
+
+        $this->command?->info('Maintenance prête — '.array_sum($recapitulatif).' interventions : '.
+            collect($recapitulatif)->map(fn ($total, $etape) => "{$etape}={$total}")->implode(', '));
+    }
+
+    /**
+     * Journal d'actions (R4) d'une intervention : diagnostic, pose de pièce, réparation.
+     * cout_total en est la somme dérivée, jamais saisie à la main — d'où le
+     * recalculerCout() final, qui est le seul écrivain légitime de ce champ.
+     */
+    private function seedJournalIntervention(Intervention $intervention, Equipement $equipement, int $nombre): void
+    {
+        [$piece, $coutPiece] = self::PIECES_DEMO[$equipement->nom];
+        $depart = $intervention->date_prise_en_charge ?? $intervention->date_signalement;
+
+        $lignes = [
+            [
+                'type' => 'diagnostic',
+                'description' => 'Contrôle sur place et identification de la panne.',
+                'temps_passe_minutes' => 40,
+                'piece_libelle' => null,
+                'piece_quantite' => null,
+                'cout' => 0,
+                'effectuee_le' => $depart->copy()->addHours(2),
+            ],
+            [
+                'type' => 'piece',
+                'description' => null,
+                'temps_passe_minutes' => null,
+                'piece_libelle' => $piece,
+                'piece_quantite' => 1,
+                'cout' => $coutPiece,
+                'effectuee_le' => $depart->copy()->addHours(5),
+            ],
+            [
+                'type' => 'reparation',
+                'description' => 'Remplacement de la pièce défectueuse et remise en service.',
+                'temps_passe_minutes' => 95,
+                'piece_libelle' => null,
+                'piece_quantite' => null,
+                'cout' => 15000,
+                'effectuee_le' => $depart->copy()->addHours(7),
+            ],
+        ];
+
+        $retenues = array_slice($lignes, 0, $nombre);
+
+        foreach ($retenues as $ligne) {
+            InterventionAction::updateOrCreate(
+                ['intervention_id' => $intervention->id, 'type' => $ligne['type']],
+                $ligne,
+            );
+        }
+
+        // Elagage : une intervention qui recule d'etape d'un run a l'autre doit perdre
+        // les lignes de journal qui ne lui correspondent plus, sinon un dossier a peine
+        // planifie trainerait le diagnostic et la piece d'un run precedent.
+        $intervention->actions()
+            ->whereNotIn('type', array_column($retenues, 'type'))
+            ->forceDelete();
+
+        $intervention->recalculerCout();
+    }
+
+    /**
      * Phase 09 (multi-tenant) : 2 entreprises actives, chacune avec son propre
      * propriétaire/gérant, appartements, employé, recrutement, paramètres de
      * facturation et un séjour facturé/payé ce mois-ci (pour peupler le tableau de
      * bord Propriétaire) — de quoi vérifier que chaque compte ne voit QUE les
      * données de sa propre entreprise (BelongsToEntreprise/ScopedThroughEntreprise),
      * que l'administrateur les voit toutes, et qu'un compte orphelin (les comptes
+     *
      * @laralab.test créés à l'étape 0, sans entreprise_id) ne voit que les données
      * elles-mêmes orphelines déjà seedées plus haut (comportement fail-open). Une
      * 3ᵉ entreprise volontairement vide/suspendue teste le cas "créée mais jamais

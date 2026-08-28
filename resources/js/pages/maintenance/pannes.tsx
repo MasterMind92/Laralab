@@ -188,7 +188,7 @@ export default function MaintenancePannes({
                                 <DropdownMenuSubContent>
                                     {techniciens.length === 0 ? (
                                         <DropdownMenuItem disabled>
-                                            Aucun employé actif
+                                            Aucun technicien actif
                                         </DropdownMenuItem>
                                     ) : (
                                         techniciens.map((technicien) => (
