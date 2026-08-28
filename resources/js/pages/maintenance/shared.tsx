@@ -43,6 +43,14 @@ export type ActionJournal = {
     effectuee_le: string | null;
 };
 
+export type Conformite = 'conforme' | 'non_conforme';
+
+/** Réglages de l'entreprise, servis par MaintenanceController::parametresPourEcran(). */
+export type ParametresMaintenance = {
+    seuil_reforme: number;
+    sla_heures: Record<Priorite, number>;
+};
+
 export type Personne = { id: number; nom: string; prenom: string };
 
 export type Technicien = Personne & { poste: string | null };
@@ -61,6 +69,16 @@ export type InterventionRow = {
     sla_depasse: boolean;
     sous_garantie: boolean;
     cout_total: number;
+    conformite_resultat: Conformite | null;
+    conformite_testee_le: string | null;
+    motif_reforme: string | null;
+    cout_reparation_estime: number | null;
+    /**
+     * Raison pour laquelle la clôture est refusée, ou null si elle est possible (R5).
+     * Calculée par Intervention::blocageCloture() — on affiche le message du serveur,
+     * on ne rejoue jamais la règle ici.
+     */
+    blocage_cloture: string | null;
     /** Transitions autorisées depuis l'étape courante — source: Intervention::TRANSITIONS. */
     transitions: Etape[];
     equipement: { id: number; nom: string; type: string } | null;
@@ -176,6 +194,18 @@ export function SlaBadge({ intervention }: { intervention: InterventionRow }) {
                 ? 'Tenu'
                 : `Avant ${fmtDateHeure(intervention.sla_echeance)}`}
         </span>
+    );
+}
+
+export function ConformiteBadge({ resultat }: { resultat: Conformite | null }) {
+    if (resultat === null) {
+        return <Badge variant="outline">Non testée</Badge>;
+    }
+
+    return (
+        <Badge variant={resultat === 'conforme' ? 'default' : 'destructive'}>
+            {resultat === 'conforme' ? 'Conforme' : 'Non conforme'}
+        </Badge>
     );
 }
 

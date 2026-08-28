@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { AlertTriangle, ClipboardList, Timer, Wrench } from 'lucide-react';
 import MaintenanceController from '@/actions/App/Http/Controllers/MaintenanceController';
+import ParcEquipementController from '@/actions/App/Http/Controllers/ParcEquipementController';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -16,7 +17,7 @@ import {
     fmtDateHeure,
     nomComplet,
 } from './shared';
-import type { Etape, InterventionRow } from './shared';
+import type { Etape, InterventionRow, ParametresMaintenance } from './shared';
 
 /**
  * Tableau de bord du pôle Maintenance : une FILE DE TRAVAIL, pas du reporting. Le
@@ -34,10 +35,12 @@ export default function MaintenanceDashboard({
     kpi,
     parEtape,
     urgentes,
+    parametres,
 }: {
     kpi: Kpi;
     parEtape: { etape: Etape; total: number }[];
     urgentes: InterventionRow[];
+    parametres: ParametresMaintenance;
 }) {
     const totalEtapes = parEtape.reduce(
         (total, ligne) => total + ligne.total,
@@ -63,8 +66,43 @@ export default function MaintenanceDashboard({
                                 Réparations
                             </Link>
                         </Button>
+                        <Button asChild variant="outline">
+                            <Link href={ParcEquipementController.index().url}>
+                                Parc équipements
+                            </Link>
+                        </Button>
                     </div>
                 </div>
+
+                {kpi.sla_depasses > 0 && (
+                    <div
+                        role="alert"
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3"
+                    >
+                        <div className="space-y-0.5">
+                            <p className="text-sm font-medium text-destructive">
+                                {kpi.sla_depasses} intervention
+                                {kpi.sla_depasses > 1 ? 's' : ''} hors delai de
+                                prise en charge
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Le delai court en heures ouvrees :{' '}
+                                {parametres.sla_heures.critique} h en priorite
+                                critique, {parametres.sla_heures.haute} h en
+                                haute, {parametres.sla_heures.normale} h en
+                                normale, {parametres.sla_heures.basse} h en
+                                basse.
+                            </p>
+                        </div>
+                        <Button asChild size="sm" variant="destructive">
+                            <Link
+                                href={`${MaintenanceController.interventions().url}?sla=depasse`}
+                            >
+                                Traiter maintenant
+                            </Link>
+                        </Button>
+                    </div>
+                )}
 
                 <div className="grid gap-4 md:grid-cols-4">
                     <KpiCard

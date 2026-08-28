@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\ExportsCsv;
 use App\Models\Employe;
 use App\Models\Intervention;
+use App\Models\ParametreMaintenance;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,10 +21,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * la seule colonne persistée, Intervention::TRANSITIONS dit ce qui est autorisé,
  * statutMacro() en dérive la vue R9. Ce contrôleur ne fait que la piloter.
  *
- * Ce qui reste explicitement hors de cette étape et arrive en étape C : le blocage de
- * la clôture tant que le test de conformité n'est pas concluant (R5), la réforme comme
- * issue terminale (R6) et l'écran "Parc équipements" garantie/contrat (R7). Les colonnes
- * correspondantes existent déjà en base et sont affichées ici en lecture seule.
+ * Étape C : le test de conformité verrouille désormais la clôture (R5) et la réforme
+ * est une issue terminale à part entière (R6) — toutes deux ont leur propre action, la
+ * transition générique les refuse explicitement. La garantie et le contrat (R7) vivent
+ * sur l'équipement et ont leur propre écran, voir ParcEquipementController.
  */
 class MaintenanceController extends Controller
 {
@@ -65,6 +66,7 @@ class MaintenanceController extends Controller
             'urgentes' => $this->lignes(
                 Intervention::ouvertes()->horsDelai()->orderBy('date_signalement')->limit(8),
             ),
+            'parametres' => $this->parametresPourEcran(),
         ]);
     }
 
@@ -81,6 +83,7 @@ class MaintenanceController extends Controller
                     ->orderBy('date_signalement'),
             ),
             'techniciens' => $this->techniciens(),
+            'parametres' => $this->parametresPourEcran(),
         ]);
     }
 
@@ -105,6 +108,7 @@ class MaintenanceController extends Controller
         return Inertia::render('maintenance/interventions', [
             'interventions' => $this->lignes($requete, avecActions: true),
             'techniciens' => $this->techniciens(),
+            'parametres' => $this->parametresPourEcran(),
             'filters' => $filtres,
         ]);
     }
@@ -124,6 +128,7 @@ class MaintenanceController extends Controller
                 avecActions: true,
             ),
             'techniciens' => $this->techniciens(),
+            'parametres' => $this->parametresPourEcran(),
         ]);
     }
 
@@ -201,6 +206,23 @@ class MaintenanceController extends Controller
             ]);
         }
 
+        // R5 / R6 : ces deux etapes exigent une saisie propre. Les laisser passer ici
+        // permettrait d'atteindre 'controlee' sans avoir teste quoi que ce soit, ou de
+        // reformer un equipement sans motif.
+        if (in_array($data['etape'], Intervention::ETAPES_A_SAISIE_DEDIEE, true)) {
+            throw ValidationException::withMessages([
+                'etape' => $data['etape'] === 'controlee'
+                    ? 'Le passage en contrôlé se fait en enregistrant le test de conformité.'
+                    : 'La réforme se fait en enregistrant son motif et son coût estimé.',
+            ]);
+        }
+
+        // R5 : le verrou de cloture. La regle vit dans le modele et renvoie sa raison,
+        // pour que l'ecran et l'API disent exactement la meme chose.
+        if ($data['etape'] === 'cloturee' && $blocage = $intervention->blocageCloture()) {
+            throw ValidationException::withMessages(['etape' => $blocage]);
+        }
+
         DB::transaction(function () use ($intervention, $data, $request) {
             $intervention->etape = $data['etape'];
 
@@ -216,6 +238,97 @@ class MaintenanceController extends Controller
                 $intervention->date_resolution ??= now();
             }
 
+            $this->horodaterPriseEnCharge($intervention);
+            $intervention->save();
+
+            $this->repercuterSurEquipement($intervention);
+        });
+
+        return back();
+    }
+
+    /**
+     * R5 — Test de conformité. C'est LUI qui fait passer une intervention réparée à
+     * l'étape « contrôlée », jamais la transition générique : sans cela on pourrait
+     * atteindre l'étape de contrôle sans avoir rien contrôlé.
+     *
+     * Un résultat non conforme ne bloque pas le dossier, il le renvoie en réparation —
+     * en passant par 'controlee', parce que c'est le chemin que déclare la table des
+     * transitions du modèle (reparee -> controlee -> en_cours) et qu'on ne court-circuite
+     * pas la garde du workflow pour aller plus vite.
+     */
+    public function testerConformite(Request $request, Intervention $intervention): RedirectResponse
+    {
+        $data = $request->validate([
+            'resultat' => ['required', 'in:conforme,non_conforme'],
+            'commentaire' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $this->refuserSiTerminee($intervention);
+
+        if (! $intervention->peutPasserA('controlee')) {
+            throw ValidationException::withMessages([
+                'resultat' => "Seule une intervention réparée peut être contrôlée (celle-ci est à l'étape « {$intervention->etape} »).",
+            ]);
+        }
+
+        DB::transaction(function () use ($intervention, $data, $request) {
+            $intervention->fill([
+                'etape' => 'controlee',
+                'conformite_resultat' => $data['resultat'],
+                'conformite_testee_le' => now(),
+                'conformite_employe_id' => $request->user()->employe?->id ?? $intervention->technicien_employe_id,
+            ]);
+            $intervention->save();
+
+            if ($data['resultat'] === 'non_conforme' && $intervention->peutPasserA('en_cours')) {
+                $intervention->update(['etape' => 'en_cours']);
+            }
+
+            if ($commentaire = trim((string) ($data['commentaire'] ?? ''))) {
+                $intervention->actions()->create([
+                    'type' => 'controle',
+                    'description' => $commentaire,
+                    'effectuee_le' => now(),
+                    'cout' => 0,
+                ]);
+                $intervention->recalculerCout();
+            }
+        });
+
+        return back();
+    }
+
+    /**
+     * R6 — Réforme : l'issue terminale alternative. Toutes les pannes ne finissent pas
+     * réparées ; au-delà d'un certain coût, ou faute de pièce, on sort le matériel du parc.
+     *
+     * Le seuil de `parametres_maintenance` n'est volontairement PAS bloquant : la règle
+     * dit « coût supérieur au seuil OU pièce indisponible », et le second cas n'a rien à
+     * voir avec un montant. L'écran affiche la comparaison, la décision reste humaine —
+     * mais le motif, lui, est obligatoire, c'est lui qui rend la décision auditable.
+     */
+    public function reformer(Request $request, Intervention $intervention): RedirectResponse
+    {
+        $data = $request->validate([
+            'motif_reforme' => ['required', 'string', 'min:10', 'max:2000'],
+            'cout_reparation_estime' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $this->refuserSiTerminee($intervention);
+
+        if (! $intervention->peutPasserA('reformee')) {
+            throw ValidationException::withMessages([
+                'motif_reforme' => "Une intervention ne peut être réformée que depuis l'étape « en cours » (celle-ci est à l'étape « {$intervention->etape} »).",
+            ]);
+        }
+
+        DB::transaction(function () use ($intervention, $data) {
+            $intervention->fill([
+                ...$data,
+                'etape' => 'reformee',
+                'date_resolution' => now(),
+            ]);
             $this->horodaterPriseEnCharge($intervention);
             $intervention->save();
 
@@ -304,6 +417,13 @@ class MaintenanceController extends Controller
                 'sla_depasse' => $i->slaDepasse(),
                 'sous_garantie' => (bool) $i->sous_garantie,
                 'cout_total' => (float) $i->cout_total,
+                'conformite_resultat' => $i->conformite_resultat,
+                'conformite_testee_le' => $i->conformite_testee_le?->toIso8601String(),
+                'motif_reforme' => $i->motif_reforme,
+                'cout_reparation_estime' => $i->cout_reparation_estime === null ? null : (float) $i->cout_reparation_estime,
+                // La raison du refus de cloture voyage avec la ligne : l'ecran affiche
+                // exactement le message que l'API renverrait, sans reecrire la regle.
+                'blocage_cloture' => $i->blocageCloture(),
                 'transitions' => Intervention::TRANSITIONS[$i->etape] ?? [],
                 'equipement' => $i->equipement ? ['id' => $i->equipement->id, 'nom' => $i->equipement->nom, 'type' => $i->equipement->type] : null,
                 'appartement' => $i->appartement ? ['id' => $i->appartement->id, 'numero' => $i->appartement->numero] : null,
@@ -354,6 +474,28 @@ class MaintenanceController extends Controller
     }
 
     /**
+     * Réglages de l'entreprise dont les écrans ont besoin : le seuil de réforme (R6) est
+     * affiché en regard du coût estimé pour éclairer la décision, et les délais de SLA
+     * expliquent d'où sortent les échéances affichées.
+     *
+     * @return array<string, mixed>
+     */
+    private function parametresPourEcran(): array
+    {
+        $parametres = ParametreMaintenance::actuel();
+
+        return [
+            'seuil_reforme' => (float) $parametres->seuil_reforme,
+            'sla_heures' => [
+                'critique' => $parametres->sla_critique_heures,
+                'haute' => $parametres->sla_haute_heures,
+                'normale' => $parametres->sla_normale_heures,
+                'basse' => $parametres->sla_basse_heures,
+            ],
+        ];
+    }
+
+    /**
      * Le SLA (R2) s'arrête à la PREMIÈRE réaction de la maintenance, quelle qu'elle soit.
      * Jamais réécrit ensuite : le verdict de dépassement doit rester stable.
      */
@@ -373,12 +515,28 @@ class MaintenanceController extends Controller
 
     /**
      * Cohérence inventaire (R3/R8) : le réceptionniste passe l'équipement en panne au
-     * signalement, la maintenance le rend au parc à la clôture. La réforme (R6) suit en
-     * étape C — elle a sa propre issue côté équipement (statut 'reforme' + date_reforme).
+     * signalement, la maintenance le rend au parc à la clôture — ou l'en sort
+     * définitivement à la réforme (R6).
      */
     private function repercuterSurEquipement(Intervention $intervention): void
     {
-        if ($intervention->etape !== 'cloturee' || ! $intervention->equipement) {
+        if (! $intervention->equipement) {
+            return;
+        }
+
+        // R6 : la reforme sort le materiel du parc, definitivement. Elle ne regarde pas
+        // les autres pannes ouvertes — l'equipement n'existe plus en service, elles
+        // deviennent sans objet.
+        if ($intervention->etape === 'reformee') {
+            $intervention->equipement->update([
+                'statut' => 'reforme',
+                'date_reforme' => now()->toDateString(),
+            ]);
+
+            return;
+        }
+
+        if ($intervention->etape !== 'cloturee') {
             return;
         }
 

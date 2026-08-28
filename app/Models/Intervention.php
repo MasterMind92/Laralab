@@ -185,6 +185,45 @@ class Intervention extends Model
         return in_array($etape, self::TRANSITIONS[$this->etape] ?? [], true);
     }
 
+    /**
+     * Étapes qu'on ne rejoint JAMAIS par la transition générique parce qu'elles exigent
+     * une saisie qui leur est propre (R5, R6) : 'controlee' passe par le test de
+     * conformité, 'reformee' par la décision de réforme motivée. Les laisser accessibles
+     * au bouton générique permettrait d'atteindre 'controlee' sans avoir testé quoi que
+     * ce soit, puis de buter sur le verrou de clôture sans comprendre pourquoi.
+     */
+    public const ETAPES_A_SAISIE_DEDIEE = ['controlee', 'reformee'];
+
+    /**
+     * R5 — le test de conformité conditionne la clôture. Une intervention peut être
+     * réparée et contrôlée sans être conforme : c'est précisément ce que le contrôle
+     * sert à dire, et dans ce cas elle repart en réparation au lieu d'être clôturée.
+     */
+    public function estConforme(): bool
+    {
+        return $this->conformite_resultat === 'conforme';
+    }
+
+    /**
+     * Motif du refus de clôture, ou null si la clôture est possible. Renvoyer la RAISON
+     * plutôt qu'un booléen permet à l'API comme à l'écran de dire la même chose à
+     * l'utilisateur, sans réécrire la règle des deux côtés.
+     */
+    public function blocageCloture(): ?string
+    {
+        if ($this->etape !== 'controlee') {
+            return "Seule une intervention contrôlée peut être clôturée (celle-ci est à l'étape « {$this->etape} »).";
+        }
+
+        if (! $this->estConforme()) {
+            return $this->conformite_resultat === null
+                ? "Le test de conformité (R5) n'a pas encore été enregistré."
+                : "Le dernier test de conformité est non conforme : l'intervention doit repasser en réparation.";
+        }
+
+        return null;
+    }
+
     public function recalculerCout(): void
     {
         $this->forceFill(['cout_total' => $this->actions()->sum('cout')])->save();

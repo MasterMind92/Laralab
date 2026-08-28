@@ -13,7 +13,12 @@ import {
     fmtMontant,
     nomComplet,
 } from './shared';
-import type { Etape, InterventionRow, Technicien } from './shared';
+import type {
+    Etape,
+    InterventionRow,
+    ParametresMaintenance,
+    Technicien,
+} from './shared';
 
 /**
  * Écran 3 du pôle — le poste de travail du technicien : uniquement ce qui est
@@ -29,6 +34,8 @@ const COLONNES: {
     suivante: Etape;
     libelleAction: string;
     description: string;
+    /** L'action exige une saisie : le bouton ouvre la fiche au lieu d'avancer l'étape. */
+    viaFiche?: boolean;
 }[] = [
     {
         etape: 'en_cours',
@@ -39,8 +46,11 @@ const COLONNES: {
     {
         etape: 'reparee',
         suivante: 'controlee',
-        libelleAction: 'Marquer contrôlée',
+        libelleAction: 'Tester la conformité',
         description: 'Réparé, en attente du contrôle.',
+        // R5 : on ne passe pas « contrôlé » d'un clic, on enregistre un résultat de test
+        // — le serveur refuse d'ailleurs cette transition sur la route générique.
+        viaFiche: true,
     },
     {
         etape: 'controlee',
@@ -53,9 +63,11 @@ const COLONNES: {
 export default function MaintenanceReparations({
     interventions,
     techniciens,
+    parametres,
 }: {
     interventions: InterventionRow[];
     techniciens: Technicien[];
+    parametres: ParametresMaintenance;
 }) {
     const [detailId, setDetailId] = useState<number | null>(null);
 
@@ -192,16 +204,33 @@ export default function MaintenanceReparations({
                                                     <Button
                                                         size="sm"
                                                         className="flex-1"
+                                                        title={
+                                                            colonne.suivante ===
+                                                            'cloturee'
+                                                                ? (intervention.blocage_cloture ??
+                                                                  undefined)
+                                                                : undefined
+                                                        }
                                                         disabled={
-                                                            !intervention.transitions.includes(
-                                                                colonne.suivante,
-                                                            )
+                                                            colonne.viaFiche
+                                                                ? false
+                                                                : !intervention.transitions.includes(
+                                                                      colonne.suivante,
+                                                                  ) ||
+                                                                  (colonne.suivante ===
+                                                                      'cloturee' &&
+                                                                      intervention.blocage_cloture !==
+                                                                          null)
                                                         }
                                                         onClick={() =>
-                                                            avancer(
-                                                                intervention,
-                                                                colonne.suivante,
-                                                            )
+                                                            colonne.viaFiche
+                                                                ? setDetailId(
+                                                                      intervention.id,
+                                                                  )
+                                                                : avancer(
+                                                                      intervention,
+                                                                      colonne.suivante,
+                                                                  )
                                                         }
                                                     >
                                                         {colonne.libelleAction}
@@ -231,6 +260,7 @@ export default function MaintenanceReparations({
             <InterventionDialog
                 intervention={detail}
                 techniciens={techniciens}
+                parametres={parametres}
                 onClose={() => setDetailId(null)}
             />
         </>

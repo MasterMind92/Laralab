@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import {
+    ConformiteBadge,
     EtapeBadge,
     MACRO_LABELS,
     PrioriteBadge,
@@ -32,7 +33,13 @@ import {
     fmtMontant,
     nomComplet,
 } from './shared';
-import type { Etape, InterventionRow, Technicien, TypeAction } from './shared';
+import type {
+    Etape,
+    InterventionRow,
+    ParametresMaintenance,
+    Technicien,
+    TypeAction,
+} from './shared';
 
 /**
  * Fiche complète d'une intervention : métadonnées, pilotage du workflow et journal
@@ -45,27 +52,31 @@ import type { Etape, InterventionRow, Technicien, TypeAction } from './shared';
  */
 
 /**
- * Étapes atteignables par un simple bouton. Les trois autres transitions légales sont
- * volontairement absentes : 'planifiee' et 'technicien_affecte' passent par leur propre
- * formulaire (une date, un technicien), et 'reformee' exige un motif et une répercussion
- * sur l'équipement — c'est la règle R6, livrée en étape C.
+ * Étapes atteignables par un simple bouton. Les autres transitions légales en sont
+ * volontairement absentes parce qu'elles exigent une saisie : 'planifiee' et
+ * 'technicien_affecte' ont leur propre formulaire (une date, un technicien), 'controlee'
+ * passe par le test de conformité (R5) et 'reformee' par la décision motivée (R6). Le
+ * serveur refuse d'ailleurs ces deux dernières sur la route générique.
  */
 const LIBELLES_TRANSITION: Partial<Record<Etape, string>> = {
     en_cours: 'Démarrer la réparation',
     reparee: 'Marquer réparée',
-    controlee: 'Marquer contrôlée',
     cloturee: 'Clôturer',
 };
 
 export function InterventionDialog({
     intervention,
     techniciens,
+    parametres,
     onClose,
 }: {
     intervention: InterventionRow | null;
     techniciens: Technicien[];
+    parametres: ParametresMaintenance;
     onClose: () => void;
 }) {
+    const conformite = useForm({ resultat: 'conforme', commentaire: '' });
+    const reforme = useForm({ motif_reforme: '', cout_reparation_estime: '' });
     const journal = useForm({
         type: 'diagnostic' as TypeAction,
         description: '',
@@ -110,6 +121,22 @@ export function InterventionDialog({
         journal.post(InterventionActionController.store(intervention!.id).url, {
             preserveScroll: true,
             onSuccess: () => journal.reset(),
+        });
+    }
+
+    function enregistrerConformite(e: FormEvent) {
+        e.preventDefault();
+        conformite.patch(
+            MaintenanceController.testerConformite(intervention!.id).url,
+            { preserveScroll: true, onSuccess: () => conformite.reset() },
+        );
+    }
+
+    function enregistrerReforme(e: FormEvent) {
+        e.preventDefault();
+        reforme.patch(MaintenanceController.reformer(intervention!.id).url, {
+            preserveScroll: true,
+            onSuccess: () => reforme.reset(),
         });
     }
 
@@ -245,6 +272,204 @@ export function InterventionDialog({
                             )}
                         </div>
                     </div>
+
+                    {/* R5 — le test de conformité. C'est lui, et pas un bouton de
+                        transition, qui fait passer une intervention réparée en contrôlée. */}
+                    {intervention.etape === 'reparee' && (
+                        <form
+                            onSubmit={enregistrerConformite}
+                            className="space-y-3 rounded-md border border-dashed p-3"
+                        >
+                            <div>
+                                <h3 className="font-medium">
+                                    Test de conformité
+                                </h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Obligatoire avant clôture. Un résultat non
+                                    conforme renvoie l'intervention en
+                                    réparation.
+                                </p>
+                            </div>
+                            <div className="grid gap-3 md:grid-cols-3 md:items-end">
+                                <div className="grid gap-1.5">
+                                    <Label htmlFor="resultat">Résultat</Label>
+                                    <Select
+                                        value={conformite.data.resultat}
+                                        onValueChange={(v) =>
+                                            conformite.setData('resultat', v)
+                                        }
+                                    >
+                                        <SelectTrigger id="resultat">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="conforme">
+                                                Conforme
+                                            </SelectItem>
+                                            <SelectItem value="non_conforme">
+                                                Non conforme
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid gap-1.5 md:col-span-2">
+                                    <Label htmlFor="commentaire">
+                                        Commentaire (ajouté au journal)
+                                    </Label>
+                                    <Input
+                                        id="commentaire"
+                                        value={conformite.data.commentaire}
+                                        onChange={(e) =>
+                                            conformite.setData(
+                                                'commentaire',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                </div>
+                            </div>
+                            {conformite.errors.resultat && (
+                                <p className="text-sm text-destructive">
+                                    {conformite.errors.resultat}
+                                </p>
+                            )}
+                            <div className="flex justify-end">
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    disabled={conformite.processing}
+                                >
+                                    Enregistrer le contrôle
+                                </Button>
+                            </div>
+                        </form>
+                    )}
+
+                    {/* Résultat du dernier contrôle, et raison d'un refus de clôture —
+                        message produit par le serveur, jamais rejoué ici. */}
+                    {(intervention.conformite_resultat !== null ||
+                        intervention.etape === 'controlee') && (
+                        <div className="space-y-2 rounded-md border p-3 text-sm">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs text-muted-foreground">
+                                    Conformité
+                                </span>
+                                <ConformiteBadge
+                                    resultat={intervention.conformite_resultat}
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                    {fmtDateHeure(
+                                        intervention.conformite_testee_le,
+                                    )}
+                                </span>
+                            </div>
+                            {intervention.etape === 'controlee' &&
+                                intervention.blocage_cloture && (
+                                    <p className="text-xs text-destructive">
+                                        {intervention.blocage_cloture}
+                                    </p>
+                                )}
+                        </div>
+                    )}
+
+                    {/* R6 — réforme. Le seuil est affiché, jamais bloquant : la règle dit
+                        « coût supérieur au seuil OU pièce indisponible ». */}
+                    {intervention.etape === 'en_cours' && (
+                        <form
+                            onSubmit={enregistrerReforme}
+                            className="space-y-3 rounded-md border border-dashed p-3"
+                        >
+                            <div>
+                                <h3 className="font-medium">
+                                    Réformer l'équipement
+                                </h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Issue terminale alternative : l'équipement
+                                    sort définitivement du parc. Seuil de
+                                    référence de l'entreprise :{' '}
+                                    {fmtMontant(parametres.seuil_reforme)}.
+                                </p>
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="cout_estime">
+                                    Coût de remise en état estimé (FCFA)
+                                </Label>
+                                <Input
+                                    id="cout_estime"
+                                    type="number"
+                                    min={0}
+                                    step="0.01"
+                                    value={reforme.data.cout_reparation_estime}
+                                    onChange={(e) =>
+                                        reforme.setData(
+                                            'cout_reparation_estime',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                                {Number(reforme.data.cout_reparation_estime) >
+                                    parametres.seuil_reforme && (
+                                    <p className="text-xs text-destructive">
+                                        Au-dessus du seuil : la réforme est
+                                        justifiée par le coût.
+                                    </p>
+                                )}
+                                {reforme.errors.cout_reparation_estime && (
+                                    <p className="text-sm text-destructive">
+                                        {reforme.errors.cout_reparation_estime}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="motif_reforme">Motif</Label>
+                                <textarea
+                                    id="motif_reforme"
+                                    rows={2}
+                                    placeholder="Pièce introuvable, coût supérieur à la valeur résiduelle..."
+                                    className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none"
+                                    value={reforme.data.motif_reforme}
+                                    onChange={(e) =>
+                                        reforme.setData(
+                                            'motif_reforme',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                                {reforme.errors.motif_reforme && (
+                                    <p className="text-sm text-destructive">
+                                        {reforme.errors.motif_reforme}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="flex justify-end">
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={reforme.processing}
+                                >
+                                    Réformer
+                                </Button>
+                            </div>
+                        </form>
+                    )}
+
+                    {intervention.etape === 'reformee' && (
+                        <div className="space-y-1 rounded-md border p-3 text-sm">
+                            <p className="font-medium">Équipement réformé</p>
+                            <p className="text-xs text-muted-foreground">
+                                Coût de remise en état estimé :{' '}
+                                {intervention.cout_reparation_estime === null
+                                    ? '—'
+                                    : fmtMontant(
+                                          intervention.cout_reparation_estime,
+                                      )}
+                            </p>
+                            <p className="text-xs">
+                                {intervention.motif_reforme}
+                            </p>
+                        </div>
+                    )}
 
                     <Separator />
 

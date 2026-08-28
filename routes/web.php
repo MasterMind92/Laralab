@@ -20,6 +20,7 @@ use App\Http\Controllers\OnboardingTacheController;
 use App\Http\Controllers\PaiementController;
 use App\Http\Controllers\PaiementReservationController;
 use App\Http\Controllers\ParametreFacturationController;
+use App\Http\Controllers\ParcEquipementController;
 use App\Http\Controllers\PartenaireController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\Proprietaire\DashboardController as ProprietaireDashboardController;
@@ -93,11 +94,30 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
         Route::patch('maintenance/interventions/{intervention}/etape', [MaintenanceController::class, 'changerEtape'])
             ->name('maintenance.etape');
 
+        // Etape C : deux etapes du workflow exigent une saisie propre et ont donc leur
+        // route dediee — la transition generique les refuse explicitement.
+        Route::patch('maintenance/interventions/{intervention}/conformite', [MaintenanceController::class, 'testerConformite'])
+            ->name('maintenance.conformite');
+
+        Route::patch('maintenance/interventions/{intervention}/reforme', [MaintenanceController::class, 'reformer'])
+            ->name('maintenance.reforme');
+
         Route::post('maintenance/interventions/{intervention}/actions', [InterventionActionController::class, 'store'])
             ->name('maintenance.actions.store');
 
         Route::delete('maintenance/actions/{action}', [InterventionActionController::class, 'destroy'])
             ->name('maintenance.actions.destroy');
+
+        // R7 : garantie / contrat / numero de serie portent sur l'equipement, pas sur
+        // une panne — d'ou un ecran et un controleur a part.
+        Route::get('maintenance/parc', [ParcEquipementController::class, 'index'])
+            ->name('maintenance.parc');
+
+        Route::get('maintenance/parc/export', [ParcEquipementController::class, 'export'])
+            ->name('maintenance.parc.export');
+
+        Route::patch('maintenance/parc/{equipement}', [ParcEquipementController::class, 'update'])
+            ->name('maintenance.parc.update');
     });
 
     Route::inertia('logistique', 'dashboard-logistique')

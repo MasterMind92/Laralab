@@ -29,7 +29,13 @@ import {
     fmtMontant,
     nomComplet,
 } from './shared';
-import type { Etape, InterventionRow, Priorite, Technicien } from './shared';
+import type {
+    Etape,
+    InterventionRow,
+    ParametresMaintenance,
+    Priorite,
+    Technicien,
+} from './shared';
 
 /**
  * Écran 2 du pôle — la vue exhaustive. Seul écran qui montre aussi les dossiers fermés,
@@ -48,10 +54,12 @@ const TOUS = '__tous__';
 export default function MaintenanceInterventions({
     interventions,
     techniciens,
+    parametres,
     filters,
 }: {
     interventions: InterventionRow[];
     techniciens: Technicien[];
+    parametres: ParametresMaintenance;
     filters: Filters;
 }) {
     const [detailId, setDetailId] = useState<number | null>(null);
@@ -267,6 +275,7 @@ export default function MaintenanceInterventions({
             <InterventionDialog
                 intervention={detail}
                 techniciens={techniciens}
+                parametres={parametres}
                 onClose={() => setDetailId(null)}
             />
         </>

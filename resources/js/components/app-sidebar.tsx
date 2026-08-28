@@ -204,7 +204,7 @@ const mainNavItems: NavItem[] = [
             },
             {
                 title: "Parc equipements", // Phase 05 (etape C) : garantie, contrat, reforme
-                url:"#",
+                url:"/admin/maintenance/parc",
             },
         ]
     },
