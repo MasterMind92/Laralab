@@ -14,9 +14,7 @@ class EntrepriseController extends Controller
     public function index(): Response
     {
         return Inertia::render('admin/entreprises/index', [
-            'entreprises' => Entreprise::withCount(['users', 'appartements', 'employes'])
-                ->orderBy('nom')
-                ->get(),
+            'entreprises' => Entreprise::avecCompteurs(),
         ]);
     }
 

@@ -29,7 +29,20 @@ class EnsureUserHasRole
             return $next($request);
         }
 
-        if ($userRole !== null && (in_array($userRole, self::ENTREPRISE_FULL_ACCESS_ROLES, true) || in_array($userRole, $roles, true))) {
+        // Les routes exigeant explicitement 'administrateur' (provisioning des
+        // entreprises/utilisateurs, voir routes/web.php) touchent des modeles
+        // (Entreprise, User) volontairement SANS scope multi-tenant — le bypass
+        // proprietaire/gerant, prevu pour les poles operationnels ou les global
+        // scopes des modeles filtrent quand meme les donnees, laisserait sinon un
+        // proprietaire agir sur n'importe quelle AUTRE entreprise sans aucun filtre
+        // (faille corrigee le 2026-08-29, decouverte via security-review).
+        $routeExigeAdministrateurSeul = in_array('administrateur', $roles, true);
+
+        if ($userRole !== null && in_array($userRole, self::ENTREPRISE_FULL_ACCESS_ROLES, true) && ! $routeExigeAdministrateurSeul) {
+            return $next($request);
+        }
+
+        if ($userRole !== null && in_array($userRole, $roles, true)) {
             return $next($request);
         }
 

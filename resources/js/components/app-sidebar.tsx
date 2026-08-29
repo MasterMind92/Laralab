@@ -41,10 +41,14 @@ const itemsPatrimoine: NonNullable<NavItem['sub']> = [
 const mainNavItems: NavItem[] = [
     {
         title: 'Administrateur',
-        href: '/admin/entreprises',
+        href: '/admin/administrateur',
         icon: LayoutGrid,
         roles: ['administrateur'],
         sub:[
+            {
+                title: "Tableau de bord",
+                url:"/admin/administrateur",
+            },
             {
                 title: "Entreprises",
                 url:"/admin/entreprises",
@@ -266,14 +270,17 @@ export function AppSidebar() {
     const role = auth.user?.role;
 
     // fullAccess (administrateur+proprietaire+gerant, calcule cote serveur — voir
-    // HandleInertiaRequests) bypass tous les poles operationnels, mais jamais le
-    // bloc Administrateur lui-meme : un proprietaire/gerant n'a pas a le voir,
-    // seul un compte administrateur y accede (via la correspondance de role normale).
+    // HandleInertiaRequests) bypass tous les poles operationnels UNIQUEMENT pour
+    // proprietaire/gerant, qui doivent superviser tous les poles internes de leur
+    // propre entreprise. Explicitement exclu pour administrateur (2026-08-29) : il
+    // supervise plusieurs entreprises a la fois, un melange non filtre de tous les
+    // poles de tout le monde n'est pas une vue utile — il a sa propre section
+    // (tableau de bord + entreprises + partenaires), rien de plus.
     const visibleNavItems = mainNavItems.filter(
         (item) =>
             !item.roles ||
             (role !== undefined && item.roles.includes(role)) ||
-            (auth.fullAccess && !item.roles.includes('administrateur')),
+            (auth.fullAccess && role !== 'administrateur' && !item.roles.includes('administrateur')),
     );
 
     return (

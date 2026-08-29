@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EntrepriseController as AdminEntrepriseController;
 use App\Http\Controllers\Admin\PartenaireController as AdminPartenaireController;
 use App\Http\Controllers\Admin\UtilisateurController as AdminUtilisateurController;
@@ -395,6 +396,9 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
     // Provisioning Administrateur (Phase 09, multi-tenant) — namespace App\Http\Controllers\Admin.
     Route::middleware('role:administrateur')->group(function () {
+        Route::get('administrateur', [AdminDashboardController::class, 'index'])
+            ->name('admin.dashboard');
+
         Route::get('entreprises', [AdminEntrepriseController::class, 'index'])
             ->name('admin.entreprises.index');
 

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -37,5 +38,17 @@ class Entreprise extends Model
     public function recrutements(): HasMany
     {
         return $this->hasMany(Recrutement::class);
+    }
+
+    /**
+     * Liste triée avec compteurs, partagée par Admin\EntrepriseController (CRUD) et
+     * Admin\DashboardController (vue plateforme) — évite que les deux vues divergent
+     * si les relations comptées ou le tri changent un jour.
+     */
+    public static function avecCompteurs(): Collection
+    {
+        return static::withCount(['users', 'appartements', 'employes'])
+            ->orderBy('nom')
+            ->get();
     }
 }
