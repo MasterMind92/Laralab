@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { MoreHorizontal } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import AppartementController from '@/actions/App/Http/Controllers/AppartementController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -153,6 +153,22 @@ function AppartementFormFields({
     photosExistantes?: string[];
 }) {
     const { data, setData, errors, processing } = form;
+
+    // Aperçu des fichiers tout juste sélectionnés (avant envoi) — photosExistantes ne
+    // reflète que ce qui est déjà enregistré côté serveur, donc sans ceci les photos
+    // qu'on vient de choisir restaient invisibles jusqu'à l'enregistrement puis la
+    // réouverture du formulaire. Générées dans un effet (pas un useMemo) : React ne
+    // garantit pas qu'un rendu commencé soit committé, alors qu'un effet ne s'exécute
+    // que pour un rendu réellement affiché — sans quoi une URL objet pourrait être
+    // créée sans jamais être révoquée.
+    const [previsualisations, setPrevisualisations] = useState<string[]>([]);
+
+    useEffect(() => {
+        const urls = data.photos.map((file) => URL.createObjectURL(file));
+        setPrevisualisations(urls);
+
+        return () => urls.forEach((url) => URL.revokeObjectURL(url));
+    }, [data.photos]);
 
     function toggleEquipement(id: number, checked: boolean) {
         setData(
@@ -325,6 +341,13 @@ function AppartementFormFields({
                     multiple
                     onChange={(e) => setData('photos', e.target.files ? Array.from(e.target.files) : [])}
                 />
+                {previsualisations.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                        {previsualisations.map((url) => (
+                            <img key={url} src={url} alt="" className="h-16 w-16 rounded border-2 border-primary object-cover" />
+                        ))}
+                    </div>
+                )}
                 <p className="text-xs text-muted-foreground">
                     Les nouvelles photos s'ajoutent aux existantes (pas de suppression individuelle pour l'instant).
                 </p>
