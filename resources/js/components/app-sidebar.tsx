@@ -265,9 +265,26 @@ const footerNavItems: NavItem[] = [
     },
 ];
 
+/**
+ * Un lien de menu est actif quand son chemin est EXACTEMENT le chemin courant.
+ *
+ * Comparaison sur le seul chemin, sans la query : arriver sur
+ * /admin/maintenance/interventions?sla=depasse depuis une notification doit allumer
+ * "Suivi interventions" comme n'importe quelle autre visite.
+ *
+ * Egalite exacte et non prefixe, sinon "Tableau de bord" (/admin/maintenance) resterait
+ * allume sur toutes ses sous-pages. Les items encore en attente d'ecran portent "#" et ne
+ * s'allument jamais.
+ */
+function estLienActif(url: string, cheminCourant: string): boolean {
+    return url !== '#' && url.split('?')[0] === cheminCourant;
+}
+
 export function AppSidebar() {
-    const { auth } = usePage<{ auth: { user: { role: string } | null; fullAccess: boolean } }>().props;
+    const page = usePage<{ auth: { user: { role: string } | null; fullAccess: boolean } }>();
+    const { auth } = page.props;
     const role = auth.user?.role;
+    const cheminCourant = page.url.split('?')[0];
 
     // fullAccess (administrateur+proprietaire+gerant, calcule cote serveur — voir
     // HandleInertiaRequests) bypass tous les poles operationnels UNIQUEMENT pour
@@ -304,6 +321,15 @@ export function AppSidebar() {
                 key={item.title}
                 title={item.title}
                 className="group/collapsible"
+                // Deroule d'office le pole de l'utilisateur : c'est SON menu, le replier
+                // au chargement lui impose un clic avant chaque premiere action. Les
+                // autres groupes (visibles seulement par proprietaire/gerant, qui
+                // supervisent tous les poles) restent replies, sauf celui qui contient la
+                // page ouverte.
+                defaultOpen={
+                    (role !== undefined && (item.roles?.includes(role) ?? false)) ||
+                    (item.sub?.some((sousItem) => estLienActif(sousItem.url, cheminCourant)) ?? false)
+                }
             >
                 <SidebarGroup>
                 <SidebarGroupLabel
@@ -318,12 +344,17 @@ export function AppSidebar() {
                 <CollapsibleContent>
                     <SidebarGroupContent>
                     <SidebarMenu>
-                        {item.sub && item.sub.map((item) => (
-                        <SidebarMenuItem key={item.title}>
-                            <SidebarMenuButton asChild isActive={item.isActive}>
-                            {/* <a href={item.url}>{item.title}</a> */}
-                            <Link href={item.url} prefetch >
-                                <span>{item.title}</span>
+                        {item.sub && item.sub.map((sousItem) => (
+                        <SidebarMenuItem key={sousItem.title}>
+                            {/* isActive se calcule depuis l'URL courante : le champ
+                                NavSubItem.isActive n'etait jamais renseigne, donc aucun
+                                item ne s'allumait. */}
+                            <SidebarMenuButton
+                                asChild
+                                isActive={estLienActif(sousItem.url, cheminCourant)}
+                            >
+                            <Link href={sousItem.url} prefetch>
+                                <span>{sousItem.title}</span>
                             </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
