@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\NotificationsUtilisateur;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -15,6 +16,20 @@ class HandleInertiaRequests extends Middleware
      * @var string
      */
     protected $rootView = 'app';
+
+    /**
+     * @return array{non_lues: int, recentes: array<int, array<string, mixed>>}|null
+     */
+    private function notificationsDuPersonnel(Request $request): ?array
+    {
+        $utilisateur = $request->user();
+
+        if ($utilisateur === null || $utilisateur->role === 'client') {
+            return null;
+        }
+
+        return NotificationsUtilisateur::resume($utilisateur);
+    }
 
     /**
      * Determines the current asset version.
@@ -45,6 +60,14 @@ class HandleInertiaRequests extends Middleware
                 'fullAccess' => in_array($request->user()?->role, ['administrateur', 'proprietaire', 'gerant'], true),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            // Centre de notifications (Phase 12) : la cloche vit dans l'en-tete du
+            // back-office, donc sur toutes ses pages — le compteur voyage avec les props
+            // globales plutot que via une requete dediee a chaque rendu.
+            //
+            // Calcule uniquement pour le personnel : le portail public et les comptes
+            // client n'ont pas de cloche, leur faire payer deux requetes par page serait
+            // gratuit. Le rechargement partiel du sondage ne demande que cette cle.
+            'notifications' => $this->notificationsDuPersonnel($request),
         ];
     }
 }

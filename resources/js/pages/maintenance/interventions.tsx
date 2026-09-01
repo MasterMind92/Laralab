@@ -47,6 +47,8 @@ type Filters = {
     etape?: Etape | null;
     priorite?: Priorite | null;
     sla?: 'depasse' | null;
+    /** Cible une intervention precise — destination des notifications (Phase 12). */
+    intervention?: number | string | null;
 };
 
 const TOUS = '__tous__';
@@ -62,7 +64,12 @@ export default function MaintenanceInterventions({
     parametres: ParametresMaintenance;
     filters: Filters;
 }) {
-    const [detailId, setDetailId] = useState<number | null>(null);
+    // Arrive depuis une notification ciblant UNE intervention : on ouvre sa fiche
+    // directement, plutot que de deposer l'utilisateur devant une liste d'une ligne en
+    // le laissant cliquer encore une fois.
+    const [detailId, setDetailId] = useState<number | null>(
+        filters.intervention ? Number(filters.intervention) : null,
+    );
     const [etape, setEtape] = useState<string>(filters.etape ?? TOUS);
     const [priorite, setPriorite] = useState<string>(filters.priorite ?? TOUS);
     const [sla, setSla] = useState<string>(filters.sla ?? TOUS);

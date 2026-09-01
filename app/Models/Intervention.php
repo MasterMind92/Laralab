@@ -69,6 +69,7 @@ class Intervention extends Model
             'date_planifiee' => 'datetime',
             'date_prise_en_charge' => 'datetime',
             'sla_echeance' => 'datetime',
+            'sla_notifie_le' => 'datetime',
             'date_resolution' => 'datetime',
             'conformite_testee_le' => 'datetime',
             'cout_reparation_estime' => 'decimal:2',

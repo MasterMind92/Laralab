@@ -27,26 +27,87 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
     EtapeBadge,
     PrioriteBadge,
     SlaBadge,
     fmtDateHeure,
     nomComplet,
 } from './shared';
-import type { InterventionRow, Technicien } from './shared';
+import { PRIORITE_LABELS, PRIORITES } from './shared';
+import type { InterventionRow, Priorite, Technicien } from './shared';
 
 /**
  * Écran 1 du pôle — le triage. Tout ce qui n'est pas encore parti en atelier :
  * signalé, planifié, technicien affecté. Chacune des trois actions vaut prise en charge
  * et arrête donc le compteur SLA côté serveur (R2) ; rien n'est décidé ici côté client.
  */
+type Filters = {
+    equipement_id?: string | number | null;
+    appartement_id?: string | number | null;
+    priorite?: Priorite | null;
+};
+
+const TOUS = '__tous__';
+
 export default function MaintenancePannes({
     interventions,
     techniciens,
+    appartements,
+    equipements,
+    filters,
 }: {
     interventions: InterventionRow[];
     techniciens: Technicien[];
+    appartements: { id: number; numero: string }[];
+    equipements: { id: number; nom: string }[];
+    filters: Filters;
 }) {
+    const [equipementId, setEquipementId] = useState(
+        filters.equipement_id ? String(filters.equipement_id) : TOUS,
+    );
+    const [appartementId, setAppartementId] = useState(
+        filters.appartement_id ? String(filters.appartement_id) : TOUS,
+    );
+    const [priorite, setPriorite] = useState<string>(filters.priorite ?? TOUS);
+
+    // Le libelle de l'equipement filtre, pour dire a l'utilisateur venu d'une
+    // notification OU il vient d'atterrir plutot que de le laisser deviner.
+    const equipementFiltre = equipements.find(
+        (e) => String(e.id) === equipementId,
+    );
+
+    function filtrer(e: FormEvent) {
+        e.preventDefault();
+        router.get(
+            MaintenanceController.pannes().url,
+            {
+                equipement_id: equipementId === TOUS ? undefined : equipementId,
+                appartement_id:
+                    appartementId === TOUS ? undefined : appartementId,
+                priorite: priorite === TOUS ? undefined : priorite,
+            },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    }
+
+    function reinitialiser() {
+        setEquipementId(TOUS);
+        setAppartementId(TOUS);
+        setPriorite(TOUS);
+        router.get(
+            MaintenanceController.pannes().url,
+            {},
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    }
+
     const [aPlanifier, setAPlanifier] = useState<InterventionRow | null>(null);
 
     const planification = useForm({ date_planifiee: '' });
@@ -233,10 +294,84 @@ export default function MaintenancePannes({
                         Prise en charge des pannes
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Les pannes déclarées par la réception, triées par
-                        priorité puis par ancienneté.
+                        {equipementFiltre
+                            ? `Filtré sur « ${equipementFiltre.nom} » — ${interventions.length} panne(s) encore à traiter.`
+                            : 'Les pannes déclarées par la réception, triées par priorité puis par ancienneté.'}
                     </p>
                 </div>
+
+                <form
+                    onSubmit={filtrer}
+                    className="grid grid-cols-2 gap-3 rounded-md border p-3 md:grid-cols-4 md:items-end"
+                >
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="f-equipement">Équipement</Label>
+                        <Select
+                            value={equipementId}
+                            onValueChange={setEquipementId}
+                        >
+                            <SelectTrigger id="f-equipement">
+                                <SelectValue placeholder="Tous" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={TOUS}>Tous</SelectItem>
+                                {equipements.map((e) => (
+                                    <SelectItem key={e.id} value={String(e.id)}>
+                                        {e.nom}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="f-appartement">Appartement</Label>
+                        <Select
+                            value={appartementId}
+                            onValueChange={setAppartementId}
+                        >
+                            <SelectTrigger id="f-appartement">
+                                <SelectValue placeholder="Tous" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={TOUS}>Tous</SelectItem>
+                                {appartements.map((a) => (
+                                    <SelectItem key={a.id} value={String(a.id)}>
+                                        {a.numero}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="f-priorite">Priorité</Label>
+                        <Select value={priorite} onValueChange={setPriorite}>
+                            <SelectTrigger id="f-priorite">
+                                <SelectValue placeholder="Toutes" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={TOUS}>Toutes</SelectItem>
+                                {PRIORITES.map((p) => (
+                                    <SelectItem key={p} value={p}>
+                                        {PRIORITE_LABELS[p]}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <Button type="submit">Filtrer</Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={reinitialiser}
+                        >
+                            Réinitialiser
+                        </Button>
+                    </div>
+                </form>
 
                 <DataTable
                     columns={columns}

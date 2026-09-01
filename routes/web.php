@@ -17,6 +17,7 @@ use App\Http\Controllers\InterventionActionController;
 use App\Http\Controllers\InterventionController;
 use App\Http\Controllers\LicenciementController;
 use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingTacheController;
 use App\Http\Controllers\PaiementController;
 use App\Http\Controllers\PaiementReservationController;
@@ -45,6 +46,29 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')
         ->name('dashboard')
         ->middleware('role:rh,compta,logistique,maintenance,receptionniste');
+
+    // Centre de notifications (Phase 12) : transverse a tous les poles, donc sans
+    // middleware 'role' — chacun ne voit de toute facon que SES propres notifications,
+    // le controleur les resout dans la collection de l'utilisateur connecte.
+    Route::get('notifications', [NotificationController::class, 'index'])
+        ->name('notifications.index');
+
+    Route::patch('notifications/tout-lu', [NotificationController::class, 'toutMarquerLu'])
+        ->name('notifications.tout-lu');
+
+    // Marque lue puis redirige, en une seule requete : deux visites Inertia lancees coup
+    // sur coup s'annulent l'une l'autre.
+    Route::get('notifications/{notification}/ouvrir', [NotificationController::class, 'ouvrir'])
+        ->name('notifications.ouvrir');
+
+    Route::patch('notifications/{notification}/lue', [NotificationController::class, 'marquerLue'])
+        ->name('notifications.lue');
+
+    Route::patch('notifications/{notification}/non-lue', [NotificationController::class, 'marquerNonLue'])
+        ->name('notifications.non-lue');
+
+    Route::delete('notifications/{notification}', [NotificationController::class, 'destroy'])
+        ->name('notifications.destroy');
 
     Route::inertia('receptionniste', 'dashboard-commercial')
         ->name('receptionniste')

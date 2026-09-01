@@ -7,10 +7,13 @@ use App\Models\Appartement;
 use App\Models\Equipement;
 use App\Models\Intervention;
 use App\Models\ParametreMaintenance;
+use App\Notifications\Interne\PanneCritiqueSignalee;
+use App\Support\Destinataires;
 use App\Support\HeuresOuvrees;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -103,6 +106,17 @@ class InterventionController extends Controller
             $intervention->forceFill(['sous_garantie' => $equipement->estSousGarantie()])->save();
 
             $equipement->update(['statut' => 'en_panne']);
+
+            // Phase 12 : seule une panne CRITIQUE reveille le pole. Notifier chaque
+            // signalement transformerait la cloche en journal, et une cloche qui sonne
+            // toujours ne se regarde plus — les pannes ordinaires sont deja dans la file
+            // "Prise en charge".
+            if ($data['priorite'] === 'critique') {
+                Notification::send(
+                    Destinataires::pourRole('maintenance', $equipement->appartement?->entreprise_id),
+                    new PanneCritiqueSignalee($intervention),
+                );
+            }
         });
 
         return back();

@@ -3,13 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ExportsCsv;
+use App\Models\Appartement;
 use App\Models\Employe;
+use App\Models\Equipement;
 use App\Models\Intervention;
 use App\Models\ParametreMaintenance;
+use App\Notifications\Interne\InterventionAffectee;
+use App\Support\Destinataires;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -74,17 +79,49 @@ class MaintenanceController extends Controller
      * Écran 1 — Prise en charge des pannes : tout ce qui n'a pas encore été touché par
      * la maintenance (triage), plus ce qui a été planifié/affecté mais pas démarré.
      */
-    public function pannes(): Response
+    public function pannes(Request $request): Response
     {
+        $filtres = $request->validate([
+            'equipement_id' => ['nullable', 'integer', 'exists:equipements,id'],
+            'appartement_id' => ['nullable', 'integer', 'exists:appartements,id'],
+            'priorite' => ['nullable', 'in:basse,normale,haute,critique'],
+        ]);
+
+        $requete = Intervention::whereIn('etape', ['signalee', 'planifiee', 'technicien_affecte'])
+            ->when($filtres['equipement_id'] ?? null, fn ($q, $id) => $q->where('equipement_id', $id))
+            ->when($filtres['appartement_id'] ?? null, fn ($q, $id) => $q->where('appartement_id', $id))
+            ->when($filtres['priorite'] ?? null, fn ($q, $p) => $q->where('priorite', $p))
+            ->orderByRaw("FIELD(priorite, 'critique', 'haute', 'normale', 'basse')")
+            ->orderBy('date_signalement');
+
         return Inertia::render('maintenance/pannes', [
-            'interventions' => $this->lignes(
-                Intervention::whereIn('etape', ['signalee', 'planifiee', 'technicien_affecte'])
-                    ->orderByRaw("FIELD(priorite, 'critique', 'haute', 'normale', 'basse')")
-                    ->orderBy('date_signalement'),
-            ),
+            'interventions' => $this->lignes($requete),
             'techniciens' => $this->techniciens(),
             'parametres' => $this->parametresPourEcran(),
+            'appartements' => Appartement::orderBy('numero')->get(['id', 'numero']),
+            'equipements' => $this->equipementsAvecPanneOuverte(),
+            'filters' => $filtres,
         ]);
+    }
+
+    /**
+     * Les équipements qui portent au moins une panne encore à traiter — c'est la seule
+     * liste utile au filtre de cet écran. Proposer tout le parc laisserait choisir des
+     * équipements qui ne peuvent donner aucun résultat.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function equipementsAvecPanneOuverte(): array
+    {
+        return Equipement::whereIn(
+            'id',
+            Intervention::whereIn('etape', ['signalee', 'planifiee', 'technicien_affecte'])
+                ->select('equipement_id'),
+        )
+            ->orderBy('nom')
+            ->get(['id', 'nom'])
+            ->map(fn (Equipement $e) => ['id' => $e->id, 'nom' => $e->nom])
+            ->all();
     }
 
     /**
@@ -97,9 +134,14 @@ class MaintenanceController extends Controller
             'etape' => ['nullable', 'in:'.implode(',', Intervention::ETAPES)],
             'priorite' => ['nullable', 'in:basse,normale,haute,critique'],
             'sla' => ['nullable', 'in:depasse'],
+            // Cible UNE intervention : c'est la destination des notifications qui parlent
+            // d'un dossier precis. Cet ecran est le seul qui montre AUSSI les dossiers
+            // fermes, donc le seul ou un lien reste valable quoi qu'il advienne du dossier.
+            'intervention' => ['nullable', 'integer'],
         ]);
 
         $requete = Intervention::query()
+            ->when($filtres['intervention'] ?? null, fn ($q, $id) => $q->whereKey($id))
             ->when($filtres['etape'] ?? null, fn ($q, $etape) => $q->where('etape', $etape))
             ->when($filtres['priorite'] ?? null, fn ($q, $priorite) => $q->where('priorite', $priorite))
             ->when(($filtres['sla'] ?? null) === 'depasse', fn ($q) => $q->horsDelai())
@@ -164,12 +206,25 @@ class MaintenanceController extends Controller
 
         $this->refuserSiTerminee($intervention);
 
+        $changement = $intervention->technicien_employe_id !== (int) $data['technicien_employe_id'];
+
         $intervention->fill(['technicien_employe_id' => $data['technicien_employe_id']]);
         if ($intervention->peutPasserA('technicien_affecte')) {
             $intervention->etape = 'technicien_affecte';
         }
         $this->horodaterPriseEnCharge($intervention);
         $intervention->save();
+
+        // Phase 12 : la seule notification adressee a UNE personne plutot qu'a un pole.
+        // Conditionnee a un vrai changement, sinon reenregistrer la meme affectation
+        // renotifierait le technicien a chaque fois. Le destinataire peut etre vide :
+        // tous les employes n'ont pas de compte de connexion.
+        if ($changement) {
+            Notification::send(
+                Destinataires::pourEmploye($intervention->technicien_employe_id),
+                new InterventionAffectee($intervention),
+            );
+        }
 
         return back();
     }
