@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\ExportsCsv;
 use App\Models\Conge;
 use App\Models\Employe;
+use App\Notifications\Interne\CongeAValider;
+use App\Support\Destinataires;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -34,7 +37,16 @@ class CongeController extends Controller
             'date_fin' => ['required', 'date', 'after_or_equal:date_debut'],
         ]);
 
-        Conge::create([...$data, 'statut' => 'demande']);
+        $conge = Conge::create([...$data, 'statut' => 'demande']);
+
+        // Phase 12 : la demande dort jusqu'à ce que quelqu'un ouvre l'écran des congés.
+        // L'entreprise se lit sur l'employé, seul porteur direct du rattachement — le
+        // congé, lui, n'y est rattaché qu'à travers lui.
+        $conge->load('employe');
+        Notification::send(
+            Destinataires::pourRole('rh', $conge->employe?->entreprise_id),
+            new CongeAValider($conge),
+        );
 
         return back();
     }
@@ -45,7 +57,7 @@ class CongeController extends Controller
     public function update(Request $request, Conge $conge): RedirectResponse
     {
         if ($conge->statut !== 'demande') {
-            return back()->withErrors(['conge' => "Cette demande a déjà été traitée."]);
+            return back()->withErrors(['conge' => 'Cette demande a déjà été traitée.']);
         }
 
         $data = $request->validate([

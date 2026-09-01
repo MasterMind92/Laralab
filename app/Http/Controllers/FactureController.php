@@ -7,6 +7,8 @@ use App\Models\FactureLigne;
 use App\Models\ParametreFacturation;
 use App\Models\Sejour;
 use App\Notifications\FactureValidee;
+use App\Notifications\Interne\FactureAValider;
+use App\Support\Destinataires;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -279,6 +281,8 @@ class FactureController extends Controller
         $parametres = ParametreFacturation::actuel($appartement->entreprise_id);
 
         DB::transaction(function () use ($sejour, $existante, $appartement, $parametres) {
+            $creation = $existante === null;
+
             $facture = $existante ?? Facture::create([
                 'sejour_id' => $sejour->id,
                 'montant_ht' => 0,
@@ -358,6 +362,17 @@ class FactureController extends Controller
             $paiementInitial = $sejour->reservation?->paiementInitial;
             if ($paiementInitial && $paiementInitial->facture_id !== $facture->id) {
                 $paiementInitial->update(['facture_id' => $facture->id]);
+            }
+
+            // Phase 12 : la Comptabilité hérite d'un devis à valider. À la CRÉATION
+            // seulement — régénérer un brouillon existant est une correction de saisie,
+            // sa file d'attente n'en apprend rien.
+            if ($creation) {
+                $facture->load('sejour.reservation.client', 'sejour.reservation.appartement');
+                Notification::send(
+                    Destinataires::pourRole('compta', $appartement->entreprise_id),
+                    new FactureAValider($facture),
+                );
             }
         });
 

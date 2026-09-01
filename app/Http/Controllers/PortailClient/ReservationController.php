@@ -7,9 +7,12 @@ use App\Models\Appartement;
 use App\Models\Client;
 use App\Models\ParametreFacturation;
 use App\Models\Reservation;
+use App\Notifications\Interne\ReservationEnAttente;
 use App\Notifications\ReservationConfirmee;
+use App\Support\Destinataires;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -124,6 +127,15 @@ class ReservationController extends Controller
 
         $reservation->load('appartement');
         $request->user()->notify(new ReservationConfirmee($reservation));
+
+        // Phase 12 : la réservation naît en `en_attente` et n'avance que si quelqu'un la
+        // confirme. Le client vient d'être remercié par e-mail, mais côté maison personne
+        // n'est prévenu tant que la réception n'ouvre pas son écran.
+        $reservation->load('client');
+        Notification::send(
+            Destinataires::pourRole('receptionniste', $appartement->entreprise_id),
+            new ReservationEnAttente($reservation),
+        );
 
         return redirect()->route('checkout.client', [
             'apt_id' => $appartement->id,
