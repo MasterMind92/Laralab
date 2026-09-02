@@ -164,22 +164,30 @@ const mainNavItems: NavItem[] = [
         href: "/admin/logistique",
         icon: LayoutGrid,
         roles: ['logistique'],
+        // Phase 10 (etape B) : les 4 items etaient des stubs '#'. L'ordre suit la
+        // chaine reelle Besoin -> Commande -> Reception -> Enregistrement ->
+        // Affectation ; "Commandes" est le maillon qui manquait au menu, on ne peut
+        // pas passer d'un besoin a une livraison sans bon de commande.
         sub:[
             {
                 title: "Expression Besoins",
-                url:"#",
+                url:"/admin/logistique/besoins",
+            },
+            {
+                title: "Commandes",
+                url:"/admin/logistique/commandes",
             },
             {
                 title: "Reception",
-                url:"#",
+                url:"/admin/logistique/receptions",
             },
             {
                 title: "Enregistrement",
-                url:"#",
+                url:"/admin/logistique/enregistrement",
             },
             {
                 title: "Affectation Equipement",
-                url:"#",
+                url:"/admin/logistique/affectation",
             },
         ]
         

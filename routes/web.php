@@ -16,6 +16,7 @@ use App\Http\Controllers\FactureController;
 use App\Http\Controllers\InterventionActionController;
 use App\Http\Controllers\InterventionController;
 use App\Http\Controllers\LicenciementController;
+use App\Http\Controllers\LogistiqueController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingTacheController;
@@ -148,6 +149,60 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
     Route::inertia('logistique', 'dashboard-logistique')
         ->name('logistique')
         ->middleware('role:logistique');
+
+    // Les cinq ecrans du pole Logistique (Phase 10, etape B) : la chaine
+    // Besoin -> Commande -> Reception -> Enregistrement -> Affectation. Middleware pose
+    // une seule fois sur le groupe, comme pour le bloc maintenance ci-dessus.
+    Route::middleware('role:logistique')->group(function () {
+        Route::get('logistique/besoins', [LogistiqueController::class, 'besoins'])
+            ->name('logistique.besoins');
+
+        Route::post('logistique/besoins', [LogistiqueController::class, 'storeBesoin'])
+            ->name('logistique.besoins.store');
+
+        Route::put('logistique/besoins/{besoin}', [LogistiqueController::class, 'updateBesoin'])
+            ->name('logistique.besoins.update');
+
+        Route::patch('logistique/besoins/{besoin}/statut', [LogistiqueController::class, 'changerStatutBesoin'])
+            ->name('logistique.besoins.statut');
+
+        Route::delete('logistique/besoins/{besoin}', [LogistiqueController::class, 'destroyBesoin'])
+            ->name('logistique.besoins.destroy');
+
+        Route::get('logistique/commandes', [LogistiqueController::class, 'commandes'])
+            ->name('logistique.commandes');
+
+        Route::post('logistique/commandes', [LogistiqueController::class, 'storeCommande'])
+            ->name('logistique.commandes.store');
+
+        Route::patch('logistique/commandes/{commande}/statut', [LogistiqueController::class, 'changerStatutCommande'])
+            ->name('logistique.commandes.statut');
+
+        Route::post('logistique/fournisseurs', [LogistiqueController::class, 'storeFournisseur'])
+            ->name('logistique.fournisseurs.store');
+
+        Route::get('logistique/receptions', [LogistiqueController::class, 'receptions'])
+            ->name('logistique.receptions');
+
+        Route::post('logistique/commandes/{commande}/receptions', [LogistiqueController::class, 'storeReception'])
+            ->name('logistique.receptions.store');
+
+        Route::get('logistique/enregistrement', [LogistiqueController::class, 'enregistrement'])
+            ->name('logistique.enregistrement');
+
+        Route::post('logistique/reception-lignes/{ligne}/enregistrer', [LogistiqueController::class, 'enregistrer'])
+            ->name('logistique.enregistrer');
+
+        Route::get('logistique/affectation', [LogistiqueController::class, 'affectation'])
+            ->name('logistique.affectation');
+
+        // {equipement} est un simple entier et NON une liaison de modele : `equipements`
+        // n'a deliberement aucun scope d'entreprise, la liaison automatique resoudrait
+        // donc la piece d'un autre locataire. Le controleur la retrouve lui-meme dans
+        // l'inventaire cloisonne du pole.
+        Route::patch('logistique/equipements/{equipement}/affectation', [LogistiqueController::class, 'affecter'])
+            ->name('logistique.affecter');
+    });
 
     Route::get('planning', [PlanningController::class, 'index'])
         ->name('receptionniste.planning')
