@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'nom', 'type', 'icone', 'date_achat', 'statut', 'employe_id', 'appartement_id',
     'numero_serie', 'garantie_fin', 'contrat_maintenance', 'contrat_reference', 'contrat_echeance', 'date_reforme',
+    'reception_ligne_id',
 ])]
 class Equipement extends Model
 {
@@ -46,6 +47,16 @@ class Equipement extends Model
     public function interventions(): HasMany
     {
         return $this->hasMany(Intervention::class);
+    }
+
+    /**
+     * D'où vient cette pièce (Phase 10) : la ligne de réception qui l'a fait entrer au
+     * parc. Nulle pour tout l'équipement antérieur à la chaîne d'approvisionnement, et
+     * pour celui enregistré à la main — ce qui restera toujours légitime.
+     */
+    public function receptionLigne(): BelongsTo
+    {
+        return $this->belongsTo(ReceptionLigne::class);
     }
 
     /**
