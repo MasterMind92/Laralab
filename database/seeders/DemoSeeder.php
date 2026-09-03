@@ -936,6 +936,21 @@ class DemoSeeder extends Seeder
             ['entreprise_id' => $konan->id, 'nom' => "N'Dri", 'prenom' => 'Aya', 'poste' => 'Réceptionniste', 'date_embauche' => now()->subMonths(4)->toDateString(), 'salaire_base' => null, 'actif' => true],
         );
 
+        // Logistique rattachee (Phase 10) : le compte generique logistique@laralab.test
+        // est orphelin (entreprise_id NULL), il ne voit donc que le monde d'avant la
+        // Phase 09 — aucun appartement de Konan dans le selecteur "Destination prevue".
+        // Celui-ci est le compte a utiliser pour tester le pole sur des donnees reelles.
+        $userLogistiqueKonan = User::updateOrCreate(
+            ['email' => 'logistique.konan@laralab.test'],
+            ['name' => 'Kouassi Fabrice', 'password' => Hash::make('12345678'), 'role' => 'logistique', 'entreprise_id' => $konan->id, 'actif' => true, 'email_verified_at' => now()],
+        );
+        // La fiche Employe n'est pas decorative : sans elle, Besoin::valide_par_id reste
+        // NULL a la validation et la tracabilite du valideur se perd.
+        Employe::updateOrCreate(
+            ['user_id' => $userLogistiqueKonan->id],
+            ['entreprise_id' => $konan->id, 'nom' => 'Kouassi', 'prenom' => 'Fabrice', 'poste' => 'Logisticien', 'date_embauche' => now()->subMonths(3)->toDateString(), 'salaire_base' => null, 'actif' => true],
+        );
+
         Recrutement::updateOrCreate(
             ['poste' => 'Femme de chambre', 'departement' => 'Housekeeping', 'entreprise_id' => $konan->id],
             ['nombre_postes' => 1, 'type_contrat_propose' => 'cdd', 'priorite' => 'normale', 'motif' => 'renforcement_equipe', 'lieu' => 'Cocody, Abidjan', 'statut' => 'validee', 'date_validation' => now()->subDays(5)->toDateString()],
@@ -990,6 +1005,17 @@ class DemoSeeder extends Seeder
         Employe::updateOrCreate(
             ['user_id' => $userAgentBayo->id],
             ['entreprise_id' => $bayo->id, 'nom' => 'Traore', 'prenom' => 'Karim', 'poste' => "Agent d'entretien", 'date_embauche' => now()->subMonths(2)->toDateString(), 'salaire_base' => null, 'actif' => true],
+        );
+
+        // Second locataire logistique : sert a verifier de visu que le cloisonnement
+        // tient sur la chaine d'approvisionnement (chacun ne voit que ses commandes).
+        $userLogistiqueBayo = User::updateOrCreate(
+            ['email' => 'logistique.bayo@laralab.test'],
+            ['name' => 'Ouattara Salif', 'password' => Hash::make('12345678'), 'role' => 'logistique', 'entreprise_id' => $bayo->id, 'actif' => true, 'email_verified_at' => now()],
+        );
+        Employe::updateOrCreate(
+            ['user_id' => $userLogistiqueBayo->id],
+            ['entreprise_id' => $bayo->id, 'nom' => 'Ouattara', 'prenom' => 'Salif', 'poste' => 'Magasinier', 'date_embauche' => now()->subMonths(1)->toDateString(), 'salaire_base' => null, 'actif' => true],
         );
 
         Recrutement::updateOrCreate(
