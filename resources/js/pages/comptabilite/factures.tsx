@@ -153,6 +153,7 @@ export default function FacturesIndex({ factures }: { factures: FactureRow[] }) 
         },
         {
             id: 'actions',
+            header: 'Actions',
             cell: ({ row }) => {
                 const facture = row.original;
                 return (

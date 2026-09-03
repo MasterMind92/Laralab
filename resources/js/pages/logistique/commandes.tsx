@@ -264,6 +264,7 @@ export default function Commandes({
         },
         {
             id: 'actions',
+            header: 'Actions',
             cell: ({ row }) => {
                 const commande = row.original;
 

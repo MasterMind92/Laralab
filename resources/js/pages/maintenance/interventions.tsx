@@ -176,6 +176,7 @@ export default function MaintenanceInterventions({
         },
         {
             id: 'actions',
+            header: () => <div className="text-right">Actions</div>,
             cell: ({ row }) => (
                 <div className="flex justify-end">
                     <Button

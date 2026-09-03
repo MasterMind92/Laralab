@@ -64,6 +64,7 @@ export const columns_emp: ColumnDef<Employe>[] = [
   },
   {
     id: "actions",
+    header: "Actions",
     cell: ({ row }) => {
       const payment = row.original
  

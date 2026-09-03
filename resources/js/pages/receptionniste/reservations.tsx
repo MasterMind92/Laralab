@@ -135,6 +135,7 @@ export default function ReservationsIndex({ reservations }: { reservations: Rese
         },
         {
             id: 'actions',
+            header: 'Actions',
             cell: ({ row }) => {
                 const reservation = row.original;
                 return (

@@ -170,6 +170,7 @@ export default function EquipementsSuivi({
         },
         {
             id: 'actions',
+            header: () => <div className="text-right">Actions</div>,
             cell: ({ row }) => {
                 const equipement = row.original;
                 return (

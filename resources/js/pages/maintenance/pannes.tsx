@@ -213,6 +213,7 @@ export default function MaintenancePannes({
         },
         {
             id: 'actions',
+            header: 'Actions',
             cell: ({ row }) => {
                 const intervention = row.original;
 

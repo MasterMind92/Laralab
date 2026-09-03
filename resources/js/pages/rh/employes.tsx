@@ -162,6 +162,7 @@ export default function Employes({ employes }: { employes: EmployeResume[] }) {
         },
         {
             id: 'actions',
+            header: () => <div className="text-right">Actions</div>,
             cell: ({ row }) => {
                 const employe = row.original;
                 return (

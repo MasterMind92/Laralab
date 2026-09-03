@@ -114,6 +114,7 @@ export default function SejoursIndex({ sejours }: { sejours: SejourRow[] }) {
         },
         {
             id: 'actions',
+            header: 'Actions',
             cell: ({ row }) => {
                 const sejour = row.original;
                 return (

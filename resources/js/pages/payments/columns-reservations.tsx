@@ -77,6 +77,7 @@ export const columns_reserv: ColumnDef<reservations>[] = [
   },
   {
     id: "actions",
+    header: "Actions",
     cell: ({ row }) => {
       const reservations = row.original
  

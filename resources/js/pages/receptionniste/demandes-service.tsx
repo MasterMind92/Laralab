@@ -156,6 +156,7 @@ export default function DemandesServiceIndex({
         },
         {
             id: 'actions',
+            header: 'Actions',
             cell: ({ row }) => {
                 const demande = row.original;
                 return (

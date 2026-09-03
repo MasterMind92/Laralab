@@ -90,6 +90,7 @@ export default function Conges({ conges, employes }: { conges: CongeResume[]; em
         },
         {
             id: 'actions',
+            header: () => <div className="text-right">Actions</div>,
             cell: ({ row }) => {
                 const conge = row.original;
                 if (conge.statut !== 'demande') return null;

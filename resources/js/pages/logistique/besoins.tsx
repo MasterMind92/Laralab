@@ -294,6 +294,7 @@ export default function Besoins({
         },
         {
             id: 'actions',
+            header: 'Actions',
             cell: ({ row }) => {
                 const besoin = row.original;
 

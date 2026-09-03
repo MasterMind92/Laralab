@@ -263,6 +263,7 @@ export default function MaintenanceParc({
         },
         {
             id: 'actions',
+            header: () => <div className="text-right">Actions</div>,
             cell: ({ row }) => (
                 <div className="flex justify-end">
                     <Button

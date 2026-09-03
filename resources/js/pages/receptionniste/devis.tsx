@@ -165,6 +165,7 @@ export default function DevisIndex({ sejours }: { sejours: SejourRow[] }) {
         },
         {
             id: 'actions',
+            header: 'Actions',
             cell: ({ row }) => {
                 const sejour = row.original;
                 return (

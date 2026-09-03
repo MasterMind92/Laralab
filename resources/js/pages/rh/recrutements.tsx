@@ -136,6 +136,7 @@ export default function Recrutements({ recrutements, employes }: { recrutements:
         },
         {
             id: 'actions',
+            header: () => <div className="text-right">Actions</div>,
             cell: ({ row }) => {
                 const r = row.original;
                 return (

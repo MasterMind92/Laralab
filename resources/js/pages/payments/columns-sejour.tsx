@@ -71,6 +71,7 @@ export const columns_sej: ColumnDef<Sejour>[] = [
   },
   {
     id: "actions",
+    header: "Actions",
     cell: ({ row }) => {
       const payment = row.original
  

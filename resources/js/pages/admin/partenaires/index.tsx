@@ -71,6 +71,7 @@ export default function Partenaires({ partenaires }: { partenaires: PartenaireRe
         { accessorKey: 'type_service', header: 'Type de service', cell: ({ row }) => row.original.type_service ?? '—' },
         {
             id: 'actions',
+            header: () => <div className="text-right">Actions</div>,
             cell: ({ row }) => (
                 <div className="flex justify-end">
                     <Button size="sm" onClick={() => openEdit(row.original)}>

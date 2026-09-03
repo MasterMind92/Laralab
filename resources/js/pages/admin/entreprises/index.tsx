@@ -119,6 +119,7 @@ export default function Entreprises({ entreprises }: { entreprises: EntrepriseRe
         },
         {
             id: 'actions',
+            header: () => <div className="text-right">Actions</div>,
             cell: ({ row }) => {
                 const entreprise = row.original;
                 return (

@@ -208,6 +208,7 @@ export default function Affectation({
         },
         {
             id: 'actions',
+            header: 'Actions',
             cell: ({ row }) => {
                 const equipement = row.original;
                 const gereParMaintenance =

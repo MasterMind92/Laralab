@@ -57,6 +57,7 @@ export const columns_fact: ColumnDef<Facture>[] = [
   },
   {
     id: "actions",
+    header: "Actions",
     cell: ({ row }) => {
       const payment = row.original
  

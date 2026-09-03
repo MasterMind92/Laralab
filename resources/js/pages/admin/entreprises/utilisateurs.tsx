@@ -111,6 +111,7 @@ export default function Utilisateurs({ entreprise, utilisateurs }: { entreprise:
         },
         {
             id: 'actions',
+            header: () => <div className="text-right">Actions</div>,
             cell: ({ row }) => {
                 const utilisateur = row.original;
                 return (

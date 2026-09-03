@@ -52,6 +52,7 @@ export const columns_clt: ColumnDef<Client>[] = [
   },
   {
     id: "actions",
+    header: "Actions",
     cell: ({ row }) => {
       const payment = row.original
  
