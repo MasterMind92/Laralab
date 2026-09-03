@@ -3,8 +3,11 @@
 namespace Database\Seeders;
 
 use App\Models\Appartement;
+use App\Models\Besoin;
 use App\Models\Candidat;
 use App\Models\Client;
+use App\Models\Commande;
+use App\Models\CommandeLigne;
 use App\Models\Conge;
 use App\Models\ContratTravail;
 use App\Models\DemandeService;
@@ -14,6 +17,7 @@ use App\Models\Entreprise;
 use App\Models\Entretien;
 use App\Models\Equipement;
 use App\Models\Facture;
+use App\Models\Fournisseur;
 use App\Models\Intervention;
 use App\Models\InterventionAction;
 use App\Models\Licenciement;
@@ -22,6 +26,8 @@ use App\Models\Paiement;
 use App\Models\ParametreFacturation;
 use App\Models\ParametreMaintenance;
 use App\Models\Partenaire;
+use App\Models\Reception;
+use App\Models\ReceptionLigne;
 use App\Models\Recrutement;
 use App\Models\Reduction;
 use App\Models\Reservation;
@@ -29,6 +35,7 @@ use App\Models\Sejour;
 use App\Models\User;
 use App\Support\HeuresOuvrees;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 
 /**
@@ -162,6 +169,11 @@ class DemoSeeder extends Seeder
         // 10) Phase 09 (multi-tenant) : 2 entreprises pleinement isolées + 1 dormante,
         // pour QA de la scope automatique (BelongsToEntreprise/ScopedThroughEntreprise)
         $this->seedMultiTenant($clientVedette);
+
+        // 11) Phase 10 (logistique) : la chaîne d'approvisionnement complète, chez Konan.
+        // Appelé APRÈS seedMultiTenant(), qui crée l'entreprise, le logisticien et sa fiche
+        // employé — ce sont eux qui portent le demandeur, le valideur et le réceptionnaire.
+        $this->seedLogistique();
 
         $this->command?->info('Démo prête — client@laralab.test / 12345678 (vérifié), réservations '.
             "en_attente=#{$resEnAttente->id} validee=#{$resValidee->id} en_cours=#{$resEnCours->id}");
@@ -1051,5 +1063,210 @@ class DemoSeeder extends Seeder
         );
 
         $this->command?->info("Multi-tenant prêt — Résidences Konan (#{$konan->id}, active) et Hôtel Bayo (#{$bayo->id}, essai) isolées l'une de l'autre ; Villa Émeraude (suspendue, sans compte) pour tester l'onboarding admin.");
+    }
+
+    /**
+     * La chaîne d'approvisionnement complète (Phase 10), chez Résidences Konan.
+     *
+     * Chaque état de `Besoin` et de `Commande` est représenté au moins une fois, pour que
+     * les cinq écrans aient tous quelque chose à montrer dès le premier chargement — un
+     * pôle qui s'ouvre sur cinq écrans vides ne se démontre pas.
+     *
+     * Les statuts de commande dérivés ne sont JAMAIS écrits ici : on crée de vraies
+     * réceptions et on laisse `recalculerStatut()` conclure. Un seeder qui poserait
+     * `statut = 'recue'` à la main testerait le seeder, pas l'application.
+     */
+    private function seedLogistique(): void
+    {
+        $konan = Entreprise::withoutGlobalScopes()->where('nom', 'Résidences Konan')->first();
+
+        if (! $konan) {
+            return;
+        }
+
+        $logisticien = Employe::withoutGlobalScopes()
+            ->where('entreprise_id', $konan->id)
+            ->where('poste', 'Logisticien')
+            ->first();
+
+        $apt = Appartement::withoutGlobalScopes()->where('numero', 'K-201')->first();
+        $demandeurId = $logisticien?->id;
+
+        $fournisseurs = collect([
+            ['nom' => 'Sodeci Équipements', 'contact' => 'M. Traoré', 'telephone' => '0707445566', 'email' => 'commandes@sodeci-equip.test'],
+            ['nom' => 'Abidjan Mobilier', 'contact' => 'Mme Koffi', 'telephone' => '0505112233', 'email' => 'contact@abj-mobilier.test'],
+        ])->map(fn (array $f) => Fournisseur::updateOrCreate(
+            ['nom' => $f['nom'], 'entreprise_id' => $konan->id],
+            [...$f, 'adresse' => 'Abidjan', 'actif' => true],
+        ));
+
+        // ── Les besoins, un par état du cycle ────────────────────────────────
+        $besoins = [];
+        foreach ([
+            ['designation' => 'Bouilloire électrique 1,7 L', 'quantite' => 4, 'priorite' => 'basse', 'statut' => 'brouillon', 'justification' => 'Renouvellement du petit électroménager des studios.'],
+            ['designation' => 'Matelas 160×200', 'quantite' => 2, 'priorite' => 'normale', 'statut' => 'soumis', 'justification' => 'Deux matelas affaissés signalés au dernier état des lieux.'],
+            ['designation' => 'Extincteur 6 kg', 'quantite' => 3, 'priorite' => 'haute', 'statut' => 'soumis', 'justification' => 'Mise en conformité incendie avant la visite de contrôle.'],
+            ['designation' => 'Climatiseur split 12000 BTU', 'quantite' => 2, 'priorite' => 'haute', 'statut' => 'valide', 'justification' => 'Remplacement des unités réformées en K-201.'],
+            ['designation' => 'Table de chevet', 'quantite' => 4, 'priorite' => 'basse', 'statut' => 'valide', 'justification' => 'Complément mobilier des chambres rénovées.'],
+            // Volontairement validé et JAMAIS porté sur une commande : sans lui, la file
+            // « Validés à commander » serait vide et l'écran Commandes n'aurait rien à
+            // proposer au premier chargement.
+            ['designation' => 'Ventilateur sur pied', 'quantite' => 5, 'priorite' => 'normale', 'statut' => 'valide', 'justification' => 'Appoint pour la saison sèche, en attente de devis fournisseur.'],
+            ['designation' => 'Téléviseur 55 pouces', 'quantite' => 6, 'priorite' => 'normale', 'statut' => 'refuse', 'justification' => 'Montée en gamme du salon.', 'motif_refus' => 'Hors budget ce trimestre — à représenter après les états financiers.'],
+        ] as $ligne) {
+            $besoin = Besoin::updateOrCreate(
+                ['designation' => $ligne['designation'], 'entreprise_id' => $konan->id],
+                [
+                    'demandeur_employe_id' => $demandeurId,
+                    'appartement_id' => $apt?->id,
+                    'quantite' => $ligne['quantite'],
+                    'justification' => $ligne['justification'],
+                    'priorite' => $ligne['priorite'],
+                    'statut' => $ligne['statut'],
+                    // Toujours écrit, y compris à null : sans cela une relance du seeder
+                    // laisserait le motif d'un ancien refus sur un besoin redevenu valide.
+                    'motif_refus' => $ligne['motif_refus'] ?? null,
+                ],
+            );
+
+            $besoin->forceFill($ligne['statut'] === 'valide'
+                ? ['valide_par_id' => $demandeurId, 'date_validation' => now()->subDays(4)->toDateString()]
+                : ['valide_par_id' => null, 'date_validation' => null],
+            )->save();
+
+            $besoins[$ligne['designation']] = $besoin;
+        }
+
+        // ── Commande 1 : brouillon, pas encore partie ────────────────────────
+        $this->commandeDemo($konan, $fournisseurs[1], 'CMD-DEMO-01', 'brouillon', [
+            ['designation' => 'Table de chevet', 'quantite' => 4, 'prix_unitaire' => 35000, 'besoin' => $besoins['Table de chevet']],
+        ]);
+
+        // ── Commande 2 : envoyée, en attente de livraison ────────────────────
+        $this->commandeDemo($konan, $fournisseurs[0], 'CMD-DEMO-02', 'envoyee', [
+            ['designation' => 'Extincteur 6 kg', 'quantite' => 3, 'prix_unitaire' => 45000],
+        ], jours: 5);
+
+        // ── Commande 3 : partiellement reçue, avec du reste à enregistrer ────
+        $partielle = $this->commandeDemo($konan, $fournisseurs[0], 'CMD-DEMO-03', 'envoyee', [
+            ['designation' => 'Climatiseur split 12000 BTU', 'quantite' => 2, 'prix_unitaire' => 250000, 'besoin' => $besoins['Climatiseur split 12000 BTU']],
+            ['designation' => 'Support mural climatiseur', 'quantite' => 2, 'prix_unitaire' => 15000],
+        ], jours: -2);
+
+        $this->receptionDemo($partielle, $logisticien, now()->subDay(), [
+            // La première ligne n'arrive qu'à moitié : c'est ce qui fait basculer la
+            // commande en « partiellement reçue », sans qu'aucun statut ne soit écrit.
+            ['designation' => 'Climatiseur split 12000 BTU', 'quantite_recue' => 1, 'conforme' => true],
+            ['designation' => 'Support mural climatiseur', 'quantite_recue' => 2, 'conforme' => true],
+        ]);
+
+        // ── Commande 4 : entièrement reçue, avec un écart, et déjà au parc ───
+        $soldee = $this->commandeDemo($konan, $fournisseurs[1], 'CMD-DEMO-04', 'envoyee', [
+            ['designation' => 'Matelas 160×200', 'quantite' => 2, 'prix_unitaire' => 120000, 'besoin' => $besoins['Matelas 160×200']],
+        ], jours: -9);
+
+        $lignesRecues = $this->receptionDemo($soldee, $logisticien, now()->subDays(7), [
+            ['designation' => 'Matelas 160×200', 'quantite_recue' => 2, 'conforme' => false, 'motif_ecart' => 'Housse déchirée sur un des deux matelas.'],
+        ]);
+
+        // Une seule des deux pièces entre au parc : l'écran « Enregistrement » doit
+        // montrer un reste, sinon on ne voit jamais le compteur travailler.
+        if ($ligne = $lignesRecues->first()) {
+            for ($i = 0; $i < 1; $i++) {
+                Equipement::updateOrCreate(
+                    ['reception_ligne_id' => $ligne->id, 'numero_serie' => 'MAT-2026-'.($i + 1)],
+                    [
+                        'nom' => 'Matelas 160×200',
+                        'type' => 'literie',
+                        'statut' => 'stock',
+                        'date_achat' => now()->subDays(7)->toDateString(),
+                        'garantie_fin' => now()->addYears(2)->toDateString(),
+                        'contrat_maintenance' => false,
+                    ],
+                );
+            }
+
+            $ligne->forceFill(['quantite_enregistree' => 1])->save();
+        }
+
+        $soumis = Besoin::withoutGlobalScopes()->where('entreprise_id', $konan->id)->where('statut', 'soumis')->count();
+        $this->command?->info("Logistique prête (Konan) — {$fournisseurs->count()} fournisseurs, ".count($besoins)." besoins dont {$soumis} à valider, 4 commandes couvrant brouillon/envoyée/partiellement reçue/reçue.");
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $lignes
+     */
+    private function commandeDemo(Entreprise $entreprise, Fournisseur $fournisseur, string $reference, string $statut, array $lignes, int $jours = 7): Commande
+    {
+        // Clé d'idempotence : la référence, explicite et lisible. `Commande::booted()` ne
+        // dérive la sienne (CMD-0001) que si le champ est nul, une référence fournie ici
+        // n'est donc pas écrasée — et les notes restent une vraie phrase, pas un hachage.
+        $commande = Commande::updateOrCreate(
+            ['reference' => $reference, 'entreprise_id' => $entreprise->id],
+            [
+                'fournisseur_id' => $fournisseur->id,
+                'date_commande' => now()->subDays(max(1, abs($jours)))->toDateString(),
+                'date_livraison_prevue' => now()->addDays($jours)->toDateString(),
+                'notes' => 'Commande de démonstration.',
+            ],
+        );
+
+        // `statut` n'est pas remplissable (règle d'or) : seul forceFill y touche, et
+        // uniquement pour les états MANUELS du cycle. Les états dérivés viendront des
+        // réceptions.
+        $commande->forceFill(['statut' => $statut])->save();
+
+        foreach ($lignes as $ligne) {
+            CommandeLigne::updateOrCreate(
+                ['commande_id' => $commande->id, 'designation' => $ligne['designation']],
+                [
+                    'besoin_id' => isset($ligne['besoin']) ? $ligne['besoin']->id : null,
+                    'quantite' => $ligne['quantite'],
+                    'prix_unitaire' => $ligne['prix_unitaire'],
+                ],
+            );
+
+            if (isset($ligne['besoin'])) {
+                $ligne['besoin']->update(['statut' => 'commande']);
+            }
+        }
+
+        return $commande;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $lignes
+     * @return Collection<int, ReceptionLigne>
+     */
+    private function receptionDemo(Commande $commande, ?Employe $receptionnaire, \DateTimeInterface $date, array $lignes): Collection
+    {
+        $reception = Reception::updateOrCreate(
+            ['commande_id' => $commande->id, 'date_reception' => $date],
+            ['receptionnaire_employe_id' => $receptionnaire?->id, 'notes' => 'Livraison de démonstration.'],
+        );
+
+        $creees = collect();
+
+        foreach ($lignes as $ligne) {
+            $commandeLigne = $commande->lignes()->where('designation', $ligne['designation'])->first();
+
+            if (! $commandeLigne) {
+                continue;
+            }
+
+            $creees->push(ReceptionLigne::updateOrCreate(
+                ['reception_id' => $reception->id, 'commande_ligne_id' => $commandeLigne->id],
+                [
+                    'quantite_recue' => $ligne['quantite_recue'],
+                    'conforme' => $ligne['conforme'],
+                    'motif_ecart' => $ligne['motif_ecart'] ?? null,
+                ],
+            ));
+        }
+
+        // Le statut se déduit, il ne se décrète pas — même en données de démonstration.
+        $commande->recalculerStatut();
+
+        return $creees;
     }
 }

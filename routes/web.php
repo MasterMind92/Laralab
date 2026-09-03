@@ -146,16 +146,21 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
             ->name('maintenance.parc.update');
     });
 
-    Route::inertia('logistique', 'dashboard-logistique')
-        ->name('logistique')
-        ->middleware('role:logistique');
-
-    // Les cinq ecrans du pole Logistique (Phase 10, etape B) : la chaine
+    // Les ecrans du pole Logistique (Phase 10) : la chaine
     // Besoin -> Commande -> Reception -> Enregistrement -> Affectation. Middleware pose
     // une seule fois sur le groupe, comme pour le bloc maintenance ci-dessus.
     Route::middleware('role:logistique')->group(function () {
+        // Etape C : remplace un Route::inertia vers 'dashboard-logistique', page de
+        // demonstration entierement en dur. 'logistique' reste le nom de la route racine,
+        // deja cible par le sidebar et par les fils d'Ariane des cinq ecrans.
+        Route::get('logistique', [LogistiqueController::class, 'dashboard'])
+            ->name('logistique');
+
         Route::get('logistique/besoins', [LogistiqueController::class, 'besoins'])
             ->name('logistique.besoins');
+
+        Route::get('logistique/besoins/export', [LogistiqueController::class, 'exportBesoins'])
+            ->name('logistique.besoins.export');
 
         Route::post('logistique/besoins', [LogistiqueController::class, 'storeBesoin'])
             ->name('logistique.besoins.store');
@@ -171,6 +176,9 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
         Route::get('logistique/commandes', [LogistiqueController::class, 'commandes'])
             ->name('logistique.commandes');
+
+        Route::get('logistique/commandes/export', [LogistiqueController::class, 'exportCommandes'])
+            ->name('logistique.commandes.export');
 
         Route::post('logistique/commandes', [LogistiqueController::class, 'storeCommande'])
             ->name('logistique.commandes.store');

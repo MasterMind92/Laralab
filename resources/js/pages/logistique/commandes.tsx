@@ -5,6 +5,7 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import LogistiqueController from '@/actions/App/Http/Controllers/LogistiqueController';
 import { DataTable } from '@/components/data-table/data-table';
+import { ExportDialog } from '@/components/data-table/export-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -193,6 +194,11 @@ export default function Commandes({
         );
     }
 
+    // L'export suit le filtre de statut affiché, comme sur l'écran des besoins.
+    const urlExport =
+        LogistiqueController.exportCommandes().url +
+        (statut !== TOUS ? `?statut=${statut}` : '');
+
     const total = lignes.reduce(
         (somme, l) =>
             somme + Number(l.quantite || 0) * Number(l.prix_unitaire || 0),
@@ -343,6 +349,7 @@ export default function Commandes({
                     searchPlaceholder="Rechercher une commande..."
                     toolbar={
                         <div className="flex gap-2">
+                            <ExportDialog exportUrl={urlExport} />
                             <Button
                                 variant="outline"
                                 onClick={() => setNouveauFournisseur(true)}

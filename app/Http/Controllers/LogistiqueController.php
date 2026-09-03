@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ExportsCsv;
 use App\Models\Appartement;
 use App\Models\Besoin;
 use App\Models\Commande;
@@ -11,11 +12,17 @@ use App\Models\Equipement;
 use App\Models\Fournisseur;
 use App\Models\Reception;
 use App\Models\ReceptionLigne;
+use App\Notifications\Interne\BesoinAValider;
+use App\Notifications\Interne\CommandeRecue;
+use App\Notifications\Interne\EcartReception;
+use App\Support\Destinataires;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Les cinq écrans du pôle Logistique (Phase 10, étape B) : la chaîne
@@ -38,6 +45,50 @@ use Inertia\Response;
  */
 class LogistiqueController extends Controller
 {
+    use ExportsCsv;
+
+    /**
+     * Tableau de bord du pôle — remplace une page de démonstration entièrement en dur
+     * (taux d'occupation à 50 %, chiffre d'affaires à 1 000 000, onglets inertes).
+     *
+     * Délibérément modeste : quatre compteurs et les deux files où le travail s'accumule.
+     * Les indicateurs par pôle sont le périmètre de la Phase 07, et deux tableaux de bord
+     * concurrents seraient pires qu'un seul tardif.
+     */
+    public function dashboard(): Response
+    {
+        $parStatutCommande = Commande::query()
+            ->selectRaw('statut, COUNT(*) as total')
+            ->groupBy('statut')
+            ->pluck('total', 'statut');
+
+        return Inertia::render('logistique/dashboard', [
+            'kpi' => [
+                'besoins_a_valider' => Besoin::where('statut', 'soumis')->count(),
+                'besoins_a_commander' => Besoin::aCommander()->count(),
+                'commandes_ouvertes' => Commande::ouvertes()->count(),
+                'pieces_a_enregistrer' => (int) ReceptionLigne::aEnregistrer()
+                    ->sum(DB::raw('quantite_recue - quantite_enregistree')),
+            ],
+            'parStatutCommande' => collect(Commande::STATUTS)
+                ->map(fn (string $statut) => [
+                    'statut' => $statut,
+                    'total' => (int) ($parStatutCommande[$statut] ?? 0),
+                ])
+                ->values(),
+            // Les livraisons attendues les plus anciennes d'abord : ce sont celles qui
+            // coûtent, pas les dernières commandées.
+            'livraisons_attendues' => Commande::query()
+                ->whereIn('statut', ['envoyee', 'confirmee', 'partiellement_recue'])
+                ->with(['fournisseur:id,nom', 'lignes'])
+                ->orderByRaw('date_livraison_prevue IS NULL, date_livraison_prevue')
+                ->limit(8)
+                ->get()
+                ->map(fn (Commande $c) => $this->ligneCommande($c)),
+            'stock_disponible' => $this->equipementsDuPole()->where('statut', 'stock')->count(),
+        ]);
+    }
+
     // ---------------------------------------------------------------- Besoins
 
     public function besoins(Request $request): Response
@@ -146,6 +197,17 @@ class LogistiqueController extends Controller
             default => [],
         })->save();
 
+        // Phase 12 : la soumission est le seul de ces quatre passages qui demande quelque
+        // chose à quelqu'un d'autre. Valider, refuser et remettre en brouillon sont des
+        // décisions prises DANS l'écran, par la personne qui le regarde déjà.
+        if ($data['statut'] === 'soumis') {
+            $besoin->load(['demandeur', 'appartement']);
+            Notification::send(
+                Destinataires::pourRole('logistique', $besoin->entreprise_id),
+                new BesoinAValider($besoin),
+            );
+        }
+
         return back();
     }
 
@@ -158,6 +220,51 @@ class LogistiqueController extends Controller
         $besoin->delete();
 
         return back();
+    }
+
+    /**
+     * La plage de dates porte sur la date d'EXPRESSION du besoin : c'est la question qu'on
+     * se pose sur cette file (« qu'a-t-on demandé ce trimestre ? »), la validation n'étant
+     * qu'un événement de son cycle.
+     */
+    public function exportBesoins(Request $request): StreamedResponse
+    {
+        // Les filtres d'écran sont acceptés en plus de la plage de dates : l'écran les
+        // reporte dans l'URL d'export, et un fichier qui contiendrait tout alors que la
+        // liste affichait un sous-ensemble serait un piège silencieux.
+        $data = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'statut' => ['nullable', 'in:'.implode(',', Besoin::STATUTS)],
+            'priorite' => ['nullable', 'in:basse,normale,haute'],
+        ]);
+
+        $besoins = Besoin::with(['demandeur:id,nom,prenom', 'valideur:id,nom,prenom', 'appartement:id,numero'])
+            ->when($data['statut'] ?? null, fn ($q, $s) => $q->where('statut', $s))
+            ->when($data['priorite'] ?? null, fn ($q, $p) => $q->where('priorite', $p))
+            ->when($data['from'] ?? null, fn ($q, $from) => $q->whereDate('created_at', '>=', $from))
+            ->when($data['to'] ?? null, fn ($q, $to) => $q->whereDate('created_at', '<=', $to))
+            ->orderByDesc('created_at')
+            ->get();
+
+        return $this->streamCsv(
+            'besoins.csv',
+            ['ID', 'Désignation', 'Quantité', 'Priorité', 'Statut', 'Demandeur', 'Destination', 'Justification', 'Valideur', 'Validé le', 'Motif du refus', 'Exprimé le'],
+            $besoins->map(fn (Besoin $b) => [
+                $b->id,
+                $b->designation,
+                $b->quantite,
+                $b->priorite,
+                $b->statut,
+                $b->demandeur ? $b->demandeur->prenom.' '.$b->demandeur->nom : null,
+                $b->appartement?->numero,
+                $b->justification,
+                $b->valideur ? $b->valideur->prenom.' '.$b->valideur->nom : null,
+                $b->date_validation?->format('d/m/Y'),
+                $b->motif_refus,
+                $b->created_at?->format('d/m/Y'),
+            ]),
+        );
     }
 
     // -------------------------------------------------------------- Commandes
@@ -268,6 +375,46 @@ class LogistiqueController extends Controller
         return back();
     }
 
+    /**
+     * Une ligne par LIGNE de commande et non par commande : un export d'achats sert à
+     * additionner et à comparer des articles, pas à recompter des bons.
+     */
+    public function exportCommandes(Request $request): StreamedResponse
+    {
+        $data = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'statut' => ['nullable', 'in:'.implode(',', Commande::STATUTS)],
+        ]);
+
+        $commandes = Commande::with(['fournisseur:id,nom', 'lignes.receptionLignes'])
+            ->when($data['statut'] ?? null, fn ($q, $s) => $q->where('statut', $s))
+            ->when($data['from'] ?? null, fn ($q, $from) => $q->whereDate('date_commande', '>=', $from))
+            ->when($data['to'] ?? null, fn ($q, $to) => $q->whereDate('date_commande', '<=', $to))
+            ->orderByDesc('date_commande')
+            ->get();
+
+        $lignes = $commandes->flatMap(fn (Commande $c) => $c->lignes->map(fn (CommandeLigne $l) => [
+            $c->reference,
+            $c->statut,
+            $c->fournisseur?->nom,
+            $c->date_commande?->format('d/m/Y'),
+            $c->date_livraison_prevue?->format('d/m/Y'),
+            $l->designation,
+            $l->quantite,
+            $l->quantiteRecue(),
+            $l->quantiteRestante(),
+            number_format((float) $l->prix_unitaire, 0, ',', ' '),
+            number_format($l->montant(), 0, ',', ' '),
+        ]));
+
+        return $this->streamCsv(
+            'commandes.csv',
+            ['Référence', 'Statut', 'Fournisseur', 'Commandé le', 'Livraison prévue', 'Article', 'Qté commandée', 'Qté reçue', 'Reste', 'Prix unitaire', 'Montant'],
+            $lignes,
+        );
+    }
+
     // ------------------------------------------------------------- Réceptions
 
     public function receptions(): Response
@@ -349,7 +496,9 @@ class LogistiqueController extends Controller
             }
         }
 
-        DB::transaction(function () use ($commande, $data, $lignes) {
+        $statutAvant = $commande->statut;
+
+        $reception = DB::transaction(function () use ($commande, $data, $lignes) {
             $reception = Reception::create([
                 'commande_id' => $commande->id,
                 'receptionnaire_employe_id' => $this->idEmployeCloisonne($data['receptionnaire_employe_id'] ?? null),
@@ -368,9 +517,47 @@ class LogistiqueController extends Controller
             }
 
             $commande->recalculerStatut();
+
+            return $reception;
         });
 
+        $this->prevenirDesSuitesDeLaReception($commande, $reception, $statutAvant);
+
         return back();
+    }
+
+    /**
+     * Les deux notifications que produit une livraison (Phase 12), envoyées APRÈS la
+     * transaction : une notification part chez le destinataire et ne se rembobine pas, la
+     * poster depuis l'intérieur signifierait annoncer une livraison qu'un échec ultérieur
+     * effacerait.
+     */
+    private function prevenirDesSuitesDeLaReception(Commande $commande, Reception $reception, string $statutAvant): void
+    {
+        $destinataires = Destinataires::pourRole('logistique', $commande->entreprise_id);
+
+        if ($destinataires->isEmpty()) {
+            return;
+        }
+
+        // L'écart est le verdict du modèle, jamais rejoué ici — et une seule notification
+        // pour toute la livraison : un camion arrivé avec trois articles douteux est un
+        // seul problème, pas trois.
+        $ecarts = $reception->lignes()->with('commandeLigne')->get()
+            ->filter(fn (ReceptionLigne $ligne) => $ligne->presenteUnEcart());
+
+        if ($ecarts->isNotEmpty()) {
+            $reception->setRelation('commande', $commande);
+            Notification::send($destinataires, new EcartReception($reception, $ecarts));
+        }
+
+        // Sur le PASSAGE à « reçue » seulement : comparer au statut d'avant évite de
+        // renotifier si une réception à zéro nouvelle quantité était rejouée sur une
+        // commande déjà soldée.
+        if ($commande->fresh()?->statut === 'recue' && $statutAvant !== 'recue') {
+            $commande->load(['fournisseur', 'lignes']);
+            Notification::send($destinataires, new CommandeRecue($commande));
+        }
     }
 
     // ---------------------------------------------------------- Enregistrement

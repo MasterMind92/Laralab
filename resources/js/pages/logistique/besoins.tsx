@@ -5,6 +5,7 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import LogistiqueController from '@/actions/App/Http/Controllers/LogistiqueController';
 import { DataTable } from '@/components/data-table/data-table';
+import { ExportDialog } from '@/components/data-table/export-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -347,6 +348,20 @@ export default function Besoins({
 
     const aValider = besoins.filter((b) => b.statut === 'soumis').length;
 
+    const parametresExport = new URLSearchParams();
+
+    if (statut !== TOUS) {
+        parametresExport.set('statut', statut);
+    }
+
+    if (priorite !== TOUS) {
+        parametresExport.set('priorite', priorite);
+    }
+
+    const urlExport =
+        LogistiqueController.exportBesoins().url +
+        (parametresExport.size > 0 ? `?${parametresExport}` : '');
+
     return (
         <>
             <Head title="Expression de besoins" />
@@ -416,9 +431,15 @@ export default function Besoins({
                     data={besoins}
                     searchPlaceholder="Rechercher un besoin..."
                     toolbar={
-                        <Button onClick={ouvrirCreation}>
-                            <Plus /> Nouveau besoin
-                        </Button>
+                        <div className="flex gap-2">
+                            {/* L'export reporte les filtres de l'écran : un fichier
+                                contenant tout alors que la liste affiche un
+                                sous-ensemble serait un piège silencieux. */}
+                            <ExportDialog exportUrl={urlExport} />
+                            <Button onClick={ouvrirCreation}>
+                                <Plus /> Nouveau besoin
+                            </Button>
+                        </div>
                     }
                 />
             </div>
