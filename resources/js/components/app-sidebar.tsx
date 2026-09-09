@@ -324,7 +324,14 @@ export function AppSidebar() {
 
             <SidebarContent className="gap-0">
         {/* We create a collapsible SidebarGroup for each parent. */}
-        {visibleNavItems.map((item) => (
+        {visibleNavItems.map((item) => {
+            // Le groupe qui contient la page ouverte. Les sous-items s'allument deja,
+            // mais un groupe replie ne disait plus rien : on perdait le repere du pole
+            // ou l'on se trouve des qu'on refermait son menu.
+            const groupeActif =
+                item.sub?.some((sousItem) => estLienActif(sousItem.url, cheminCourant)) ?? false;
+
+            return (
             <Collapsible
                 key={item.title}
                 title={item.title}
@@ -336,15 +343,21 @@ export function AppSidebar() {
                 // page ouverte.
                 defaultOpen={
                     (role !== undefined && (item.roles?.includes(role) ?? false)) ||
-                    (item.sub?.some((sousItem) => estLienActif(sousItem.url, cheminCourant)) ?? false)
+                    groupeActif
                 }
             >
                 <SidebarGroup>
                 <SidebarGroupLabel
                     asChild
-                    className="group/label text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    className={
+                        groupeActif
+                            ? "group/label text-sm font-semibold bg-sidebar-accent text-sidebar-accent-foreground"
+                            : "group/label text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    }
                 >
-                    <CollapsibleTrigger>
+                    {/* aria-current porte l'information aux lecteurs d'ecran : la couleur
+                        seule ne dit rien a qui ne la voit pas. */}
+                    <CollapsibleTrigger aria-current={groupeActif ? "page" : undefined}>
                     {item.title}{" "}
                     <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
                     </CollapsibleTrigger>
@@ -372,7 +385,8 @@ export function AppSidebar() {
                 </CollapsibleContent>
                 </SidebarGroup>
             </Collapsible>
-            ))}
+            );
+        })}
         </SidebarContent>
                 {/* <NavMain items={mainNavItems} /> */}
 
