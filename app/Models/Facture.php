@@ -17,6 +17,7 @@ class Facture extends Model
     {
         return 'sejour.reservation.appartement';
     }
+
     protected function casts(): array
     {
         return [
@@ -40,6 +41,12 @@ class Facture extends Model
     public function lignes(): HasMany
     {
         return $this->hasMany(FactureLigne::class);
+    }
+
+    /** Historique du recouvrement (Phase 06) — voir Relance. */
+    public function relances(): HasMany
+    {
+        return $this->hasMany(Relance::class);
     }
 
     public function montantPaye(): float

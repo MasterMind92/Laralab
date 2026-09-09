@@ -137,19 +137,19 @@ const mainNavItems: NavItem[] = [
                 // Suivi des impayes/relances — different du flux valider/encaisser,
                 // differe a un futur reporting.
                 title: "Recouvrements factures",
-                url:"#",
+                url:"/admin/recouvrements",
             },
             {
                 title: "Achats",
-                url:"#",
+                url:"/admin/achats",
             },
             {
                 title: "Depenses",
-                url:"#",
+                url:"/admin/depenses",
             },
             {
                 title: "Etats Financiers",
-                url:"#",
+                url:"/admin/etats-financiers",
             },
             {
                 title: "Parametres de facturation",

@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\PartenaireController as AdminPartenaireController
 use App\Http\Controllers\Admin\UtilisateurController as AdminUtilisateurController;
 use App\Http\Controllers\AppartementController;
 use App\Http\Controllers\CandidatController;
+use App\Http\Controllers\ComptabiliteController;
 use App\Http\Controllers\CongeController;
 use App\Http\Controllers\ContratTravailController;
 use App\Http\Controllers\DemandeServiceController;
@@ -86,6 +87,47 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
     Route::inertia('comptabilite', 'dashboard-compta')
         ->name('comptabilite')
         ->middleware('role:compta');
+
+    // Comptabilite avancee (Phase 06, etape B) : les 4 items du menu qui etaient encore
+    // des stubs '#'. Middleware pose une seule fois sur le groupe, comme pour les blocs
+    // maintenance et logistique.
+    Route::middleware('role:compta')->group(function () {
+        Route::get('achats', [ComptabiliteController::class, 'achats'])
+            ->name('comptabilite.achats');
+
+        Route::post('achats', [ComptabiliteController::class, 'storeAchat'])
+            ->name('comptabilite.achats.store');
+
+        Route::patch('achats/{achat}/statut', [ComptabiliteController::class, 'changerStatutAchat'])
+            ->name('comptabilite.achats.statut');
+
+        Route::patch('achats/{achat}/paiement', [ComptabiliteController::class, 'payerAchat'])
+            ->name('comptabilite.achats.paiement');
+
+        Route::delete('achats/{achat}', [ComptabiliteController::class, 'destroyAchat'])
+            ->name('comptabilite.achats.destroy');
+
+        Route::get('depenses', [ComptabiliteController::class, 'depenses'])
+            ->name('comptabilite.depenses');
+
+        Route::post('depenses', [ComptabiliteController::class, 'storeDepense'])
+            ->name('comptabilite.depenses.store');
+
+        Route::put('depenses/{depense}', [ComptabiliteController::class, 'updateDepense'])
+            ->name('comptabilite.depenses.update');
+
+        Route::delete('depenses/{depense}', [ComptabiliteController::class, 'destroyDepense'])
+            ->name('comptabilite.depenses.destroy');
+
+        Route::get('recouvrements', [ComptabiliteController::class, 'recouvrements'])
+            ->name('comptabilite.recouvrements');
+
+        Route::post('recouvrements/{facture}/relances', [ComptabiliteController::class, 'storeRelance'])
+            ->name('comptabilite.relances.store');
+
+        Route::get('etats-financiers', [ComptabiliteController::class, 'etatsFinanciers'])
+            ->name('comptabilite.etats-financiers');
+    });
 
     // Pole Maintenance (Phase 05, etape B) : les 3 items du menu ont enfin leurs
     // ecrans. Le middleware est pose une seule fois sur le groupe — 'maintenance'

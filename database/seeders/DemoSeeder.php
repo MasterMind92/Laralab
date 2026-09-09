@@ -948,6 +948,18 @@ class DemoSeeder extends Seeder
             ['entreprise_id' => $konan->id, 'nom' => "N'Dri", 'prenom' => 'Aya', 'poste' => 'Réceptionniste', 'date_embauche' => now()->subMonths(4)->toDateString(), 'salaire_base' => null, 'actif' => true],
         );
 
+        // Comptabilite rattachee (Phase 06) : meme raison que le logisticien ci-dessous.
+        // compta@laralab.test est orphelin, il ne voit donc aucun fournisseur ni aucune
+        // commande — l'ecran Achats ne peut rien lui pre-remplir.
+        $userComptaKonan = User::updateOrCreate(
+            ['email' => 'compta.konan@laralab.test'],
+            ['name' => 'Assi Micheline', 'password' => Hash::make('12345678'), 'role' => 'compta', 'entreprise_id' => $konan->id, 'actif' => true, 'email_verified_at' => now()],
+        );
+        Employe::updateOrCreate(
+            ['user_id' => $userComptaKonan->id],
+            ['entreprise_id' => $konan->id, 'nom' => 'Assi', 'prenom' => 'Micheline', 'poste' => 'Comptable', 'date_embauche' => now()->subMonths(5)->toDateString(), 'salaire_base' => null, 'actif' => true],
+        );
+
         // Logistique rattachee (Phase 10) : le compte generique logistique@laralab.test
         // est orphelin (entreprise_id NULL), il ne voit donc que le monde d'avant la
         // Phase 09 — aucun appartement de Konan dans le selecteur "Destination prevue".
