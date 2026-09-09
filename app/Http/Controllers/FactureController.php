@@ -180,10 +180,18 @@ class FactureController extends Controller
             return back()->withErrors(['facture' => 'Seul un devis en brouillon peut être validé.']);
         }
 
+        // Phase 06 : l'échéance était fixée au jour même, ce qui rendait toute facture
+        // exigible dès sa validation — et aurait fait déclarer tout le monde en retard par
+        // l'écran de recouvrement. Le délai se règle par entreprise, comme la TVA.
+        $facture->loadMissing('sejour.reservation.appartement');
+        $delai = ParametreFacturation::actuel(
+            $facture->sejour?->reservation?->appartement?->entreprise_id,
+        )->delai_paiement_jours;
+
         $facture->update([
             'numero_facture' => 'FAC-'.now()->year.'-'.str_pad((string) $facture->id, 4, '0', STR_PAD_LEFT),
             'date_edition' => now()->toDateString(),
-            'date_echeance' => now()->toDateString(),
+            'date_echeance' => now()->addDays((int) $delai)->toDateString(),
             'statut' => 'validee',
             'motif_rejet' => null,
         ]);
