@@ -20,8 +20,17 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Les quatre écrans de la Comptabilité avancée (Phase 06, étape B) : Achats, Dépenses,
- * Recouvrements et États financiers.
+ * Les écrans de la Comptabilité avancée (Phase 06) : Factures fournisseur, Entrées,
+ * Sorties, Recouvrements et États financiers.
+ *
+ * Deux couples se ressemblent sans se confondre, et c'est le cœur de ce contrôleur :
+ *
+ *   - **Facture fournisseur** = l'engagement (le document reçu). **Sortie** = le
+ *     décaissement qu'il provoque une fois réglé. L'un cause l'autre ; les additionner
+ *     compterait deux fois le même argent.
+ *   - **Sortie** = la trésorerie (tout ce qui sort). **Dépense** = le résultat (les
+ *     charges seules). Un climatiseur réglé 500 000 est une sortie de 500 000 et une
+ *     charge de 0.
  *
  * Même règle de cloisonnement que `LogistiqueController` : tout identifiant venu d'une
  * requête est résolu par une requête SCOPÉE, jamais par `exists:table,id` — cette règle
@@ -233,42 +242,172 @@ class ComptabiliteController extends Controller
         return back();
     }
 
-    // --------------------------------------------------------------- Dépenses
+    // ---------------------------------------------------------------- Entrées
 
-    public function depenses(Request $request): Response
+    /**
+     * Le livre des encaissements — tout ce qui entre en caisse, en un seul endroit.
+     *
+     * Jusqu'ici l'argent qui rentre se lisait à DEUX endroits : « Consultation Devis »
+     * pour les règlements de facture, « Avances reçues » pour les acomptes perçus au
+     * portail. Deux écrans pour une seule question.
+     *
+     * Source unique : la table `paiements`. Pas de double comptage possible — un acompte
+     * perçu à la réservation puis rattaché à la facture reste UNE seule ligne, car
+     * `FactureController::generer()` renseigne `facture_id` sur la ligne existante au lieu
+     * d'en créer une seconde.
+     *
+     * Écran en LECTURE SEULE : l'encaissement se saisit depuis la facture
+     * (`PaiementController::store`) et l'avance vient du portail. Ouvrir une seconde voie
+     * de saisie ici donnerait deux chemins pour un même geste.
+     */
+    public function entrees(Request $request): Response
     {
         $filtres = $request->validate([
-            'categorie' => ['nullable', 'in:'.implode(',', Depense::CATEGORIES)],
+            'mode_paiement' => ['nullable', 'in:cb,especes,virement,mobile_money,paypal'],
             'du' => ['nullable', 'date'],
             'au' => ['nullable', 'date'],
         ]);
 
-        $depenses = Depense::with(['valideur:id,nom,prenom', 'ligneFactureFournisseur.factureFournisseur.fournisseur:id,nom'])
-            ->when($filtres['categorie'] ?? null, fn ($q, $c) => $q->where('categorie', $c))
-            ->surPeriode($filtres['du'] ?? null, $filtres['au'] ?? null)
-            ->orderByDesc('date_depense')
+        $paiements = Paiement::with([
+            'facture:id,sejour_id,numero_facture',
+            'facture.sejour.reservation.client:id,nom,prenom',
+            'reservation.client:id,nom,prenom',
+            'reservation.appartement:id,numero',
+        ])
+            ->when($filtres['mode_paiement'] ?? null, fn ($q, $m) => $q->where('mode_paiement', $m))
+            ->when($filtres['du'] ?? null, fn ($q, $d) => $q->whereDate('date_paiement', '>=', $d))
+            ->when($filtres['au'] ?? null, fn ($q, $a) => $q->whereDate('date_paiement', '<=', $a))
+            ->orderByDesc('date_paiement')
             ->orderByDesc('id')
             ->get();
 
-        return Inertia::render('comptabilite/depenses', [
-            'depenses' => $depenses->map(fn (Depense $d) => [
-                'id' => $d->id,
-                'libelle' => $d->libelle,
-                'montant' => (float) $d->montant,
-                'date_depense' => $d->date_depense?->toDateString(),
-                'categorie' => $d->categorie,
-                'saisie_directe' => $d->estSaisieDirecte(),
-                'valideur' => $d->valideur ? $d->valideur->prenom.' '.$d->valideur->nom : null,
-                'origine' => $d->ligneFactureFournisseur?->factureFournisseur
-                    ? [
-                        'reference' => $d->ligneFactureFournisseur->factureFournisseur->reference,
-                        'fournisseur' => $d->ligneFactureFournisseur->factureFournisseur->fournisseur?->nom,
-                    ]
-                    : null,
+        return Inertia::render('comptabilite/entrees', [
+            'entrees' => $paiements->map(fn (Paiement $p) => [
+                'id' => $p->id,
+                'montant' => (float) $p->montant,
+                'mode_paiement' => $p->mode_paiement,
+                'date_paiement' => $p->date_paiement?->toDateString(),
+                'reference' => $p->reference_transaction,
+                // L'origine dit d'où vient l'argent, pas dans quel écran il a été saisi :
+                // une avance rattachée à une facture reste une avance.
+                'origine' => $p->reservation_id !== null ? 'avance' : 'facture',
+                'rattachee' => $p->reservation_id !== null && $p->facture_id !== null,
+                'numero_facture' => $p->facture?->numero_facture,
+                'client' => $this->nomClientDuPaiement($p),
+                'appartement' => $p->reservation?->appartement?->numero,
             ]),
+            'total' => (float) $paiements->sum('montant'),
+            'par_mode' => $paiements->groupBy('mode_paiement')
+                ->map(fn ($groupe, $mode) => ['mode' => (string) $mode, 'total' => (float) $groupe->sum('montant')])
+                ->sortByDesc('total')
+                ->values(),
+            'filters' => $filtres,
+        ]);
+    }
+
+    private function nomClientDuPaiement(Paiement $paiement): ?string
+    {
+        $client = $paiement->reservation?->client
+            ?? $paiement->facture?->sejour?->reservation?->client;
+
+        return $client ? trim($client->nom.' '.$client->prenom) : null;
+    }
+
+    // ---------------------------------------------------------------- Sorties
+
+    /**
+     * Le livre des décaissements — tout ce qui quitte la caisse.
+     *
+     * **Ce n'est PAS la table `depenses`**, et c'est toute la raison d'être de cet écran.
+     * Une dépense est une CHARGE : les immobilisations en sont délibérément absentes
+     * (voir `FactureFournisseur::genererDepenses`). Alimenter une vue de trésorerie avec
+     * cette table afficherait 60 000 FCFA sortis quand 560 000 ont réellement quitté la
+     * caisse. Charge et sortie de caisse sont deux lectures différentes du même fait.
+     *
+     * La somme se compose donc de deux gisements DISJOINTS :
+     *
+     *   règlements de factures fournisseur  → le montant TOTAL, immobilisations comprises
+     * + dépenses de SAISIE DIRECTE          → ce qui n'a jamais eu de facture
+     *
+     * Les dépenses issues d'une facture sont exclues : leur montant est déjà compté dans
+     * le total de cette facture. C'est cette exclusion qui empêche le double comptage.
+     *
+     * La liste est au niveau du MOUVEMENT et non de la ligne comptable : un livre de
+     * caisse a une ligne par règlement. La ventilation charge/immobilisation vit dans la
+     * synthèse, où elle réconcilie cet écran avec les états financiers.
+     */
+    public function sorties(Request $request): Response
+    {
+        $filtres = $request->validate([
+            'origine' => ['nullable', 'in:facture,saisie_directe'],
+            'du' => ['nullable', 'date'],
+            'au' => ['nullable', 'date'],
+        ]);
+
+        $du = $filtres['du'] ?? null;
+        $au = $filtres['au'] ?? null;
+        $origine = $filtres['origine'] ?? null;
+
+        $reglements = $origine === 'saisie_directe'
+            ? collect()
+            : FactureFournisseur::where('statut', 'payee')
+                ->with(['fournisseur:id,nom', 'lignes'])
+                ->when($du, fn ($q, $d) => $q->whereDate('date_paiement', '>=', $d))
+                ->when($au, fn ($q, $a) => $q->whereDate('date_paiement', '<=', $a))
+                ->get()
+                ->map(fn (FactureFournisseur $f) => [
+                    'cle' => 'facture-'.$f->id,
+                    'origine' => 'facture',
+                    'libelle' => $f->reference ?? 'Facture fournisseur',
+                    'tiers' => $f->fournisseur?->nom,
+                    'montant' => $f->montantTotal(),
+                    'montant_charges' => $f->montantCharges(),
+                    'montant_immobilise' => $f->montantImmobilise(),
+                    'date' => $f->date_paiement?->toDateString(),
+                    'mode_paiement' => $f->mode_paiement,
+                    'reference' => $f->reference_paiement,
+                    'categorie' => null,
+                    'facture_fournisseur_id' => $f->id,
+                    'depense_id' => null,
+                ]);
+
+        $saisies = $origine === 'facture'
+            ? collect()
+            : Depense::whereNull('facture_fournisseur_ligne_id')
+                ->with('valideur:id,nom,prenom')
+                ->surPeriode($du, $au)
+                ->get()
+                ->map(fn (Depense $d) => [
+                    'cle' => 'depense-'.$d->id,
+                    'origine' => 'saisie_directe',
+                    'libelle' => $d->libelle,
+                    'tiers' => $d->valideur ? $d->valideur->prenom.' '.$d->valideur->nom : null,
+                    'montant' => (float) $d->montant,
+                    // Une saisie directe est toujours une charge : on n'immobilise pas
+                    // sans facture.
+                    'montant_charges' => (float) $d->montant,
+                    'montant_immobilise' => 0.0,
+                    'date' => $d->date_depense?->toDateString(),
+                    'mode_paiement' => null,
+                    'reference' => null,
+                    'categorie' => $d->categorie,
+                    'facture_fournisseur_id' => null,
+                    'depense_id' => $d->id,
+                ]);
+
+        $mouvements = $reglements->concat($saisies)
+            ->sortByDesc(fn (array $m) => $m['date'] ?? '')
+            ->values();
+
+        return Inertia::render('comptabilite/sorties', [
+            'sorties' => $mouvements,
             'employes' => Employe::where('actif', true)->orderBy('nom')->get(['id', 'nom', 'prenom', 'poste']),
             'categories' => Depense::CATEGORIES,
-            'total' => (float) $depenses->sum('montant'),
+            'synthese' => [
+                'total' => (float) $mouvements->sum('montant'),
+                'charges' => (float) $mouvements->sum('montant_charges'),
+                'immobilise' => (float) $mouvements->sum('montant_immobilise'),
+            ],
             'filters' => $filtres,
         ]);
     }

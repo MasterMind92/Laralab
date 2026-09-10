@@ -130,8 +130,16 @@ const mainNavItems: NavItem[] = [
                 url:"/admin/factures",
             },
             {
-                title: "Avances reçues",
-                url:"/admin/paiements-reservations",
+                // Le livre de caisse (Phase 06, etape B-bis). Remplace "Avances recues",
+                // qui ne montrait qu'une des deux sources d'encaissement.
+                title: "Entrées",
+                url:"/admin/entrees",
+            },
+            {
+                // Remplace "Depenses" : celui-ci ne listait que les CHARGES, donc pas les
+                // immobilisations, donc pas la vraie tresorerie.
+                title: "Sorties",
+                url:"/admin/sorties",
             },
             {
                 // Suivi des impayes/relances — different du flux valider/encaisser,
@@ -140,12 +148,11 @@ const mainNavItems: NavItem[] = [
                 url:"/admin/recouvrements",
             },
             {
-                title: "Achats",
+                // Renomme : cet ecran n'est pas une vue comptable mais la file d'attente
+                // de validation des engagements. L'URL reste /admin/achats — le projet
+                // tolere deja l'ecart libelle/URL ("Consultation Devis" sert /admin/factures).
+                title: "Factures fournisseur",
                 url:"/admin/achats",
-            },
-            {
-                title: "Depenses",
-                url:"/admin/depenses",
             },
             {
                 title: "Etats Financiers",

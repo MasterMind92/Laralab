@@ -170,3 +170,84 @@ export function fmtDate(valeur: string | null | undefined): string {
 export function fmtMontant(montant: number): string {
     return `${Number(montant).toLocaleString('fr-FR')} FCFA`;
 }
+
+/* ------------------------------------------------------------ livre de caisse */
+
+/**
+ * D'ou vient l'argent qui entre. Une avance rattachee a une facture reste une AVANCE :
+ * l'origine dit d'ou vient l'argent, pas dans quel ecran il a ete saisi.
+ */
+export type OrigineEntree = 'avance' | 'facture';
+
+/** D'ou sort l'argent : le reglement d'une facture fournisseur, ou une saisie a la main. */
+export type OrigineSortie = 'facture' | 'saisie_directe';
+
+export type ModeEncaissement =
+    | 'cb'
+    | 'especes'
+    | 'virement'
+    | 'mobile_money'
+    | 'paypal';
+
+export type EntreeRow = {
+    id: number;
+    montant: number;
+    mode_paiement: ModeEncaissement;
+    date_paiement: string | null;
+    reference: string | null;
+    origine: OrigineEntree;
+    rattachee: boolean;
+    numero_facture: string | null;
+    client: string | null;
+    appartement: string | null;
+};
+
+export type SortieRow = {
+    cle: string;
+    origine: OrigineSortie;
+    libelle: string;
+    tiers: string | null;
+    montant: number;
+    montant_charges: number;
+    montant_immobilise: number;
+    date: string | null;
+    mode_paiement: string | null;
+    reference: string | null;
+    categorie: CategorieCharge | null;
+    facture_fournisseur_id: number | null;
+    depense_id: number | null;
+};
+
+export const MODE_ENCAISSEMENT_LABELS: Record<ModeEncaissement, string> = {
+    cb: 'Carte bancaire',
+    especes: 'Espèces',
+    virement: 'Virement',
+    mobile_money: 'Mobile money',
+    paypal: 'PayPal',
+};
+
+export const ORIGINE_ENTREE_LABELS: Record<OrigineEntree, string> = {
+    avance: 'Avance à la réservation',
+    facture: 'Règlement de facture',
+};
+
+export const ORIGINE_SORTIE_LABELS: Record<OrigineSortie, string> = {
+    facture: 'Facture fournisseur',
+    saisie_directe: 'Saisie directe',
+};
+
+export function OrigineEntreeBadge({ origine }: { origine: OrigineEntree }) {
+    return (
+        <Badge variant={origine === 'avance' ? 'default' : 'outline'}>
+            {ORIGINE_ENTREE_LABELS[origine]}
+        </Badge>
+    );
+}
+
+export function OrigineSortieBadge({ origine }: { origine: OrigineSortie }) {
+    return (
+        <Badge variant={origine === 'facture' ? 'secondary' : 'outline'}>
+            {ORIGINE_SORTIE_LABELS[origine]}
+        </Badge>
+    );
+}

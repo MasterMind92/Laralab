@@ -22,7 +22,6 @@ use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingTacheController;
 use App\Http\Controllers\PaiementController;
-use App\Http\Controllers\PaiementReservationController;
 use App\Http\Controllers\ParametreFacturationController;
 use App\Http\Controllers\ParcEquipementController;
 use App\Http\Controllers\PartenaireController;
@@ -107,17 +106,26 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
         Route::delete('achats/{achat}', [ComptabiliteController::class, 'destroyAchat'])
             ->name('comptabilite.achats.destroy');
 
-        Route::get('depenses', [ComptabiliteController::class, 'depenses'])
-            ->name('comptabilite.depenses');
+        // Le livre de caisse (etape B-bis). 'Depenses' et 'Avances recues' ont ete
+        // absorbes : la premiere ne montrait que les charges — donc pas les
+        // immobilisations, donc pas la vraie tresorerie — et la seconde ne montrait
+        // qu'une des deux sources d'encaissement.
+        Route::get('entrees', [ComptabiliteController::class, 'entrees'])
+            ->name('comptabilite.entrees');
 
-        Route::post('depenses', [ComptabiliteController::class, 'storeDepense'])
-            ->name('comptabilite.depenses.store');
+        Route::get('sorties', [ComptabiliteController::class, 'sorties'])
+            ->name('comptabilite.sorties');
 
-        Route::put('depenses/{depense}', [ComptabiliteController::class, 'updateDepense'])
-            ->name('comptabilite.depenses.update');
+        // La saisie directe reste le seul moyen d'ecrire une sortie a la main : celles
+        // qui viennent d'une facture sont produites par FactureFournisseur::payer().
+        Route::post('sorties', [ComptabiliteController::class, 'storeDepense'])
+            ->name('comptabilite.sorties.store');
 
-        Route::delete('depenses/{depense}', [ComptabiliteController::class, 'destroyDepense'])
-            ->name('comptabilite.depenses.destroy');
+        Route::put('sorties/{depense}', [ComptabiliteController::class, 'updateDepense'])
+            ->name('comptabilite.sorties.update');
+
+        Route::delete('sorties/{depense}', [ComptabiliteController::class, 'destroyDepense'])
+            ->name('comptabilite.sorties.destroy');
 
         Route::get('recouvrements', [ComptabiliteController::class, 'recouvrements'])
             ->name('comptabilite.recouvrements');
@@ -368,10 +376,6 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
     Route::post('factures/{facture}/paiements', [PaiementController::class, 'store'])
         ->name('paiements.store')
-        ->middleware('role:compta');
-
-    Route::get('paiements-reservations', [PaiementReservationController::class, 'index'])
-        ->name('paiements-reservations.index')
         ->middleware('role:compta');
 
     Route::post('sejours/{sejour}/dommages', [DommageController::class, 'store'])

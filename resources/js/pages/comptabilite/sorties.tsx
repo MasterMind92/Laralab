@@ -5,7 +5,6 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import ComptabiliteController from '@/actions/App/Http/Controllers/ComptabiliteController';
 import { DataTable } from '@/components/data-table/data-table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -31,37 +30,41 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { CATEGORIE_LABELS, fmtDate, fmtMontant } from './shared';
-import type { CategorieCharge, Employe } from './shared';
+import {
+    CATEGORIE_LABELS,
+    fmtDate,
+    fmtMontant,
+    ORIGINE_SORTIE_LABELS,
+    OrigineSortieBadge,
+} from './shared';
+import type {
+    CategorieCharge,
+    Employe,
+    OrigineSortie,
+    SortieRow,
+} from './shared';
 
 /**
- * Dépenses — le journal des charges (Phase 06, étape B).
+ * Sorties — le livre des décaissements (Phase 06, étape B-bis).
  *
- * Deux origines, et la distinction est visible sur chaque ligne : ce qui vient du
- * règlement d'une facture fournisseur, et ce qui a été saisi à la main pour ce qui n'a
- * jamais eu de facture (petite caisse, note de frais).
+ * **Ce n'est pas le journal des dépenses, et c'est tout l'intérêt.** Une dépense est une
+ * CHARGE : les immobilisations en sont délibérément absentes. Un écran de trésorerie
+ * alimenté par cette table afficherait 60 000 FCFA sortis quand 560 000 ont réellement
+ * quitté la caisse.
  *
- * Une dépense issue d'une facture n'est ni modifiable ni supprimable ici : elle est le
- * reflet d'une écriture. La corriger sans toucher la facture ferait diverger les deux, et
- * le total du mois ne correspondrait plus à ce qui a été réglé.
+ * La liste additionne donc deux gisements DISJOINTS :
+ *   - les règlements de factures fournisseur, pour leur montant TOTAL ;
+ *   - les dépenses de saisie directe, celles qui n'ont jamais eu de facture.
  *
- * Ce que cet écran ne montre PAS : les immobilisations. Un climatiseur payé ce mois-ci
- * n'est pas une charge du mois — il est à l'actif. C'est toute la raison d'être du champ
- * `nature` sur les lignes de facture.
+ * Les dépenses issues d'une facture sont exclues côté serveur : leur montant est déjà dans
+ * le total de cette facture. C'est cette exclusion qui empêche le double comptage.
+ *
+ * Une ligne par MOUVEMENT, pas par ligne comptable : un livre de caisse suit l'argent, pas
+ * les écritures. La ventilation charge / immobilisation vit dans la synthèse, où elle
+ * réconcilie cet écran avec les états financiers.
  */
 const TOUS = '__tous__';
 const AUCUN = '__aucun__';
-
-type DepenseRow = {
-    id: number;
-    libelle: string;
-    montant: number;
-    date_depense: string | null;
-    categorie: CategorieCharge;
-    saisie_directe: boolean;
-    valideur: string | null;
-    origine: { reference: string | null; fournisseur: string | null } | null;
-};
 
 type Formulaire = {
     libelle: string;
@@ -79,37 +82,35 @@ const VIDE: Formulaire = {
     valideur_id: AUCUN,
 };
 
-export default function Depenses({
-    depenses,
+export default function Sorties({
+    sorties,
     employes,
-    total,
+    synthese,
     filters,
 }: {
-    depenses: DepenseRow[];
+    sorties: SortieRow[];
     employes: Employe[];
-    total: number;
+    synthese: { total: number; charges: number; immobilise: number };
     filters: {
-        categorie?: CategorieCharge | null;
+        origine?: OrigineSortie | null;
         du?: string | null;
         au?: string | null;
     };
 }) {
-    const [categorie, setCategorie] = useState<string>(
-        filters.categorie ?? TOUS,
-    );
+    const [origine, setOrigine] = useState<string>(filters.origine ?? TOUS);
     const [du, setDu] = useState(filters.du ?? '');
     const [au, setAu] = useState(filters.au ?? '');
 
     const [ouvert, setOuvert] = useState(false);
-    const [enEdition, setEnEdition] = useState<DepenseRow | null>(null);
+    const [enEdition, setEnEdition] = useState<SortieRow | null>(null);
     const [form, setForm] = useState<Formulaire>(VIDE);
 
     function filtrer(e: FormEvent) {
         e.preventDefault();
         router.get(
-            ComptabiliteController.depenses().url,
+            ComptabiliteController.sorties().url,
             {
-                categorie: categorie === TOUS ? undefined : categorie,
+                origine: origine === TOUS ? undefined : origine,
                 du: du || undefined,
                 au: au || undefined,
             },
@@ -126,13 +127,13 @@ export default function Depenses({
         setOuvert(true);
     }
 
-    function ouvrirEdition(depense: DepenseRow) {
-        setEnEdition(depense);
+    function ouvrirEdition(sortie: SortieRow) {
+        setEnEdition(sortie);
         setForm({
-            libelle: depense.libelle,
-            montant: String(depense.montant),
-            date_depense: depense.date_depense ?? '',
-            categorie: depense.categorie,
+            libelle: sortie.libelle,
+            montant: String(sortie.montant),
+            date_depense: sortie.date ?? '',
+            categorie: sortie.categorie ?? 'autres',
             valideur_id: AUCUN,
         });
         setOuvert(true);
@@ -155,9 +156,9 @@ export default function Depenses({
             onSuccess: () => setOuvert(false),
         };
 
-        if (enEdition) {
+        if (enEdition?.depense_id) {
             router.put(
-                ComptabiliteController.updateDepense(enEdition.id).url,
+                ComptabiliteController.updateDepense(enEdition.depense_id).url,
                 charge,
                 options,
             );
@@ -170,89 +171,97 @@ export default function Depenses({
         }
     }
 
-    function supprimer(depense: DepenseRow) {
-        if (!confirm(`Supprimer « ${depense.libelle} » ?`)) {
+    function supprimer(sortie: SortieRow) {
+        if (!sortie.depense_id) {
             return;
         }
 
-        router.delete(ComptabiliteController.destroyDepense(depense.id).url, {
-            preserveScroll: true,
-        });
+        if (!confirm(`Supprimer « ${sortie.libelle} » ?`)) {
+            return;
+        }
+
+        router.delete(
+            ComptabiliteController.destroyDepense(sortie.depense_id).url,
+            { preserveScroll: true },
+        );
     }
 
-    const columns: ColumnDef<DepenseRow>[] = [
+    const columns: ColumnDef<SortieRow>[] = [
+        {
+            id: 'date',
+            header: 'Décaissée le',
+            accessorFn: (s) => s.date ?? '',
+            cell: ({ row }) => (
+                <span className="text-sm">{fmtDate(row.original.date)}</span>
+            ),
+        },
         {
             accessorKey: 'libelle',
-            header: 'Charge',
+            header: 'Mouvement',
             cell: ({ row }) => (
                 <div className="space-y-0.5">
                     <p className="text-sm font-medium">
                         {row.original.libelle}
                     </p>
-                    {row.original.origine && (
+                    {row.original.tiers && (
                         <p className="text-xs text-muted-foreground">
-                            {row.original.origine.fournisseur ??
-                                'fournisseur inconnu'}
-                            {row.original.origine.reference &&
-                                ` · ${row.original.origine.reference}`}
+                            {row.original.tiers}
+                        </p>
+                    )}
+                    {row.original.categorie && (
+                        <p className="text-xs text-muted-foreground">
+                            {CATEGORIE_LABELS[row.original.categorie]}
                         </p>
                     )}
                 </div>
             ),
         },
         {
-            id: 'categorie',
-            header: 'Famille',
-            accessorFn: (d) => CATEGORIE_LABELS[d.categorie],
+            id: 'origine',
+            header: 'Origine',
+            accessorFn: (s) => ORIGINE_SORTIE_LABELS[s.origine],
             cell: ({ row }) => (
-                <span className="text-xs">
-                    {CATEGORIE_LABELS[row.original.categorie]}
-                </span>
+                <OrigineSortieBadge origine={row.original.origine} />
             ),
         },
         {
-            id: 'origine',
-            header: 'Origine',
-            accessorFn: (d) => (d.saisie_directe ? 'Saisie' : 'Facture'),
+            id: 'mode',
+            header: 'Mode',
+            accessorFn: (s) => s.mode_paiement ?? '',
             cell: ({ row }) => (
-                <Badge
-                    variant={
-                        row.original.saisie_directe ? 'outline' : 'secondary'
-                    }
-                >
-                    {row.original.saisie_directe
-                        ? 'Saisie directe'
-                        : 'Facture fournisseur'}
-                </Badge>
+                <span className="text-xs text-muted-foreground">
+                    {row.original.mode_paiement ?? '—'}
+                </span>
             ),
         },
         {
             id: 'montant',
             header: 'Montant',
-            accessorFn: (d) => d.montant,
+            accessorFn: (s) => s.montant,
             cell: ({ row }) => (
-                <span className="text-sm tabular-nums">
-                    {fmtMontant(row.original.montant)}
-                </span>
-            ),
-        },
-        {
-            id: 'date',
-            header: 'Décaissée le',
-            accessorFn: (d) => d.date_depense ?? '',
-            cell: ({ row }) => (
-                <span className="text-xs">
-                    {fmtDate(row.original.date_depense)}
-                </span>
+                <div className="space-y-0.5">
+                    <p className="text-sm font-medium tabular-nums">
+                        {fmtMontant(row.original.montant)}
+                    </p>
+                    {row.original.montant_immobilise > 0 && (
+                        <p className="text-xs text-muted-foreground tabular-nums">
+                            dont {fmtMontant(row.original.montant_immobilise)}{' '}
+                            immobilisés
+                        </p>
+                    )}
+                </div>
             ),
         },
         {
             id: 'actions',
             header: 'Actions',
             cell: ({ row }) => {
-                const depense = row.original;
+                const sortie = row.original;
 
-                if (!depense.saisie_directe) {
+                // Une sortie issue d'une facture n'est pas modifiable ici : elle est le
+                // reflet d'un règlement. La corriger sans toucher la facture ferait
+                // diverger les deux.
+                if (sortie.origine === 'facture') {
                     return (
                         <span className="text-xs text-muted-foreground">
                             Voir la facture
@@ -271,14 +280,12 @@ export default function Depenses({
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem
-                                onClick={() => ouvrirEdition(depense)}
+                                onClick={() => ouvrirEdition(sortie)}
                             >
                                 Modifier
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                onClick={() => supprimer(depense)}
-                            >
+                            <DropdownMenuItem onClick={() => supprimer(sortie)}>
                                 <span className="text-red-500">Supprimer</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -290,15 +297,49 @@ export default function Depenses({
 
     return (
         <>
-            <Head title="Dépenses" />
+            <Head title="Sorties" />
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
                 <div>
-                    <h1 className="text-2xl font-semibold">Dépenses</h1>
+                    <h1 className="text-2xl font-semibold">Sorties</h1>
                     <p className="text-sm text-muted-foreground">
-                        {depenses.length} charge
-                        {depenses.length > 1 ? 's' : ''} · {fmtMontant(total)}{' '}
-                        sur la période affichée
+                        {fmtMontant(synthese.total)} décaissés sur{' '}
+                        {sorties.length} mouvement
+                        {sorties.length > 1 ? 's' : ''}
                     </p>
+                </div>
+
+                {/* La ventilation qui réconcilie cet écran avec les états financiers :
+                    seules les charges y pèsent sur la marge. */}
+                <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-md border p-4">
+                        <p className="text-sm font-medium">Total décaissé</p>
+                        <p className="text-2xl font-semibold tabular-nums">
+                            {fmtMontant(synthese.total)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Ce qui a réellement quitté la caisse
+                        </p>
+                    </div>
+                    <div className="rounded-md border p-4">
+                        <p className="text-sm font-medium">dont charges</p>
+                        <p className="text-2xl font-semibold tabular-nums">
+                            {fmtMontant(synthese.charges)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Ce qui pèse sur le résultat
+                        </p>
+                    </div>
+                    <div className="rounded-md border p-4">
+                        <p className="text-sm font-medium">
+                            dont immobilisations
+                        </p>
+                        <p className="text-2xl font-semibold tabular-nums">
+                            {fmtMontant(synthese.immobilise)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Biens durables, portés à l'actif
+                        </p>
+                    </div>
                 </div>
 
                 <form
@@ -306,14 +347,14 @@ export default function Depenses({
                     className="grid grid-cols-2 gap-3 rounded-md border p-3 md:grid-cols-4 md:items-end"
                 >
                     <div className="grid gap-1.5">
-                        <Label htmlFor="f-categorie">Famille</Label>
-                        <Select value={categorie} onValueChange={setCategorie}>
-                            <SelectTrigger id="f-categorie">
+                        <Label htmlFor="f-origine">Origine</Label>
+                        <Select value={origine} onValueChange={setOrigine}>
+                            <SelectTrigger id="f-origine">
                                 <SelectValue placeholder="Toutes" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value={TOUS}>Toutes</SelectItem>
-                                {Object.entries(CATEGORIE_LABELS).map(
+                                {Object.entries(ORIGINE_SORTIE_LABELS).map(
                                     ([cle, libelle]) => (
                                         <SelectItem key={cle} value={cle}>
                                             {libelle}
@@ -348,8 +389,8 @@ export default function Depenses({
 
                 <DataTable
                     columns={columns}
-                    data={depenses}
-                    searchPlaceholder="Rechercher une charge..."
+                    data={sorties}
+                    searchPlaceholder="Rechercher un décaissement..."
                     toolbar={
                         <Button onClick={ouvrirCreation}>
                             <Plus /> Saisie directe
@@ -364,16 +405,16 @@ export default function Depenses({
                         <DialogHeader>
                             <DialogTitle>
                                 {enEdition
-                                    ? 'Modifier la charge'
-                                    : 'Charge saisie directement'}
+                                    ? 'Modifier la sortie'
+                                    : 'Sortie saisie directement'}
                             </DialogTitle>
                         </DialogHeader>
 
                         {!enEdition && (
                             <p className="text-sm text-muted-foreground">
                                 Pour ce qui n'a jamais eu de facture fournisseur
-                                : petite caisse, note de frais. Ce qui vient
-                                d'une facture s'inscrit tout seul à son
+                                : petite caisse, note de frais, salaires. Ce qui
+                                vient d'une facture s'inscrit tout seul à son
                                 règlement.
                             </p>
                         )}
@@ -452,6 +493,10 @@ export default function Depenses({
                                     )}
                                 </SelectContent>
                             </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Une saisie directe est toujours une charge : on
+                                n'immobilise pas sans facture.
+                            </p>
                         </div>
 
                         <div className="grid gap-1.5">
@@ -499,9 +544,9 @@ export default function Depenses({
     );
 }
 
-Depenses.layout = {
+Sorties.layout = {
     breadcrumbs: [
         { title: 'Comptabilité', href: '/admin/comptabilite' },
-        { title: 'Dépenses', href: ComptabiliteController.depenses() },
+        { title: 'Sorties', href: ComptabiliteController.sorties() },
     ],
 };

@@ -52,7 +52,12 @@ import type {
 } from './shared';
 
 /**
- * Achats — les factures fournisseur (Phase 06, étape B).
+ * Factures fournisseur (Phase 06, étape B).
+ *
+ * L'ecran s'appelait « Achats » : renomme a l'etape B-bis, parce qu'il n'est pas une vue
+ * comptable mais la file d'attente de validation des ENGAGEMENTS. Ce que la facture coute
+ * reellement se lit dans « Sorties », une fois reglee. L'URL reste /admin/achats — le
+ * projet tolere deja l'ecart libelle/URL (« Consultation Devis » sert /admin/factures).
  *
  * La saisie part d'un bon de commande réceptionné, choisi dans une liste : les lignes se
  * pré-remplissent sur les quantités RÉELLEMENT REÇUES, pas commandées. C'est ce que le
@@ -425,11 +430,13 @@ export default function Achats({
 
     return (
         <>
-            <Head title="Achats — factures fournisseur" />
+            <Head title="Factures fournisseur" />
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                     <div>
-                        <h1 className="text-2xl font-semibold">Achats</h1>
+                        <h1 className="text-2xl font-semibold">
+                            Factures fournisseur
+                        </h1>
                         <p className="text-sm text-muted-foreground">
                             {factures.length} facture
                             {factures.length > 1 ? 's' : ''} fournisseur
@@ -1014,6 +1021,9 @@ export default function Achats({
 Achats.layout = {
     breadcrumbs: [
         { title: 'Comptabilité', href: '/admin/comptabilite' },
-        { title: 'Achats', href: ComptabiliteController.achats() },
+        {
+            title: 'Factures fournisseur',
+            href: ComptabiliteController.achats(),
+        },
     ],
 };
