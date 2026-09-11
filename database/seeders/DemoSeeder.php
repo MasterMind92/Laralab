@@ -11,12 +11,15 @@ use App\Models\CommandeLigne;
 use App\Models\Conge;
 use App\Models\ContratTravail;
 use App\Models\DemandeService;
+use App\Models\Depense;
 use App\Models\Dommage;
 use App\Models\Employe;
 use App\Models\Entreprise;
 use App\Models\Entretien;
 use App\Models\Equipement;
 use App\Models\Facture;
+use App\Models\FactureFournisseur;
+use App\Models\FactureFournisseurLigne;
 use App\Models\Fournisseur;
 use App\Models\Intervention;
 use App\Models\InterventionAction;
@@ -30,6 +33,7 @@ use App\Models\Reception;
 use App\Models\ReceptionLigne;
 use App\Models\Recrutement;
 use App\Models\Reduction;
+use App\Models\Relance;
 use App\Models\Reservation;
 use App\Models\Sejour;
 use App\Models\User;
@@ -174,6 +178,13 @@ class DemoSeeder extends Seeder
         // Appelé APRÈS seedMultiTenant(), qui crée l'entreprise, le logisticien et sa fiche
         // employé — ce sont eux qui portent le demandeur, le valideur et le réceptionnaire.
         $this->seedLogistique();
+
+        // 12) Phase 06 (comptabilité avancée) : la chaîne besoin → commande → achat →
+        // dépense, entièrement chez Bayo. Appelé APRÈS seedMultiTenant() (entreprise,
+        // magasinière) et APRÈS seedLogistique() (dont elle réutilise les helpers
+        // commandeDemo()/receptionDemo()) — Bayo garde sa propre chaîne, indépendante
+        // de celle de Konan.
+        $this->seedAchatsBayo();
 
         $this->command?->info('Démo prête — client@laralab.test / 12345678 (vérifié), réservations '.
             "en_attente=#{$resEnAttente->id} validee=#{$resValidee->id} en_cours=#{$resEnCours->id}");
@@ -1203,6 +1214,186 @@ class DemoSeeder extends Seeder
 
         $soumis = Besoin::withoutGlobalScopes()->where('entreprise_id', $konan->id)->where('statut', 'soumis')->count();
         $this->command?->info("Logistique prête (Konan) — {$fournisseurs->count()} fournisseurs, ".count($besoins)." besoins dont {$soumis} à valider, 4 commandes couvrant brouillon/envoyée/partiellement reçue/reçue.");
+    }
+
+    /**
+     * Comptabilité avancée (Phase 06), chez Hôtel Bayo — le seul jeu de données qui
+     * traverse trois pôles pour aboutir en compta : un besoin exprimé par la Logistique
+     * devient une commande, sa réception une facture fournisseur, et le règlement de
+     * cette facture une dépense. Aucun statut dérivé n'est écrit à la main
+     * (`Commande::recalculerStatut()`, `FactureFournisseur::valider()/payer()`) — même
+     * principe que seedLogistique().
+     *
+     * Les lignes de facture fournisseur sont en `updateOrCreate` (jamais delete+recreate,
+     * contrairement à `genererFactureDemo()`) : un rejeu du seeder ne doit pas changer
+     * l'identifiant de la ligne payée, sinon `genererDepenses()` la croirait nouvelle et
+     * doublerait la dépense à chaque relance du seeder.
+     */
+    private function seedAchatsBayo(): void
+    {
+        $bayo = Entreprise::withoutGlobalScopes()->where('nom', 'Hôtel Bayo')->first();
+
+        if (! $bayo) {
+            return;
+        }
+
+        $bApt1 = Appartement::withoutGlobalScopes()->where('numero', 'B-301')->first();
+        $magasinier = Employe::withoutGlobalScopes()->where('entreprise_id', $bayo->id)->where('poste', 'Magasinier')->first();
+
+        // Compte comptable dédié : même raison que compta.konan@ (voir seedMultiTenant) —
+        // compta@laralab.test est orphelin et ne verrait ni fournisseur ni commande de Bayo.
+        $userComptaBayo = User::updateOrCreate(
+            ['email' => 'compta.bayo@laralab.test'],
+            ['name' => 'Kouadio Affoué', 'password' => Hash::make('12345678'), 'role' => 'compta', 'entreprise_id' => $bayo->id, 'actif' => true, 'email_verified_at' => now()],
+        );
+        $comptable = Employe::updateOrCreate(
+            ['user_id' => $userComptaBayo->id],
+            ['entreprise_id' => $bayo->id, 'nom' => 'Kouadio', 'prenom' => 'Affoué', 'poste' => 'Comptable', 'date_embauche' => now()->subMonths(3)->toDateString(), 'salaire_base' => null, 'actif' => true],
+        );
+
+        // ── Logistique : un besoin de la magasinière devient une commande reçue ──────
+        $fournisseurBiens = Fournisseur::updateOrCreate(
+            ['nom' => 'Abidjan Hôtellerie Fournitures', 'entreprise_id' => $bayo->id],
+            ['contact' => 'M. Yao', 'telephone' => '0708112233', 'email' => 'commandes@abj-hotellerie.test', 'adresse' => 'Abidjan', 'actif' => true],
+        );
+
+        $besoinProduits = Besoin::updateOrCreate(
+            ['designation' => "Produits d'entretien ménager", 'entreprise_id' => $bayo->id],
+            [
+                'demandeur_employe_id' => $magasinier?->id,
+                'appartement_id' => $bApt1?->id,
+                'quantite' => 20,
+                'justification' => 'Réapprovisionnement mensuel du stock de nettoyage.',
+                'priorite' => 'haute',
+                'statut' => 'valide',
+                'motif_refus' => null,
+            ],
+        );
+        $besoinProduits->forceFill(['valide_par_id' => $magasinier?->id, 'date_validation' => now()->subDays(10)->toDateString()])->save();
+
+        $commande = $this->commandeDemo($bayo, $fournisseurBiens, 'CMD-BAYO-01', 'envoyee', [
+            ['designation' => "Produits d'entretien ménager", 'quantite' => 20, 'prix_unitaire' => 2500, 'besoin' => $besoinProduits],
+            ['designation' => 'Aspirateur professionnel', 'quantite' => 1, 'prix_unitaire' => 95000],
+        ], jours: -6);
+
+        $lignesRecues = $this->receptionDemo($commande, $magasinier, now()->subDays(4), [
+            ['designation' => "Produits d'entretien ménager", 'quantite_recue' => 20, 'conforme' => true],
+            ['designation' => 'Aspirateur professionnel', 'quantite_recue' => 1, 'conforme' => true],
+        ]);
+
+        // L'aspirateur est un bien durable : il entre au parc, comme tout ce qui
+        // traverse la réception logistique.
+        if ($ligneAspirateur = $lignesRecues->firstWhere('designation', 'Aspirateur professionnel')) {
+            Equipement::updateOrCreate(
+                ['reception_ligne_id' => $ligneAspirateur->id, 'numero_serie' => 'ASP-BAYO-2026-01'],
+                ['nom' => 'Aspirateur professionnel', 'type' => 'electromenager', 'statut' => 'stock', 'date_achat' => now()->subDays(4)->toDateString(), 'garantie_fin' => now()->addYear()->toDateString(), 'contrat_maintenance' => false],
+            );
+            $ligneAspirateur->forceFill(['quantite_enregistree' => 1])->save();
+        }
+
+        // ── Achats : la facture fournisseur qui règle cette commande. La ligne
+        // "produits" est une charge (elle générera une dépense au paiement), la ligne
+        // "aspirateur" une immobilisation (elle n'en générera jamais).
+        $commandeLigneProduits = $commande->lignes()->where('designation', "Produits d'entretien ménager")->first();
+        $commandeLigneAspirateur = $commande->lignes()->where('designation', 'Aspirateur professionnel')->first();
+
+        $achatCommande = FactureFournisseur::updateOrCreate(
+            ['entreprise_id' => $bayo->id, 'reference' => 'FF-BAYO-CMD01'],
+            [
+                'fournisseur_id' => $fournisseurBiens->id,
+                'commande_id' => $commande->id,
+                'date_facture' => now()->subDays(4)->toDateString(),
+                'date_echeance' => now()->addDays(10)->toDateString(),
+                'notes' => 'Facture de démonstration liée à la commande CMD-BAYO-01.',
+            ],
+        );
+        FactureFournisseurLigne::updateOrCreate(
+            ['facture_fournisseur_id' => $achatCommande->id, 'designation' => "Produits d'entretien ménager"],
+            ['commande_ligne_id' => $commandeLigneProduits?->id, 'quantite' => 20, 'prix_unitaire' => 2500, 'nature' => 'charge', 'categorie' => 'achats_consommables'],
+        );
+        FactureFournisseurLigne::updateOrCreate(
+            ['facture_fournisseur_id' => $achatCommande->id, 'designation' => 'Aspirateur professionnel'],
+            ['commande_ligne_id' => $commandeLigneAspirateur?->id, 'quantite' => 1, 'prix_unitaire' => 95000, 'nature' => 'immobilisation', 'categorie' => null],
+        );
+        if ($achatCommande->statut !== 'payee') {
+            $achatCommande->valider($comptable->id);
+            $achatCommande->payer(now()->subDays(2)->toDateString(), 'virement', 'VIR-BAYO-001');
+        }
+
+        // ── Achats : une charge de service, sans aucun lien logistique ───────────────
+        $fournisseurServices = Fournisseur::updateOrCreate(
+            ['nom' => 'Abidjan Énergie Services', 'entreprise_id' => $bayo->id],
+            ['contact' => 'Service clients', 'telephone' => '0505998877', 'email' => 'factures@abj-energie.test', 'adresse' => 'Abidjan', 'actif' => true],
+        );
+        $achatElectricite = FactureFournisseur::updateOrCreate(
+            ['entreprise_id' => $bayo->id, 'reference' => 'FF-BAYO-ELEC-09'],
+            [
+                'fournisseur_id' => $fournisseurServices->id,
+                'commande_id' => null,
+                'date_facture' => now()->subDays(5)->toDateString(),
+                'date_echeance' => now()->addDays(9)->toDateString(),
+                'notes' => "Facture d'électricité de démonstration, sans lien avec la Logistique.",
+            ],
+        );
+        FactureFournisseurLigne::updateOrCreate(
+            ['facture_fournisseur_id' => $achatElectricite->id, 'designation' => 'Facture d\'électricité — septembre'],
+            ['quantite' => 1, 'prix_unitaire' => 68000, 'nature' => 'charge', 'categorie' => 'services_exterieurs'],
+        );
+        if ($achatElectricite->statut !== 'payee') {
+            $achatElectricite->valider($comptable->id);
+            $achatElectricite->payer(now()->subDays(1)->toDateString(), 'especes');
+        }
+
+        // ── Achats : une facture encore en attente, pour peupler la file de validation ──
+        $achatAssurance = FactureFournisseur::updateOrCreate(
+            ['entreprise_id' => $bayo->id, 'reference' => 'FF-BAYO-ASSUR-01'],
+            [
+                'fournisseur_id' => null,
+                'commande_id' => null,
+                'date_facture' => now()->subDay()->toDateString(),
+                'date_echeance' => now()->addDays(20)->toDateString(),
+                'notes' => 'Prime annuelle assurance locaux, en attente de validation.',
+            ],
+        );
+        FactureFournisseurLigne::updateOrCreate(
+            ['facture_fournisseur_id' => $achatAssurance->id, 'designation' => 'Assurance locaux — prime annuelle'],
+            ['quantite' => 1, 'prix_unitaire' => 120000, 'nature' => 'charge', 'categorie' => 'impots_taxes'],
+        );
+
+        // ── Livre de caisse : une dépense saisie à la main, sans facture fournisseur ──
+        Depense::updateOrCreate(
+            ['entreprise_id' => $bayo->id, 'libelle' => "Prime exceptionnelle — Agent d'entretien", 'facture_fournisseur_ligne_id' => null],
+            ['montant' => 25000, 'date_depense' => now()->subDays(3)->toDateString(), 'categorie' => 'personnel', 'valideur_id' => $comptable->id],
+        );
+
+        // ── Recouvrement : un second séjour Bayo, clôturé et facturé, jamais soldé ────
+        $client = Client::where('email', 'client@laralab.test')->first();
+
+        if ($client && $bApt1) {
+            $bRes2 = Reservation::updateOrCreate(
+                ['appartement_id' => $bApt1->id, 'client_id' => $client->id, 'date_debut' => now()->subDays(20)->toDateString(), 'date_fin' => now()->subDays(17)->toDateString()],
+                ['statut' => 'validee', 'nombre_personnes' => 1],
+            );
+            $bSejour2 = Sejour::updateOrCreate(
+                ['reservation_id' => $bRes2->id],
+                ['date_entree' => now()->subDays(20)->toDateString(), 'date_sortie' => now()->subDays(17)->toDateString(), 'etat_lieux_entree' => "État général : Bon\nRAS", 'etat_lieux_sortie' => "État général : Bon\nRAS", 'statut' => 'cloture'],
+            );
+            $bFacture2 = $this->genererFactureDemo($bSejour2, 'validee', $bayo->id);
+
+            // Un acompte partiel, encaissé mais insuffisant : le solde reste dû ET la
+            // facture est déjà en retard (échéance = sortie + 7 jours, ici il y a 10 jours).
+            Paiement::updateOrCreate(
+                ['facture_id' => $bFacture2->id, 'reference_transaction' => 'DEMO-BAYO-ACOMPTE-'.$bFacture2->id],
+                ['montant' => round($bFacture2->montant_ttc * 0.4), 'mode_paiement' => 'mobile_money', 'date_paiement' => now()->subDays(16)],
+            );
+
+            Relance::updateOrCreate(
+                ['facture_id' => $bFacture2->id, 'date_relance' => now()->subDays(3)->toDateString()],
+                ['employe_id' => $comptable->id, 'canal' => 'telephone', 'note' => 'Rappel téléphonique du solde restant dû.', 'solde_restant' => $bFacture2->refresh()->soldeRestant()],
+            );
+        }
+
+        $this->command?->info('Comptabilité avancée prête (Bayo) — 1 achat logistique réglé (1 charge + 1 immobilisation), 1 achat de service réglé, 1 achat en attente, 1 dépense directe, 1 facture client en retard relancée.');
     }
 
     /**
