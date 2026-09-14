@@ -44,6 +44,31 @@ use Inertia\Response;
  */
 class ComptabiliteController extends Controller
 {
+    /**
+     * Tableau de bord (Phase 07) : des compteurs ponctuels, pas le rapport détaillé —
+     * `etatsFinanciers()` reste le seul endroit avec une ventilation par catégorie et un
+     * filtre de période. `creances`/`dettes_fournisseur` sont des points dans le temps
+     * (tout ce qui reste dû aujourd'hui), pas bornés au mois comme le reste.
+     */
+    public function dashboard(): Response
+    {
+        return Inertia::render('comptabilite/dashboard', [
+            'kpi' => [
+                'ca_encaisse_mois' => (float) Paiement::whereMonth('date_paiement', now()->month)
+                    ->whereYear('date_paiement', now()->year)
+                    ->sum('montant'),
+                'creances' => (float) Facture::where('statut', 'validee')->get()
+                    ->sum(fn (Facture $f) => $f->soldeRestant()),
+                'dettes_fournisseur' => (float) FactureFournisseur::aDue()->with('lignes')->get()
+                    ->sum(fn (FactureFournisseur $f) => $f->montantTotal()),
+                'achats_a_valider' => FactureFournisseur::aValider()->count(),
+                'depenses_mois' => (float) Depense::whereMonth('date_depense', now()->month)
+                    ->whereYear('date_depense', now()->year)
+                    ->sum('montant'),
+            ],
+        ]);
+    }
+
     // ----------------------------------------------------------------- Achats
 
     public function achats(Request $request): Response

@@ -20,7 +20,6 @@ class DatabaseSeeder extends Seeder
             'administrateur',
             'proprietaire',
             'gerant',
-            'commercial',
             'rh',
             'compta',
             'logistique',

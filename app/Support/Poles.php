@@ -29,7 +29,6 @@ class Poles
         'comptabilite' => 'Comptabilité',
         'rh' => 'Ressources humaines',
         'logistique' => 'Logistique',
-        'commercial' => 'Commercial',
         'direction' => 'Direction',
     ];
 
@@ -46,7 +45,6 @@ class Poles
         'compta' => 'comptabilite',
         'rh' => 'rh',
         'logistique' => 'logistique',
-        'commercial' => 'commercial',
         'proprietaire' => 'direction',
         'gerant' => 'direction',
     ];

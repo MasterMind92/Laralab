@@ -31,10 +31,14 @@ use App\Http\Controllers\Proprietaire\DashboardController as ProprietaireDashboa
 use App\Http\Controllers\Proprietaire\EncaissementController as ProprietaireEncaissementController;
 use App\Http\Controllers\Proprietaire\EquipementController as ProprietaireEquipementController;
 use App\Http\Controllers\Proprietaire\PartenaireController as ProprietairePartenaireController;
+use App\Http\Controllers\ReceptionnisteDashboardController;
 use App\Http\Controllers\RecrutementController;
 use App\Http\Controllers\ReservationController;
+use App\Http\Controllers\RhDashboardController;
 use App\Http\Controllers\SejourController;
 use App\Http\Controllers\TacheController;
+use App\Support\RoleDashboard;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
 
@@ -46,9 +50,11 @@ if (app()->environment('local')) {
 
 // Back-office interne : le portail public (routes/portail-client.php) occupe désormais l'espace racine.
 Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')
-        ->name('dashboard')
-        ->middleware('role:rh,compta,logistique,maintenance,receptionniste');
+    // Redirecteur universel (Phase 07) : le logo de la sidebar (visible pour tous les
+    // roles) et tout ancien lien vers ce nom de route repartent chacun vers LEUR vrai
+    // tableau de bord — meme source que LoginResponse, voir RoleDashboard.
+    Route::get('dashboard', fn () => redirect(RoleDashboard::route(Auth::user()?->role)))
+        ->name('dashboard');
 
     // Centre de notifications (Phase 12) : transverse a tous les poles, donc sans
     // middleware 'role' — chacun ne voit de toute facon que SES propres notifications,
@@ -73,19 +79,19 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
     Route::delete('notifications/{notification}', [NotificationController::class, 'destroy'])
         ->name('notifications.destroy');
 
-    Route::inertia('receptionniste', 'dashboard-commercial')
+    Route::get('receptionniste', [ReceptionnisteDashboardController::class, 'index'])
         ->name('receptionniste')
         ->middleware('role:receptionniste');
+
+    Route::get('rh', [RhDashboardController::class, 'index'])
+        ->name('rh')
+        ->middleware('role:rh');
 
     Route::redirect('ressources-humaine', '/admin/employes')
         ->name('ressource')
         ->middleware('role:rh');
 
-    Route::inertia('client', 'dashboard-client')
-        ->name('client')
-        ->middleware('role:receptionniste');
-
-    Route::inertia('comptabilite', 'dashboard-compta')
+    Route::get('comptabilite', [ComptabiliteController::class, 'dashboard'])
         ->name('comptabilite')
         ->middleware('role:compta');
 

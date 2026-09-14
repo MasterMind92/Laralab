@@ -94,7 +94,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Proprietaire',
-        href: dashboard(),
+        href: "/admin/proprietaire",
         icon: Building2,
         roles: ['proprietaire'],
         sub:[
@@ -123,14 +123,14 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Gerant',
-        href: dashboard(),
+        href: "/admin/proprietaire",
         icon: Building2,
         roles: ['gerant'],
         sub: itemsPatrimoine,
     },
     {
         title: 'RH',
-        href: "/admin/employes",
+        href: "/admin/rh",
         icon: Users,
         roles: ['rh'],
         sub:[
@@ -172,23 +172,38 @@ const mainNavItems: NavItem[] = [
                 // "Encaissements factures" : le statut de chaque facture (brouillon a
                 // valider/rejeter, validee a encaisser, payee = sejour cloture cote
                 // comptable) porte a lui seul ce qui distinguait ces 4 ecrans.
-                title: "Consultation Devis",
+                title: "Consultation Devis Séjour",
                 url:"/admin/factures",
                 icon: FileStack,
             },
             {
+                // Fusionne "Consultation Devis" + "Cloture Sejours" + "Facture du sejour" +
+                // "Encaissements factures" : le statut de chaque facture (brouillon a
+                // valider/rejeter, validee a encaisser, payee = sejour cloture cote
+                // comptable) porte a lui seul ce qui distinguait ces 4 ecrans.
+                title: "Consultation Devis Equipement",
+                url:"#",
+            },
+            {
+                // Fusionne "Consultation Devis" + "Cloture Sejours" + "Facture du sejour" +
+                // "Encaissements factures" : le statut de chaque facture (brouillon a
+                // valider/rejeter, validee a encaisser, payee = sejour cloture cote
+                // comptable) porte a lui seul ce qui distinguait ces 4 ecrans.
+                title: "Consultation Devis Equipement",
+                url:"#",
+            },
+            {
                 // Le livre de caisse (Phase 06, etape B-bis). Remplace "Avances recues",
                 // qui ne montrait qu'une des deux sources d'encaissement.
-                title: "Entrées",
+                title: "Encaissements",
                 url:"/admin/entrees",
                 icon: ArrowDownToLine,
             },
             {
-                // Remplace "Depenses" : celui-ci ne listait que les CHARGES, donc pas les
-                // immobilisations, donc pas la vraie tresorerie.
-                title: "Sorties",
-                url:"/admin/sorties",
-                icon: ArrowUpFromLine,
+                // Suivi des impayes/relances — different du flux valider/encaisser,
+                // differe a un futur reporting.
+                title: "Avances perçues",
+                url:"#",
             },
             {
                 // Suivi des impayes/relances — different du flux valider/encaisser,
@@ -196,6 +211,27 @@ const mainNavItems: NavItem[] = [
                 title: "Recouvrements factures",
                 url:"/admin/recouvrements",
                 icon: PhoneCall,
+            },
+            
+            
+            
+            {
+                // Remplace "Depenses" : celui-ci ne listait que les CHARGES, donc pas les
+                // immobilisations, donc pas la vraie tresorerie.
+                title: "Decaissements",
+                url:"/admin/sorties",
+            },
+            {
+                // Suivi des impayes/relances — different du flux valider/encaisser,
+                // differe a un futur reporting.
+                title: "Achats",
+                url:"#",
+            },
+            {
+                // Suivi des impayes/relances — different du flux valider/encaisser,
+                // differe a un futur reporting.
+                title: "Depenses",
+                url:"#",
             },
             {
                 // Renomme : cet ecran n'est pas une vue comptable mais la file d'attente
@@ -210,6 +246,7 @@ const mainNavItems: NavItem[] = [
                 url:"/admin/etats-financiers",
                 icon: FileBarChart,
             },
+            
             {
                 title: "Parametres de facturation",
                 url:"/admin/parametres-facturation",

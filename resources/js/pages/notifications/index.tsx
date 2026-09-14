@@ -94,7 +94,6 @@ const POLE_ICONES: Record<string, LucideIcon> = {
     comptabilite: Receipt,
     rh: Users,
     logistique: Truck,
-    commercial: Handshake,
     direction: Building2,
 };
 
