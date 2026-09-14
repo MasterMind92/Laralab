@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import AppartementController from '@/actions/App/Http/Controllers/AppartementController';
 import { Badge } from '@/components/ui/badge';
@@ -522,7 +522,9 @@ export default function AppartementsIndex({
                         }}
                     >
                         <DialogTrigger asChild>
-                            <Button>Ajouter un appartement</Button>
+                            <Button>
+                                <Plus /> Ajouter un appartement
+                            </Button>
                         </DialogTrigger>
                         <DialogContent className="max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
@@ -573,10 +575,11 @@ export default function AppartementsIndex({
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                 <DropdownMenuItem onClick={() => openEdit(appartement)}>
-                                                    Modifier
+                                                    <Pencil /> Modifier
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem onClick={() => destroy(appartement)}>
+                                                    <Trash2 className="text-red-500" />
                                                     <span className="text-red-500">Supprimer</span>
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>

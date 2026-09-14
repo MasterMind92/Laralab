@@ -1,13 +1,12 @@
 
 import { ColumnDef } from "@tanstack/react-table"
-import { MoreHorizontal } from "lucide-react";
+import { Copy, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
@@ -94,12 +93,8 @@ export const columns_reserv: ColumnDef<reservations>[] = [
             <DropdownMenuItem
               onClick={() => navigator.clipboard.writeText(reservations.id_reservation)}
             >
-              Copier reservations ID
+              <Copy /> Copier reservations ID
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Details</DropdownMenuItem>
-            <DropdownMenuItem>Mettre a jour</DropdownMenuItem>
-            <DropdownMenuItem><span className="text-red-500"> Supprimer</span></DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )

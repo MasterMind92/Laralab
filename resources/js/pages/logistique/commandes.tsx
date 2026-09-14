@@ -1,6 +1,14 @@
 import { Head, router } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import {
+    Ban,
+    Check,
+    MoreHorizontal,
+    Plus,
+    Send,
+    Trash2,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import LogistiqueController from '@/actions/App/Http/Controllers/LogistiqueController';
@@ -59,6 +67,13 @@ type LigneSaisie = {
     designation: string;
     quantite: string;
     prix_unitaire: string;
+};
+
+/** Une icône par transition cible, pour que le menu d'actions se scanne d'un coup d'œil. */
+const TRANSITION_ICONS: Partial<Record<StatutCommande, LucideIcon>> = {
+    envoyee: Send,
+    confirmee: Check,
+    annulee: Ban,
 };
 
 const LIGNE_VIDE: LigneSaisie = {
@@ -262,7 +277,11 @@ export default function Commandes({
                 </span>
             ),
         },
-        {
+        // La colonne n'a rien à montrer si aucune commande affichée n'a de
+        // transition disponible (ex. filtre sur "reçue"/"annulée", états
+        // terminaux) — on l'omet plutôt que de rendre une colonne de tirets.
+        ...(commandes.some((c) => c.transitions.length > 0)
+            ? [{
             id: 'actions',
             header: 'Actions',
             cell: ({ row }) => {
@@ -284,29 +303,43 @@ export default function Commandes({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            {commande.transitions.map((cible) => (
-                                <DropdownMenuItem
-                                    key={cible}
-                                    onClick={() =>
-                                        changerStatut(commande, cible)
-                                    }
-                                >
-                                    {cible === 'envoyee' &&
-                                        'Marquer envoyée au fournisseur'}
-                                    {cible === 'confirmee' &&
-                                        'Marquer confirmée'}
-                                    {cible === 'annulee' && (
-                                        <span className="text-red-500">
-                                            Annuler la commande
-                                        </span>
-                                    )}
-                                </DropdownMenuItem>
-                            ))}
+                            {commande.transitions.map((cible) => {
+                                const Icone = TRANSITION_ICONS[cible];
+
+                                return (
+                                    <DropdownMenuItem
+                                        key={cible}
+                                        onClick={() =>
+                                            changerStatut(commande, cible)
+                                        }
+                                    >
+                                        {cible === 'annulee' ? (
+                                            <>
+                                                {Icone && (
+                                                    <Icone className="text-red-500" />
+                                                )}
+                                                <span className="text-red-500">
+                                                    Annuler la commande
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {Icone && <Icone />}
+                                                {cible === 'envoyee' &&
+                                                    'Marquer envoyée au fournisseur'}
+                                                {cible === 'confirmee' &&
+                                                    'Marquer confirmée'}
+                                            </>
+                                        )}
+                                    </DropdownMenuItem>
+                                );
+                            })}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 );
             },
-        },
+        } satisfies ColumnDef<CommandeRow>]
+            : []),
     ];
 
     return (

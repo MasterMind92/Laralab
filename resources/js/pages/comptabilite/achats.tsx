@@ -1,6 +1,15 @@
 import { Head, router } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import {
+    Ban,
+    Check,
+    Eye,
+    MoreHorizontal,
+    Plus,
+    RotateCcw,
+    Trash2,
+    Wallet,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import ComptabiliteController from '@/actions/App/Http/Controllers/ComptabiliteController';
@@ -373,7 +382,7 @@ export default function Achats({
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => setDetail(achat)}>
-                                Voir le détail
+                                <Eye /> Voir le détail
                             </DropdownMenuItem>
                             {achat.transitions.includes('validee') && (
                                 <DropdownMenuItem
@@ -381,14 +390,14 @@ export default function Achats({
                                         changerStatut(achat, 'validee')
                                     }
                                 >
-                                    Valider
+                                    <Check /> Valider
                                 </DropdownMenuItem>
                             )}
                             {achat.transitions.includes('payee') && (
                                 <DropdownMenuItem
                                     onClick={() => ouvrirPaiement(achat)}
                                 >
-                                    Enregistrer le règlement…
+                                    <Wallet /> Enregistrer le règlement…
                                 </DropdownMenuItem>
                             )}
                             {achat.transitions.includes('a_valider') && (
@@ -397,7 +406,7 @@ export default function Achats({
                                         changerStatut(achat, 'a_valider')
                                     }
                                 >
-                                    Renvoyer en validation
+                                    <RotateCcw /> Renvoyer en validation
                                 </DropdownMenuItem>
                             )}
                             {achat.transitions.includes('annulee') && (
@@ -406,7 +415,7 @@ export default function Achats({
                                         changerStatut(achat, 'annulee')
                                     }
                                 >
-                                    Annuler
+                                    <Ban /> Annuler
                                 </DropdownMenuItem>
                             )}
                             {achat.statut !== 'payee' && (
@@ -415,6 +424,7 @@ export default function Achats({
                                     <DropdownMenuItem
                                         onClick={() => supprimer(achat)}
                                     >
+                                        <Trash2 className="text-red-500" />
                                         <span className="text-red-500">
                                             Supprimer
                                         </span>
@@ -932,7 +942,7 @@ export default function Achats({
                                 Annuler
                             </Button>
                             <Button type="submit">
-                                Enregistrer le règlement
+                                <Wallet /> Enregistrer le règlement
                             </Button>
                         </DialogFooter>
                     </form>

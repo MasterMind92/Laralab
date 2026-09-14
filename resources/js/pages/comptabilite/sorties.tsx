@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import { MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import ComptabiliteController from '@/actions/App/Http/Controllers/ComptabiliteController';
@@ -282,10 +282,11 @@ export default function Sorties({
                             <DropdownMenuItem
                                 onClick={() => ouvrirEdition(sortie)}
                             >
-                                Modifier
+                                <Pencil /> Modifier
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => supprimer(sortie)}>
+                                <Trash2 className="text-red-500" />
                                 <span className="text-red-500">Supprimer</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>

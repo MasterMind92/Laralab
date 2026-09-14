@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown } from 'lucide-react';
+import { AlertTriangle, ArrowUpDown, Eye } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import InterventionController from '@/actions/App/Http/Controllers/InterventionController';
 import { Badge } from '@/components/ui/badge';
@@ -176,10 +176,10 @@ export default function EquipementsSuivi({
                 return (
                     <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" onClick={() => setDetails(equipement)}>
-                            Détails
+                            <Eye /> Détails
                         </Button>
                         <Button size="sm" onClick={() => openSignalement(equipement)}>
-                            Signaler une panne
+                            <AlertTriangle /> Signaler une panne
                         </Button>
                     </div>
                 );

@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal } from 'lucide-react';
+import { CheckCheck, MoreHorizontal, Trash2 } from 'lucide-react';
 import { type FormEvent, useMemo, useState } from 'react';
 import DemandeServiceController from '@/actions/App/Http/Controllers/DemandeServiceController';
 import PartenaireController from '@/actions/App/Http/Controllers/PartenaireController';
@@ -170,10 +170,11 @@ export default function DemandesServiceIndex({
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             {demande.statut === 'demandee' && (
-                                <DropdownMenuItem onClick={() => marquerLivree(demande)}>Marquer livrée</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => marquerLivree(demande)}><CheckCheck /> Marquer livrée</DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => destroy(demande)}>
+                                <Trash2 className="text-red-500" />
                                 <span className="text-red-500">Supprimer</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>

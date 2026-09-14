@@ -8,6 +8,7 @@ import {
     useSensor,
     useSensors,
 } from '@dnd-kit/core';
+import { Check, Lock, Send, UserPlus, X } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import CandidatController from '@/actions/App/Http/Controllers/CandidatController';
 import EntretienController from '@/actions/App/Http/Controllers/EntretienController';
@@ -214,7 +215,9 @@ export default function RecrutementDetail({ recrutement, employes }: { recruteme
                         {peutModifier && (
                             <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) addForm.reset(); }}>
                                 <DialogTrigger asChild>
-                                    <Button variant="outline">Ajouter un candidat</Button>
+                                    <Button variant="outline">
+                                        <UserPlus /> Ajouter un candidat
+                                    </Button>
                                 </DialogTrigger>
                                 <DialogContent>
                                     <DialogHeader>
@@ -268,7 +271,7 @@ export default function RecrutementDetail({ recrutement, employes }: { recruteme
                                 title={!aucunEnSuspens ? "Tous les candidats doivent avoir une décision" : undefined}
                                 onClick={() => router.patch(RecrutementController.cloturer(recrutement.id).url, {}, { preserveScroll: true })}
                             >
-                                Clôturer
+                                <Lock /> Clôturer
                             </Button>
                         )}
                     </div>
@@ -375,7 +378,7 @@ function CandidatDialog({
 
                     {peutModifier && candidat.statut === 'en_cours' && (
                         <div className="flex gap-2 border-t pt-3">
-                            <Button size="sm" variant="outline" onClick={rejeter}>Rejeter</Button>
+                            <Button size="sm" variant="outline" onClick={rejeter}><X /> Rejeter</Button>
                         </div>
                     )}
 
@@ -384,7 +387,7 @@ function CandidatDialog({
                             <Label htmlFor="salaire_propose">Envoyer une offre — salaire proposé (FCFA)</Label>
                             <div className="flex gap-2">
                                 <Input id="salaire_propose" type="number" min={0} value={salaireForm.data.salaire_propose} onChange={(e) => salaireForm.setData('salaire_propose', e.target.value)} />
-                                <Button type="submit" disabled={salaireForm.processing}>Envoyer l'offre</Button>
+                                <Button type="submit" disabled={salaireForm.processing}><Send /> Envoyer l'offre</Button>
                             </div>
                         </form>
                     )}
@@ -393,10 +396,10 @@ function CandidatDialog({
                         <div className="flex gap-2 border-t pt-3">
                             <p className="flex-1 self-center text-muted-foreground">Réponse du candidat à l'offre :</p>
                             <Button size="sm" variant="outline" onClick={() => router.patch(CandidatController.update(candidat.id).url, { statut: 'offre_refusee' }, { preserveScroll: true, onSuccess: onClose })}>
-                                Refusée
+                                <X /> Refusée
                             </Button>
                             <Button size="sm" onClick={() => router.patch(CandidatController.update(candidat.id).url, { etape: 'embauche' }, { preserveScroll: true, onSuccess: onClose })}>
-                                Acceptée
+                                <Check /> Acceptée
                             </Button>
                         </div>
                     )}

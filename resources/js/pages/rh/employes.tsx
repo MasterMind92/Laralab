@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, Eye, Pencil, Plus, UserX } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import EmployeController from '@/actions/App/Http/Controllers/EmployeController';
 import LicenciementController from '@/actions/App/Http/Controllers/LicenciementController';
@@ -168,14 +168,14 @@ export default function Employes({ employes }: { employes: EmployeResume[] }) {
                 return (
                     <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" onClick={() => setDetailsId(employe.id)}>
-                            Détails
+                            <Eye /> Détails
                         </Button>
                         <Button size="sm" onClick={() => openEdit(employe)}>
-                            Modifier
+                            <Pencil /> Modifier
                         </Button>
                         {employe.actif && (
                             <Button variant="destructive" size="sm" onClick={() => setLicenciant(employe)}>
-                                Licencier
+                                <UserX /> Licencier
                             </Button>
                         )}
                     </div>
@@ -194,7 +194,9 @@ export default function Employes({ employes }: { employes: EmployeResume[] }) {
                         <ExportDialog exportUrl={EmployeController.export().url} />
                         <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) createForm.reset(); }}>
                             <DialogTrigger asChild>
-                                <Button>Ajouter</Button>
+                                <Button>
+                                    <Plus /> Ajouter
+                                </Button>
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>

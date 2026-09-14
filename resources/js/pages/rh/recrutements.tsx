@@ -1,6 +1,6 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown, X } from 'lucide-react';
+import { ArrowUpDown, Check, Eye, Plus, Send, X } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import RecrutementController from '@/actions/App/Http/Controllers/RecrutementController';
 import { Badge } from '@/components/ui/badge';
@@ -143,21 +143,23 @@ export default function Recrutements({ recrutements, employes }: { recrutements:
                     <div className="flex justify-end gap-2">
                         {r.statut === 'brouillon' && (
                             <Button size="sm" onClick={() => router.patch(RecrutementController.soumettre(r.id).url, {}, { preserveScroll: true })}>
-                                Soumettre
+                                <Send /> Soumettre
                             </Button>
                         )}
                         {r.statut === 'en_attente_validation' && (
                             <>
                                 <Button variant="outline" size="sm" onClick={() => setRejeter(r)}>
-                                    Rejeter
+                                    <X /> Rejeter
                                 </Button>
                                 <Button size="sm" onClick={() => router.patch(RecrutementController.valider(r.id).url, {}, { preserveScroll: true })}>
-                                    Valider
+                                    <Check /> Valider
                                 </Button>
                             </>
                         )}
                         <Button variant="outline" size="sm" asChild>
-                            <Link href={RecrutementController.show(r.id).url}>Détail</Link>
+                            <Link href={RecrutementController.show(r.id).url}>
+                                <Eye /> Détail
+                            </Link>
                         </Button>
                     </div>
                 );
@@ -175,7 +177,9 @@ export default function Recrutements({ recrutements, employes }: { recrutements:
                         <ExportDialog exportUrl={RecrutementController.export().url} />
                         <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) form.reset(); }}>
                             <DialogTrigger asChild>
-                                <Button>Nouvelle demande</Button>
+                                <Button>
+                                    <Plus /> Nouvelle demande
+                                </Button>
                             </DialogTrigger>
                             <DialogContent className="max-h-[90vh] overflow-y-auto">
                                 <DialogHeader>

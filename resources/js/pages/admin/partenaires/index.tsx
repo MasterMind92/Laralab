@@ -1,6 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, Pencil, Plus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import AdminPartenaireController from '@/actions/App/Http/Controllers/Admin/PartenaireController';
 import { Button } from '@/components/ui/button';
@@ -75,7 +75,7 @@ export default function Partenaires({ partenaires }: { partenaires: PartenaireRe
             cell: ({ row }) => (
                 <div className="flex justify-end">
                     <Button size="sm" onClick={() => openEdit(row.original)}>
-                        Modifier
+                        <Pencil /> Modifier
                     </Button>
                 </div>
             ),
@@ -90,7 +90,9 @@ export default function Partenaires({ partenaires }: { partenaires: PartenaireRe
                     <h1 className="text-2xl font-semibold">Partenaires</h1>
                     <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) createForm.reset(); }}>
                         <DialogTrigger asChild>
-                            <Button>Nouveau partenaire</Button>
+                            <Button>
+                                <Plus /> Nouveau partenaire
+                            </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>

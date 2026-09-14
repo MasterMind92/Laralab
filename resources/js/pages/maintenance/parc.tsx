@@ -1,5 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
+import { Pencil } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import MaintenanceController from '@/actions/App/Http/Controllers/MaintenanceController';
@@ -271,7 +272,7 @@ export default function MaintenanceParc({
                         size="sm"
                         onClick={() => ouvrirEdition(row.original)}
                     >
-                        Modifier
+                        <Pencil /> Modifier
                     </Button>
                 </div>
             ),

@@ -1,6 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, Plus, UserCheck } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import ContratTravailController from '@/actions/App/Http/Controllers/ContratTravailController';
 import { Badge } from '@/components/ui/badge';
@@ -147,7 +147,9 @@ export default function Contrats({
                         <ExportDialog exportUrl={ContratTravailController.export().url} />
                         <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) createForm.reset(); }}>
                             <DialogTrigger asChild>
-                                <Button>Nouveau contrat</Button>
+                                <Button>
+                                    <Plus /> Nouveau contrat
+                                </Button>
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
@@ -224,7 +226,7 @@ export default function Contrats({
                                         {c.nom} {c.prenom} — {c.recrutement.poste}
                                         {c.salaire_propose && ` · ${formatFcfa(Number(c.salaire_propose))} FCFA`}
                                     </span>
-                                    <Button size="sm" onClick={() => setEmbauchant(c)}>Embaucher</Button>
+                                    <Button size="sm" onClick={() => setEmbauchant(c)}><UserCheck /> Embaucher</Button>
                                 </div>
                             ))}
                         </div>

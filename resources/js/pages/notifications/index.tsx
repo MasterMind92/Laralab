@@ -4,10 +4,14 @@ import {
     Building2,
     CheckCheck,
     ConciergeBell,
+    ExternalLink,
     Handshake,
     Inbox,
+    Mail,
+    MailOpen,
     MoreHorizontal,
     Receipt,
+    Trash2,
     Truck,
     Users,
     Wrench,
@@ -540,6 +544,7 @@ export default function NotificationsIndex({
                                                                     )
                                                                 }
                                                             >
+                                                                <ExternalLink />{' '}
                                                                 Ouvrir
                                                             </DropdownMenuItem>
                                                         )}
@@ -550,9 +555,21 @@ export default function NotificationsIndex({
                                                                 )
                                                             }
                                                         >
-                                                            {notification.lue
-                                                                ? 'Marquer comme non lue'
-                                                                : 'Marquer comme lue'}
+                                                            {notification.lue ? (
+                                                                <>
+                                                                    <Mail />
+                                                                    <span>
+                                                                        Marquer comme non lue
+                                                                    </span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <MailOpen />
+                                                                    <span>
+                                                                        Marquer comme lue
+                                                                    </span>
+                                                                </>
+                                                            )}
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem
@@ -562,6 +579,7 @@ export default function NotificationsIndex({
                                                                 )
                                                             }
                                                         >
+                                                            <Trash2 className="text-red-500" />
                                                             <span className="text-red-500">
                                                                 Supprimer
                                                             </span>

@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, Check, Plus, X } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import CongeController from '@/actions/App/Http/Controllers/CongeController';
 import { Badge } from '@/components/ui/badge';
@@ -96,8 +96,8 @@ export default function Conges({ conges, employes }: { conges: CongeResume[]; em
                 if (conge.statut !== 'demande') return null;
                 return (
                     <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => traiter(conge, 'refuse')}>Refuser</Button>
-                        <Button size="sm" onClick={() => traiter(conge, 'valide')}>Valider</Button>
+                        <Button variant="outline" size="sm" onClick={() => traiter(conge, 'refuse')}><X /> Refuser</Button>
+                        <Button size="sm" onClick={() => traiter(conge, 'valide')}><Check /> Valider</Button>
                     </div>
                 );
             },
@@ -114,7 +114,9 @@ export default function Conges({ conges, employes }: { conges: CongeResume[]; em
                         <ExportDialog exportUrl={CongeController.export().url} />
                         <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) createForm.reset(); }}>
                             <DialogTrigger asChild>
-                                <Button>Nouvelle demande</Button>
+                                <Button>
+                                    <Plus /> Nouvelle demande
+                                </Button>
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>

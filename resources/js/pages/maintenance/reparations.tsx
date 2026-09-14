@@ -1,4 +1,5 @@
 import { Head, router } from '@inertiajs/react';
+import { ChevronRight, ClipboardList } from 'lucide-react';
 import { useState } from 'react';
 import MaintenanceController from '@/actions/App/Http/Controllers/MaintenanceController';
 import { Badge } from '@/components/ui/badge';
@@ -233,6 +234,9 @@ export default function MaintenanceReparations({
                                                                   )
                                                         }
                                                     >
+                                                        {!colonne.viaFiche && (
+                                                            <ChevronRight />
+                                                        )}
                                                         {colonne.libelleAction}
                                                     </Button>
                                                     <Button
@@ -244,6 +248,7 @@ export default function MaintenanceReparations({
                                                             )
                                                         }
                                                     >
+                                                        <ClipboardList />{' '}
                                                         Journal
                                                     </Button>
                                                 </div>

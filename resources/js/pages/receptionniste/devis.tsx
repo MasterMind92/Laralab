@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal } from 'lucide-react';
+import { AlertTriangle, Download, FileText, MoreHorizontal, Printer } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import DommageController from '@/actions/App/Http/Controllers/DommageController';
 import FactureController from '@/actions/App/Http/Controllers/FactureController';
@@ -179,20 +179,20 @@ export default function DevisIndex({ sejours }: { sejours: SejourRow[] }) {
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => generer(sejour)}>
-                                {sejour.facture ? 'Régénérer le devis' : 'Générer le devis'}
+                                <FileText /> {sejour.facture ? 'Régénérer le devis' : 'Générer le devis'}
                             </DropdownMenuItem>
                             {sejour.facture && (
                                 <>
                                     <DropdownMenuItem onClick={() => ouvrirApercu(sejour)}>
-                                        Aperçu / imprimer (nouvel onglet)
+                                        <Printer /> Aperçu / imprimer (nouvel onglet)
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => telechargerPdf(sejour)}>
-                                        Télécharger le PDF
+                                        <Download /> Télécharger le PDF
                                     </DropdownMenuItem>
                                 </>
                             )}
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setDommagesTarget(sejour)}>Gérer les dommages</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDommagesTarget(sejour)}><AlertTriangle /> Gérer les dommages</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 );

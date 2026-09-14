@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { ArrowUpDown, Eye, LogOut, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import SejourController from '@/actions/App/Http/Controllers/SejourController';
 import { Badge } from '@/components/ui/badge';
@@ -127,12 +127,13 @@ export default function SejoursIndex({ sejours }: { sejours: SejourRow[] }) {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => setDetails(sejour)}>Voir détails</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDetails(sejour)}><Eye /> Voir détails</DropdownMenuItem>
                             {sejour.statut === 'en_cours' && (
-                                <DropdownMenuItem onClick={() => setCheckoutTarget(sejour)}>Effectuer le check-out</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setCheckoutTarget(sejour)}><LogOut /> Effectuer le check-out</DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => destroy(sejour)}>
+                                <Trash2 className="text-red-500" />
                                 <span className="text-red-500">Supprimer</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>

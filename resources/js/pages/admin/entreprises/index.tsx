@@ -1,6 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, Building2, Pencil, Plus, Users } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import AdminEntrepriseController from '@/actions/App/Http/Controllers/Admin/EntrepriseController';
 import { Badge } from '@/components/ui/badge';
@@ -125,13 +125,17 @@ export default function Entreprises({ entreprises }: { entreprises: EntrepriseRe
                 return (
                     <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" asChild>
-                            <Link href={`/admin/entreprises/${entreprise.id}/utilisateurs`}>Utilisateurs</Link>
+                            <Link href={`/admin/entreprises/${entreprise.id}/utilisateurs`}>
+                                <Users /> Utilisateurs
+                            </Link>
                         </Button>
                         <Button variant="outline" size="sm" asChild>
-                            <Link href={`/admin/entreprises/${entreprise.id}/appartements`}>Appartements</Link>
+                            <Link href={`/admin/entreprises/${entreprise.id}/appartements`}>
+                                <Building2 /> Appartements
+                            </Link>
                         </Button>
                         <Button size="sm" onClick={() => openEdit(entreprise)}>
-                            Modifier
+                            <Pencil /> Modifier
                         </Button>
                     </div>
                 );
@@ -147,7 +151,9 @@ export default function Entreprises({ entreprises }: { entreprises: EntrepriseRe
                     <h1 className="text-2xl font-semibold">Entreprises</h1>
                     <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) createForm.reset(); }}>
                         <DialogTrigger asChild>
-                            <Button>Nouvelle entreprise</Button>
+                            <Button>
+                                <Plus /> Nouvelle entreprise
+                            </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>

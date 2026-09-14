@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown, CheckCircle2, MoreHorizontal, XCircle } from 'lucide-react';
+import { ArrowUpDown, CheckCircle2, Eye, LogIn, MoreHorizontal, Trash2, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import ReservationController from '@/actions/App/Http/Controllers/ReservationController';
 import SejourController from '@/actions/App/Http/Controllers/SejourController';
@@ -148,22 +148,23 @@ export default function ReservationsIndex({ reservations }: { reservations: Rese
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => setDetails(reservation)}>Voir détails</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDetails(reservation)}><Eye /> Voir détails</DropdownMenuItem>
                             {reservation.statut === 'en_attente' && (
                                 <>
                                     <DropdownMenuItem onClick={() => updateStatut(reservation, 'validee')} disabled={processing}>
-                                        Confirmer
+                                        <CheckCircle2 /> Confirmer
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => updateStatut(reservation, 'annulee')} disabled={processing}>
-                                        Annuler
+                                        <XCircle className="text-red-600" /> Annuler
                                     </DropdownMenuItem>
                                 </>
                             )}
                             {reservation.statut === 'validee' && !reservation.sejour && (
-                                <DropdownMenuItem onClick={() => setCheckinTarget(reservation)}>Effectuer le check-in</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setCheckinTarget(reservation)}><LogIn /> Effectuer le check-in</DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => destroy(reservation)}>
+                                <Trash2 className="text-red-500" />
                                 <span className="text-red-500">Supprimer</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>

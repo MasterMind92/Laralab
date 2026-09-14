@@ -1,5 +1,34 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid } from 'lucide-react';
+import {
+    AlertTriangle,
+    ArrowDownToLine,
+    ArrowRightLeft,
+    ArrowUpFromLine,
+    BedDouble,
+    BookOpen,
+    Boxes,
+    Building2,
+    Calendar,
+    ClipboardList,
+    ConciergeBell,
+    FileBarChart,
+    FileStack,
+    FileText,
+    Handshake,
+    LayoutDashboard,
+    Package,
+    PackageCheck,
+    PhoneCall,
+    Receipt,
+    Settings,
+    ShieldCheck,
+    ShoppingCart,
+    Truck,
+    UserPlus,
+    Users,
+    Wallet,
+    Wrench,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavUser } from '@/components/nav-user';
@@ -27,98 +56,109 @@ import type { NavItem } from '@/types';
 // Items scopes a l'entreprise du proprietaire/gerant connecte (Phase 09, multi-tenant)
 // — communs aux deux roles, qui partagent desormais les memes vues.
 const itemsPatrimoine: NonNullable<NavItem['sub']> = [
-    { title: 'Tableau de bord', url: '/admin/proprietaire' },
-    { title: 'Appartements', url: '/admin/appartements' },
-    { title: 'Planning', url: '/admin/planning' },
-    { title: 'Encaissements', url: '/admin/encaissements' },
-    { title: 'Équipements', url: '/admin/equipements-statut' },
-    { title: 'Partenaires', url: '/admin/partenaires-catalogue' },
-    { title: 'Achats', url: '#' }, // Phase 06 (Comptabilité avancée)
-    { title: 'Dépenses', url: '#' }, // Phase 06
-    { title: 'États Financiers', url: '#' }, // Phase 06
+    { title: 'Tableau de bord', url: '/admin/proprietaire', icon: LayoutDashboard },
+    { title: 'Appartements', url: '/admin/appartements', icon: BedDouble },
+    { title: 'Planning', url: '/admin/planning', icon: Calendar },
+    { title: 'Encaissements', url: '/admin/encaissements', icon: Wallet },
+    { title: 'Équipements', url: '/admin/equipements-statut', icon: Package },
+    { title: 'Partenaires', url: '/admin/partenaires-catalogue', icon: Handshake },
+    { title: 'Achats', url: '#', icon: ShoppingCart }, // Phase 06 (Comptabilité avancée)
+    { title: 'Dépenses', url: '#', icon: ArrowUpFromLine }, // Phase 06
+    { title: 'États Financiers', url: '#', icon: FileBarChart }, // Phase 06
 ];
 
 const mainNavItems: NavItem[] = [
     {
         title: 'Administrateur',
         href: '/admin/administrateur',
-        icon: LayoutGrid,
+        icon: ShieldCheck,
         roles: ['administrateur'],
         sub:[
             {
                 title: "Tableau de bord",
                 url:"/admin/administrateur",
+                icon: LayoutDashboard,
             },
             {
                 title: "Entreprises",
                 url:"/admin/entreprises",
+                icon: Building2,
             },
             {
                 title: "Partenaires",
                 url:"/admin/admin-partenaires",
+                icon: Handshake,
             },
         ]
     },
     {
         title: 'Proprietaire',
         href: dashboard(),
-        icon: LayoutGrid,
+        icon: Building2,
         roles: ['proprietaire'],
         sub:[
             ...itemsPatrimoine,
             {
                 title: "Employés", // Elements du pole RH
                 url:"/admin/employes",
+                icon: Users,
             },
             {
                 title: "Recrutements",// Elements du pole RH
                 url:"/admin/recrutements",
+                icon: UserPlus,
             },
             {
                 title: "Contrats",// Elements du pole RH
                 url:"/admin/contrats",
+                icon: FileText,
             },
             {
                 title: "Congés",// Elements du pole RH
                 url:"/admin/conges",
+                icon: ClipboardList,
             },
         ]
     },
     {
         title: 'Gerant',
         href: dashboard(),
-        icon: LayoutGrid,
+        icon: Building2,
         roles: ['gerant'],
         sub: itemsPatrimoine,
     },
     {
         title: 'RH',
         href: "/admin/employes",
-        icon: LayoutGrid,
+        icon: Users,
         roles: ['rh'],
         sub:[
             {
                 title: "Employés",
                 url:"/admin/employes",
+                icon: Users,
             },
             {
                 title: "Recrutements",
                 url:"/admin/recrutements",
+                icon: UserPlus,
             },
             {
                 title: "Contrats",
                 url:"/admin/contrats",
+                icon: FileText,
             },
             {
                 title: "Congés",
                 url:"/admin/conges",
+                icon: ClipboardList,
             },
         ]
     },
     {
         title: 'Comptabilite',
         href: "/admin/comptabilite",
-        icon: LayoutGrid,
+        icon: Receipt,
         roles: ['compta'],
         sub:[
             {
@@ -128,24 +168,28 @@ const mainNavItems: NavItem[] = [
                 // comptable) porte a lui seul ce qui distinguait ces 4 ecrans.
                 title: "Consultation Devis",
                 url:"/admin/factures",
+                icon: FileStack,
             },
             {
                 // Le livre de caisse (Phase 06, etape B-bis). Remplace "Avances recues",
                 // qui ne montrait qu'une des deux sources d'encaissement.
                 title: "Entrées",
                 url:"/admin/entrees",
+                icon: ArrowDownToLine,
             },
             {
                 // Remplace "Depenses" : celui-ci ne listait que les CHARGES, donc pas les
                 // immobilisations, donc pas la vraie tresorerie.
                 title: "Sorties",
                 url:"/admin/sorties",
+                icon: ArrowUpFromLine,
             },
             {
                 // Suivi des impayes/relances — different du flux valider/encaisser,
                 // differe a un futur reporting.
                 title: "Recouvrements factures",
                 url:"/admin/recouvrements",
+                icon: PhoneCall,
             },
             {
                 // Renomme : cet ecran n'est pas une vue comptable mais la file d'attente
@@ -153,14 +197,17 @@ const mainNavItems: NavItem[] = [
                 // tolere deja l'ecart libelle/URL ("Consultation Devis" sert /admin/factures).
                 title: "Factures fournisseur",
                 url:"/admin/achats",
+                icon: ShoppingCart,
             },
             {
                 title: "Etats Financiers",
                 url:"/admin/etats-financiers",
+                icon: FileBarChart,
             },
             {
                 title: "Parametres de facturation",
                 url:"/admin/parametres-facturation",
+                icon: Settings,
             },
 
 
@@ -169,7 +216,7 @@ const mainNavItems: NavItem[] = [
     {
         title: 'Logistique',
         href: "/admin/logistique",
-        icon: LayoutGrid,
+        icon: Truck,
         roles: ['logistique'],
         // Phase 10 (etape B) : les 4 items etaient des stubs '#'. L'ordre suit la
         // chaine reelle Besoin -> Commande -> Reception -> Enregistrement ->
@@ -179,89 +226,105 @@ const mainNavItems: NavItem[] = [
             {
                 title: "Expression Besoins",
                 url:"/admin/logistique/besoins",
+                icon: ClipboardList,
             },
             {
                 title: "Commandes",
                 url:"/admin/logistique/commandes",
+                icon: ShoppingCart,
             },
             {
                 title: "Reception",
                 url:"/admin/logistique/receptions",
+                icon: PackageCheck,
             },
             {
                 title: "Enregistrement",
                 url:"/admin/logistique/enregistrement",
+                icon: Boxes,
             },
             {
                 title: "Affectation Equipement",
                 url:"/admin/logistique/affectation",
+                icon: ArrowRightLeft,
             },
         ]
-        
+
     },
     {
         title: 'Maintenance',
         href: "/admin/maintenance",
-        icon: LayoutGrid,
+        icon: Wrench,
         roles: ['maintenance'],
         sub:[
             {
                 title: "Tableau de bord",
                 url:"/admin/maintenance",
+                icon: LayoutDashboard,
             },
             {
                 title: "Prise en charge pannes",
                 url:"/admin/maintenance/pannes",
+                icon: AlertTriangle,
             },
             {
                 title: "Suivi interventions",
                 url:"/admin/maintenance/interventions",
+                icon: ClipboardList,
             },
             {
                 title: "Reparations",
                 url:"/admin/maintenance/reparations",
+                icon: Wrench,
             },
             {
                 title: "Parc equipements", // Phase 05 (etape C) : garantie, contrat, reforme
                 url:"/admin/maintenance/parc",
+                icon: Package,
             },
         ]
     },
     {
         title: 'Receptionniste',
         href: "/admin/receptionniste",
-        icon: LayoutGrid,
+        icon: ConciergeBell,
         roles: ['receptionniste'],
         sub:[
             {
                 // Vue calendrier (visuelle) des reservations/sejours — complement du datatable Reservations
                 title: "Planning",
                 url:"/admin/planning",
+                icon: Calendar,
             },
             {
                 // Datatable: confirmer/annuler/check-in — fusionne l'ancien "Traitement Reservation-Client" + "Accueils Client"
                 title: "Réservations",
                 url:"/admin/reservations",
+                icon: BookOpen,
             },
             {
                 // Datatable: check-in/check-out + dommages — fusionne l'ancien "Etats des lieux d'entrees/sortie" + "Gestion des casse"
                 title: "Séjours",
                 url:"/admin/sejours",
+                icon: BedDouble,
             },
             {
                 // Datatable — remplace l'ancien "Suivi des besoins"
                 title: "Demandes de service",
                 url:"/admin/demandes-service",
+                icon: ClipboardList,
             },
             {
                 // Interface de signalement de pannes concernant les equipements de chaque appartements
                 title: "Signalement des pannes",
                 url:"/admin/equipements-suivi",
+                icon: AlertTriangle,
             },
             {
                 // Generation du devis (facture brouillon) depuis un sejour cloture — Phase 03 etape A
                 title: "Devis du Sejour",
                 url:"/admin/devis",
+                icon: FileText,
             },
         ]
     },
@@ -365,6 +428,7 @@ export function AppSidebar() {
                     {/* aria-current porte l'information aux lecteurs d'ecran : la couleur
                         seule ne dit rien a qui ne la voit pas. */}
                     <CollapsibleTrigger aria-current={groupeActif ? "page" : undefined}>
+                    {item.icon && <item.icon />}
                     {item.title}{" "}
                     <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
                     </CollapsibleTrigger>
@@ -382,6 +446,7 @@ export function AppSidebar() {
                                 isActive={estLienActif(sousItem.url, cheminCourant)}
                             >
                             <Link href={sousItem.url} prefetch>
+                                {sousItem.icon && <sousItem.icon />}
                                 <span>{sousItem.title}</span>
                             </Link>
                             </SidebarMenuButton>

@@ -1,5 +1,14 @@
 import { router, useForm } from '@inertiajs/react';
-import { Trash2 } from 'lucide-react';
+import {
+    Archive,
+    CheckCheck,
+    ClipboardCheck,
+    Lock,
+    Play,
+    Plus,
+    Trash2,
+    type LucideIcon,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import InterventionActionController from '@/actions/App/Http/Controllers/InterventionActionController';
 import MaintenanceController from '@/actions/App/Http/Controllers/MaintenanceController';
@@ -62,6 +71,13 @@ const LIBELLES_TRANSITION: Partial<Record<Etape, string>> = {
     en_cours: 'Démarrer la réparation',
     reparee: 'Marquer réparée',
     cloturee: 'Clôturer',
+};
+
+/** Une icône par transition, pour que la rangée de boutons se scanne sans lire chaque libellé. */
+const ICONES_TRANSITION: Partial<Record<Etape, LucideIcon>> = {
+    en_cours: Play,
+    reparee: CheckCheck,
+    cloturee: Lock,
 };
 
 export function InterventionDialog({
@@ -256,15 +272,20 @@ export function InterventionDialog({
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                            {transitionsBouton.map((etape) => (
-                                <Button
-                                    key={etape}
-                                    size="sm"
-                                    onClick={() => changerEtape(etape)}
-                                >
-                                    {LIBELLES_TRANSITION[etape]}
-                                </Button>
-                            ))}
+                            {transitionsBouton.map((etape) => {
+                                const Icone = ICONES_TRANSITION[etape];
+
+                                return (
+                                    <Button
+                                        key={etape}
+                                        size="sm"
+                                        onClick={() => changerEtape(etape)}
+                                    >
+                                        {Icone && <Icone />}
+                                        {LIBELLES_TRANSITION[etape]}
+                                    </Button>
+                                );
+                            })}
                             {fermee && (
                                 <p className="text-sm text-muted-foreground">
                                     Dossier fermé — plus aucune action possible.
@@ -339,7 +360,7 @@ export function InterventionDialog({
                                     size="sm"
                                     disabled={conformite.processing}
                                 >
-                                    Enregistrer le contrôle
+                                    <ClipboardCheck /> Enregistrer le contrôle
                                 </Button>
                             </div>
                         </form>
@@ -448,7 +469,7 @@ export function InterventionDialog({
                                     variant="destructive"
                                     disabled={reforme.processing}
                                 >
-                                    Réformer
+                                    <Archive /> Réformer
                                 </Button>
                             </div>
                         </form>
@@ -690,6 +711,7 @@ export function InterventionDialog({
                                         size="sm"
                                         disabled={journal.processing}
                                     >
+                                        <Plus />
                                         {journal.processing
                                             ? 'Enregistrement...'
                                             : 'Ajouter au journal'}

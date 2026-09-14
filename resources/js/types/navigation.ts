@@ -10,6 +10,7 @@ export type NavSubItem = {
     url:string,
     title:string,
     isActive?: boolean;
+    icon?: LucideIcon | null;
 }
 
 export type NavItem = {

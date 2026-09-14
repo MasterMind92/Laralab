@@ -1,6 +1,6 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { ArrowLeft, ArrowUpDown } from 'lucide-react';
+import { ArrowLeft, ArrowUpDown, Pencil, UserCheck, UserPlus, UserX } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import AdminUtilisateurController from '@/actions/App/Http/Controllers/Admin/UtilisateurController';
 import { Badge } from '@/components/ui/badge';
@@ -117,10 +117,18 @@ export default function Utilisateurs({ entreprise, utilisateurs }: { entreprise:
                 return (
                     <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" onClick={() => openEdit(utilisateur)}>
-                            Modifier
+                            <Pencil /> Modifier
                         </Button>
                         <Button variant={utilisateur.actif ? 'destructive' : 'default'} size="sm" onClick={() => toggleActif(utilisateur)}>
-                            {utilisateur.actif ? 'Désactiver' : 'Réactiver'}
+                            {utilisateur.actif ? (
+                                <>
+                                    <UserX /> Désactiver
+                                </>
+                            ) : (
+                                <>
+                                    <UserCheck /> Réactiver
+                                </>
+                            )}
                         </Button>
                     </div>
                 );
@@ -143,7 +151,9 @@ export default function Utilisateurs({ entreprise, utilisateurs }: { entreprise:
                     </div>
                     <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) createForm.reset(); }}>
                         <DialogTrigger asChild>
-                            <Button>Ajouter un utilisateur</Button>
+                            <Button>
+                                <UserPlus /> Ajouter un utilisateur
+                            </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>

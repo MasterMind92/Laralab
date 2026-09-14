@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal } from 'lucide-react';
+import { Check, Download, MoreHorizontal, Printer, Wallet, X } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import FactureController from '@/actions/App/Http/Controllers/FactureController';
 import PaiementController from '@/actions/App/Http/Controllers/PaiementController';
@@ -166,20 +166,20 @@ export default function FacturesIndex({ factures }: { factures: FactureRow[] }) 
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => ouvrirApercu(facture)}>Aperçu / imprimer</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => telechargerPdf(facture)}>Télécharger le PDF</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => ouvrirApercu(facture)}><Printer /> Aperçu / imprimer</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => telechargerPdf(facture)}><Download /> Télécharger le PDF</DropdownMenuItem>
                             {facture.statut === 'brouillon' && (
                                 <>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => valider(facture)}>Valider</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setRejetTarget(facture)}>Rejeter</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => valider(facture)}><Check /> Valider</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setRejetTarget(facture)}><X /> Rejeter</DropdownMenuItem>
                                 </>
                             )}
                             {facture.statut === 'validee' && (
                                 <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={() => ouvrirPaiement(facture)}>
-                                        Enregistrer un paiement
+                                        <Wallet /> Enregistrer un paiement
                                     </DropdownMenuItem>
                                 </>
                             )}
@@ -221,7 +221,7 @@ export default function FacturesIndex({ factures }: { factures: FactureRow[] }) 
                         </div>
                         <DialogFooter>
                             <Button type="submit" variant="destructive" disabled={rejetForm.processing}>
-                                {rejetForm.processing ? 'Envoi...' : 'Rejeter'}
+                                <X /> {rejetForm.processing ? 'Envoi...' : 'Rejeter'}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -282,7 +282,7 @@ export default function FacturesIndex({ factures }: { factures: FactureRow[] }) 
                             </div>
                             <DialogFooter>
                                 <Button type="submit" disabled={paiementForm.processing}>
-                                    {paiementForm.processing ? 'Enregistrement...' : 'Enregistrer le paiement'}
+                                    <Wallet /> {paiementForm.processing ? 'Enregistrement...' : 'Enregistrer le paiement'}
                                 </Button>
                             </DialogFooter>
                         </form>

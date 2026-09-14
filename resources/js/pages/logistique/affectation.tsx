@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal } from 'lucide-react';
+import { ArrowRightLeft, MoreHorizontal, Undo2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import LogistiqueController from '@/actions/App/Http/Controllers/LogistiqueController';
@@ -236,6 +236,7 @@ export default function Affectation({
                             <DropdownMenuItem
                                 onClick={() => ouvrir(equipement)}
                             >
+                                <ArrowRightLeft />
                                 {equipement.statut === 'stock'
                                     ? 'Affecter…'
                                     : 'Réaffecter…'}
@@ -244,7 +245,7 @@ export default function Affectation({
                                 <DropdownMenuItem
                                     onClick={() => remettreEnStock(equipement)}
                                 >
-                                    Remettre en stock
+                                    <Undo2 /> Remettre en stock
                                 </DropdownMenuItem>
                             )}
                         </DropdownMenuContent>

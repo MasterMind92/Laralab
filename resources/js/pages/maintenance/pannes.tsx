@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal } from 'lucide-react';
+import { Calendar, MoreHorizontal, Play, UserCheck, UserCog } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import MaintenanceController from '@/actions/App/Http/Controllers/MaintenanceController';
@@ -233,7 +233,7 @@ export default function MaintenancePannes({
                                         prendreEnCharge(intervention)
                                     }
                                 >
-                                    Prendre en charge
+                                    <UserCheck /> Prendre en charge
                                 </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
@@ -241,11 +241,11 @@ export default function MaintenancePannes({
                                     ouvrirPlanification(intervention)
                                 }
                             >
-                                Planifier une date
+                                <Calendar /> Planifier une date
                             </DropdownMenuItem>
                             <DropdownMenuSub>
                                 <DropdownMenuSubTrigger>
-                                    Affecter un technicien
+                                    <UserCog /> Affecter un technicien
                                 </DropdownMenuSubTrigger>
                                 <DropdownMenuSubContent>
                                     {techniciens.length === 0 ? (
@@ -277,7 +277,7 @@ export default function MaintenancePannes({
                             <DropdownMenuItem
                                 onClick={() => demarrer(intervention)}
                             >
-                                Démarrer la réparation
+                                <Play /> Démarrer la réparation
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

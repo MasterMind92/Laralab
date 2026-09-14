@@ -1,6 +1,17 @@
 import { Head, router } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import {
+    Ban,
+    Check,
+    MoreHorizontal,
+    Pencil,
+    Plus,
+    RotateCcw,
+    Send,
+    ShoppingCart,
+    Trash2,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import LogistiqueController from '@/actions/App/Http/Controllers/LogistiqueController';
@@ -70,6 +81,15 @@ type Formulaire = {
     quantite: string;
     justification: string;
     priorite: PrioriteBesoin;
+};
+
+/** Une icône par transition cible, pour que le menu d'actions se scanne d'un coup d'œil. */
+const TRANSITION_ICONS: Partial<Record<StatutBesoin, LucideIcon>> = {
+    soumis: Send,
+    valide: Check,
+    refuse: Ban,
+    brouillon: RotateCcw,
+    commande: ShoppingCart,
 };
 
 const VIDE: Formulaire = {
@@ -292,11 +312,21 @@ export default function Besoins({
                 </span>
             ),
         },
-        {
+        // Un besoin "commandé" n'a plus ni modification, ni transition, ni
+        // suppression possibles : la colonne n'a rien à montrer si aucun
+        // besoin affiché n'est dans un autre statut.
+        ...(besoins.some((b) => b.statut !== 'commande')
+            ? [{
             id: 'actions',
             header: 'Actions',
             cell: ({ row }) => {
                 const besoin = row.original;
+
+                if (besoin.statut === 'commande') {
+                    return (
+                        <span className="text-xs text-muted-foreground">—</span>
+                    );
+                }
 
                 return (
                     <DropdownMenu>
@@ -312,39 +342,44 @@ export default function Besoins({
                                 <DropdownMenuItem
                                     onClick={() => ouvrirEdition(besoin)}
                                 >
-                                    Modifier
+                                    <Pencil /> Modifier
                                 </DropdownMenuItem>
                             )}
-                            {besoin.transitions.map((cible) => (
-                                <DropdownMenuItem
-                                    key={cible}
-                                    onClick={() => changerStatut(besoin, cible)}
-                                >
-                                    {cible === 'soumis' && 'Soumettre'}
-                                    {cible === 'valide' && 'Valider'}
-                                    {cible === 'refuse' && 'Refuser…'}
-                                    {cible === 'brouillon' &&
-                                        'Remettre en brouillon'}
-                                    {cible === 'commande' && 'Commander'}
-                                </DropdownMenuItem>
-                            ))}
-                            {besoin.statut !== 'commande' && (
-                                <>
-                                    <DropdownMenuSeparator />
+                            {besoin.transitions.map((cible) => {
+                                const Icone = TRANSITION_ICONS[cible];
+
+                                return (
                                     <DropdownMenuItem
-                                        onClick={() => supprimer(besoin)}
+                                        key={cible}
+                                        onClick={() =>
+                                            changerStatut(besoin, cible)
+                                        }
                                     >
-                                        <span className="text-red-500">
-                                            Supprimer
-                                        </span>
+                                        {Icone && <Icone />}
+                                        {cible === 'soumis' && 'Soumettre'}
+                                        {cible === 'valide' && 'Valider'}
+                                        {cible === 'refuse' && 'Refuser…'}
+                                        {cible === 'brouillon' &&
+                                            'Remettre en brouillon'}
+                                        {cible === 'commande' && 'Commander'}
                                     </DropdownMenuItem>
-                                </>
-                            )}
+                                );
+                            })}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                onClick={() => supprimer(besoin)}
+                            >
+                                <Trash2 className="text-red-500" />
+                                <span className="text-red-500">
+                                    Supprimer
+                                </span>
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 );
             },
-        },
+        } satisfies ColumnDef<BesoinRow>]
+            : []),
     ];
 
     const aValider = besoins.filter((b) => b.statut === 'soumis').length;
