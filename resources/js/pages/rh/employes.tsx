@@ -2,6 +2,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
 import { ArrowUpDown, Eye, Pencil, Plus, UserX } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
+import CompetenceController from '@/actions/App/Http/Controllers/CompetenceController';
 import EmployeController from '@/actions/App/Http/Controllers/EmployeController';
 import LicenciementController from '@/actions/App/Http/Controllers/LicenciementController';
 import OnboardingTacheController from '@/actions/App/Http/Controllers/OnboardingTacheController';
@@ -38,6 +39,16 @@ type LicenciementResume = {
     date_effective: string;
 };
 
+type CompetenceRef = { id: number; libelle: string };
+
+type TacheAssigneeResume = {
+    id: number;
+    type: 'nettoyage' | 'linge' | 'reassort' | 'controle_general';
+    statut: 'a_faire' | 'en_cours' | 'terminee' | 'controlee';
+    date_prevue: string;
+    appartement_numero: string | null;
+};
+
 type EmployeResume = {
     id: number;
     nom: string;
@@ -48,6 +59,25 @@ type EmployeResume = {
     contrat_actif: ContratActif | null;
     onboarding_taches: OnboardingTacheResume[];
     licenciement: LicenciementResume | null;
+    jours_travailles: number[] | null;
+    competences: CompetenceRef[];
+    taches_assignees: TacheAssigneeResume[];
+};
+
+const JOURS_SEMAINE = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+const TYPE_TACHE_LABELS: Record<TacheAssigneeResume['type'], string> = {
+    nettoyage: 'Ménage',
+    linge: 'Linge',
+    reassort: 'Réassort',
+    controle_general: 'Contrôle général',
+};
+
+const STATUT_TACHE_LABELS: Record<TacheAssigneeResume['statut'], string> = {
+    a_faire: 'À faire',
+    en_cours: 'En cours',
+    terminee: 'Terminée',
+    controlee: 'Contrôlée',
 };
 
 const TYPE_CONTRAT_LABELS: Record<string, string> = {
@@ -68,17 +98,55 @@ const emptyForm = {
     salaire_base: '',
 };
 
-export default function Employes({ employes }: { employes: EmployeResume[] }) {
+export default function Employes({ employes, competences }: { employes: EmployeResume[]; competences: CompetenceRef[] }) {
     const [createOpen, setCreateOpen] = useState(false);
     const [editing, setEditing] = useState<EmployeResume | null>(null);
     const [detailsId, setDetailsId] = useState<number | null>(null);
     const [licenciant, setLicenciant] = useState<EmployeResume | null>(null);
+    const [nouvelleCompetence, setNouvelleCompetence] = useState('');
 
     const details = employes.find((e) => e.id === detailsId) ?? null;
 
     const createForm = useForm(emptyForm);
-    const editForm = useForm({ nom: '', prenom: '', poste: '', date_embauche: '' });
+    const editForm = useForm({
+        nom: '',
+        prenom: '',
+        poste: '',
+        date_embauche: '',
+        jours_travailles: [] as number[],
+        competences: [] as number[],
+    });
     const licenciementForm = useForm({ motif: '', date_notification: '', duree_preavis_jours: '30' });
+
+    function ajouterCompetence(e: FormEvent) {
+        e.preventDefault();
+        const libelle = nouvelleCompetence.trim();
+
+        if (!libelle) {
+            return;
+        }
+
+        router.post(CompetenceController.store().url, { libelle }, {
+            preserveScroll: true,
+            onSuccess: () => setNouvelleCompetence(''),
+        });
+    }
+
+    function toggleJour(jour: number) {
+        const actuel = editForm.data.jours_travailles;
+        editForm.setData(
+            'jours_travailles',
+            actuel.includes(jour) ? actuel.filter((j) => j !== jour) : [...actuel, jour].sort(),
+        );
+    }
+
+    function toggleCompetence(id: number) {
+        const actuel = editForm.data.competences;
+        editForm.setData(
+            'competences',
+            actuel.includes(id) ? actuel.filter((c) => c !== id) : [...actuel, id],
+        );
+    }
 
     function submitLicenciement(e: FormEvent) {
         e.preventDefault();
@@ -102,6 +170,8 @@ export default function Employes({ employes }: { employes: EmployeResume[] }) {
             prenom: employe.prenom,
             poste: employe.poste,
             date_embauche: employe.date_embauche,
+            jours_travailles: employe.jours_travailles ?? [],
+            competences: employe.competences.map((c) => c.id),
         });
         setEditing(employe);
     }
@@ -270,6 +340,47 @@ export default function Employes({ employes }: { employes: EmployeResume[] }) {
                             <Label htmlFor="e_date_embauche">Date d'embauche</Label>
                             <Input id="e_date_embauche" type="date" value={editForm.data.date_embauche} onChange={(e) => editForm.setData('date_embauche', e.target.value)} />
                         </div>
+                        <div className="grid gap-2">
+                            <Label>Jours travaillés (planning hebdomadaire)</Label>
+                            <div className="flex flex-wrap gap-2">
+                                {JOURS_SEMAINE.map((label, jour) => (
+                                    <Badge
+                                        key={jour}
+                                        variant={editForm.data.jours_travailles.includes(jour) ? 'default' : 'outline'}
+                                        className="cursor-pointer select-none"
+                                        onClick={() => toggleJour(jour)}
+                                    >
+                                        {label}
+                                    </Badge>
+                                ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Aucun jour coché = pas de restriction déclarée.</p>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Compétences</Label>
+                            <div className="flex flex-wrap gap-2">
+                                {competences.map((c) => (
+                                    <Badge
+                                        key={c.id}
+                                        variant={editForm.data.competences.includes(c.id) ? 'default' : 'outline'}
+                                        className="cursor-pointer select-none"
+                                        onClick={() => toggleCompetence(c.id)}
+                                    >
+                                        {c.libelle}
+                                    </Badge>
+                                ))}
+                            </div>
+                            <div className="flex gap-2">
+                                <Input
+                                    placeholder="Nouvelle compétence…"
+                                    value={nouvelleCompetence}
+                                    onChange={(e) => setNouvelleCompetence(e.target.value)}
+                                />
+                                <Button type="button" variant="outline" onClick={ajouterCompetence}>
+                                    Ajouter
+                                </Button>
+                            </div>
+                        </div>
                         <DialogFooter>
                             <Button type="submit" disabled={editForm.processing}>
                                 {editForm.processing ? 'Enregistrement...' : 'Enregistrer'}
@@ -295,6 +406,20 @@ export default function Employes({ employes }: { employes: EmployeResume[] }) {
                                     ? `${TYPE_CONTRAT_LABELS[details.contrat_actif.type_contrat]}${details.contrat_actif.salaire ? ` — ${formatFcfa(Number(details.contrat_actif.salaire))} FCFA` : ''}`
                                     : 'Aucun'}
                             </p>
+                            <p>
+                                <span className="text-muted-foreground">Jours travaillés : </span>
+                                {details.jours_travailles && details.jours_travailles.length > 0
+                                    ? details.jours_travailles.map((j) => JOURS_SEMAINE[j]).join(', ')
+                                    : 'Aucune restriction déclarée'}
+                            </p>
+                            {details.competences.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="text-muted-foreground">Compétences : </span>
+                                    {details.competences.map((c) => (
+                                        <Badge key={c.id} variant="outline">{c.libelle}</Badge>
+                                    ))}
+                                </div>
+                            )}
 
                             {details.licenciement && (
                                 <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
@@ -317,6 +442,24 @@ export default function Employes({ employes }: { employes: EmployeResume[] }) {
                                                 <Checkbox checked={t.fait} onCheckedChange={() => toggleTache(t)} />
                                                 <span className={t.fait ? 'line-through text-muted-foreground' : ''}>{t.libelle}</span>
                                             </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {details.taches_assignees.length > 0 && (
+                                <div className="pt-2">
+                                    <p className="text-muted-foreground mb-2">Tâches assignées (planification)</p>
+                                    <div className="space-y-1.5">
+                                        {details.taches_assignees.map((t) => (
+                                            <div key={t.id} className="flex items-center justify-between text-xs">
+                                                <span>
+                                                    {TYPE_TACHE_LABELS[t.type]} — {t.appartement_numero ?? '—'}
+                                                    {' · '}
+                                                    {new Date(t.date_prevue).toLocaleDateString('fr-FR')}
+                                                </span>
+                                                <Badge variant="outline">{STATUT_TACHE_LABELS[t.statut]}</Badge>
+                                            </div>
                                         ))}
                                     </div>
                                 </div>

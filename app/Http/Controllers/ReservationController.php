@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ExportsCsv;
 use App\Http\Requests\StoreReservationRequest;
 use App\Models\Client;
 use App\Models\Reservation;
+use App\Models\Tache;
 use App\Notifications\ReservationAnnulee;
 use App\Notifications\ReservationValidee;
 use Illuminate\Http\RedirectResponse;
@@ -82,12 +83,26 @@ class ReservationController extends Controller
 
         if ($reservation->statut !== 'en_attente') {
             return back()->withErrors([
-                'statut' => "Seule une réservation en attente peut être confirmée ou annulée.",
+                'statut' => 'Seule une réservation en attente peut être confirmée ou annulée.',
             ]);
         }
 
         $reservation->update(['statut' => $data['statut']]);
         $reservation->load(['appartement', 'client']);
+
+        // Phase 11 : la tache de preparation avant l'arrivee, generee ici comme les
+        // notifications ci-dessous — meme pattern d'appel direct, aucun Observer dans
+        // ce codebase.
+        if ($data['statut'] === 'validee') {
+            Tache::create([
+                'appartement_id' => $reservation->appartement_id,
+                'reservation_id' => $reservation->id,
+                'type' => 'nettoyage',
+                'origine' => 'auto_arrivee',
+                'date_prevue' => $reservation->date_debut,
+                'statut' => 'a_faire',
+            ]);
+        }
 
         if ($reservation->client->email) {
             $notification = $data['statut'] === 'validee'

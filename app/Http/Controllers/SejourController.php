@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\ExportsCsv;
 use App\Models\Reservation;
 use App\Models\Sejour;
+use App\Models\Tache;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -101,6 +102,17 @@ class SejourController extends Controller
             }
 
             $sejour->reservation->update(['statut' => 'terminee']);
+
+            // Phase 11 : l'inspection apres le depart, meme pattern que la tache
+            // d'arrivee generee dans ReservationController::updateStatut().
+            Tache::create([
+                'appartement_id' => $sejour->reservation->appartement_id,
+                'reservation_id' => $sejour->reservation_id,
+                'type' => 'controle_general',
+                'origine' => 'auto_depart',
+                'date_prevue' => now(),
+                'statut' => 'a_faire',
+            ]);
         });
 
         return back();

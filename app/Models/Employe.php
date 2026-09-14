@@ -7,10 +7,14 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['user_id', 'nom', 'prenom', 'poste', 'date_embauche', 'salaire_base', 'actif', 'entreprise_id'])]
+#[Fillable([
+    'user_id', 'nom', 'prenom', 'poste', 'date_embauche', 'salaire_base', 'actif',
+    'entreprise_id', 'jours_travailles',
+])]
 class Employe extends Model
 {
     use BelongsToEntreprise;
@@ -36,6 +40,7 @@ class Employe extends Model
             'date_embauche' => 'date',
             'salaire_base' => 'decimal:2',
             'actif' => 'boolean',
+            'jours_travailles' => 'array',
         ];
     }
 
@@ -100,6 +105,19 @@ class Employe extends Model
     public function licenciements(): HasMany
     {
         return $this->hasMany(Licenciement::class);
+    }
+
+    /**
+     * Taches d'entretien (Phase 11) assignees a cet employe.
+     */
+    public function taches(): HasMany
+    {
+        return $this->hasMany(Tache::class, 'employe_assigne_id');
+    }
+
+    public function competences(): BelongsToMany
+    {
+        return $this->belongsToMany(Competence::class);
     }
 
     /**

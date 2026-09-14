@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ExportsCsv;
+use App\Models\Competence;
 use App\Models\Employe;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,13 +21,19 @@ class EmployeController extends Controller
      */
     public function index(): Response
     {
-        $employes = Employe::with(['onboardingTaches' => fn ($q) => $q->orderBy('ordre'), 'licenciements' => fn ($q) => $q->latest('date_notification')])
+        $employes = Employe::with([
+            'onboardingTaches' => fn ($q) => $q->orderBy('ordre'),
+            'licenciements' => fn ($q) => $q->latest('date_notification'),
+            'competences:id,libelle',
+            'taches' => fn ($q) => $q->with('appartement:id,numero')->latest('date_prevue')->limit(10),
+        ])
             ->orderBy('nom')
             ->get()
             ->map(fn (Employe $e) => $this->toRow($e));
 
         return Inertia::render('rh/employes', [
             'employes' => $employes,
+            'competences' => Competence::orderBy('libelle')->get(['id', 'libelle']),
         ]);
     }
 
@@ -55,9 +62,20 @@ class EmployeController extends Controller
             'prenom' => ['required', 'string', 'max:255'],
             'poste' => ['required', 'string', 'max:255'],
             'date_embauche' => ['required', 'date'],
+            'jours_travailles' => ['nullable', 'array'],
+            'jours_travailles.*' => ['integer', 'between:0,6'],
+            'competences' => ['nullable', 'array'],
+            'competences.*' => ['integer', 'exists:competences,id'],
         ]);
 
-        $employe->update($data);
+        $employe->update([
+            'nom' => $data['nom'],
+            'prenom' => $data['prenom'],
+            'poste' => $data['poste'],
+            'date_embauche' => $data['date_embauche'],
+            'jours_travailles' => $data['jours_travailles'] ?? null,
+        ]);
+        $employe->competences()->sync($data['competences'] ?? []);
 
         return back();
     }
@@ -132,6 +150,15 @@ class EmployeController extends Controller
                 'date_notification' => $dernierLicenciement->date_notification->toDateString(),
                 'date_effective' => $dernierLicenciement->dateEffective()->toDateString(),
             ] : null,
+            'jours_travailles' => $employe->jours_travailles,
+            'competences' => $employe->competences->map(fn ($c) => ['id' => $c->id, 'libelle' => $c->libelle])->all(),
+            'taches_assignees' => $employe->taches->map(fn ($t) => [
+                'id' => $t->id,
+                'type' => $t->type,
+                'statut' => $t->statut,
+                'date_prevue' => $t->date_prevue->toDateString(),
+                'appartement_numero' => $t->appartement?->numero,
+            ])->all(),
         ];
     }
 }

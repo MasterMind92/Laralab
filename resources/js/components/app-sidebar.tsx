@@ -9,6 +9,7 @@ import {
     Boxes,
     Building2,
     Calendar,
+    CalendarClock,
     ClipboardList,
     ConciergeBell,
     FileBarChart,
@@ -152,6 +153,11 @@ const mainNavItems: NavItem[] = [
                 title: "Congés",
                 url:"/admin/conges",
                 icon: ClipboardList,
+            },
+            {
+                title: "Planification",
+                url:"/admin/planification",
+                icon: CalendarClock,
             },
         ]
     },

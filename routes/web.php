@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\PartenaireController as AdminPartenaireController
 use App\Http\Controllers\Admin\UtilisateurController as AdminUtilisateurController;
 use App\Http\Controllers\AppartementController;
 use App\Http\Controllers\CandidatController;
+use App\Http\Controllers\CompetenceController;
 use App\Http\Controllers\ComptabiliteController;
 use App\Http\Controllers\CongeController;
 use App\Http\Controllers\ContratTravailController;
@@ -33,6 +34,7 @@ use App\Http\Controllers\Proprietaire\PartenaireController as ProprietaireParten
 use App\Http\Controllers\RecrutementController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\SejourController;
+use App\Http\Controllers\TacheController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
 
@@ -409,6 +411,32 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
     Route::delete('employes/{employe}', [EmployeController::class, 'destroy'])
         ->name('employes.destroy')
+        ->middleware('role:rh');
+
+    Route::post('competences', [CompetenceController::class, 'store'])
+        ->name('competences.store')
+        ->middleware('role:rh');
+
+    // Phase 11 : vue journaliere de planification des taches d'entretien.
+    Route::get('planification', [TacheController::class, 'index'])
+        ->name('planification.index')
+        ->middleware('role:rh');
+
+    Route::post('planification', [TacheController::class, 'store'])
+        ->name('planification.store')
+        ->middleware('role:rh');
+
+    Route::patch('planification/{tache}/assigner', [TacheController::class, 'assigner'])
+        ->name('planification.assigner')
+        ->middleware('role:rh');
+
+    // Transition generique du cycle, gardee par Tache::TRANSITIONS.
+    Route::patch('planification/{tache}/statut', [TacheController::class, 'changerStatut'])
+        ->name('planification.statut')
+        ->middleware('role:rh');
+
+    Route::delete('planification/{tache}', [TacheController::class, 'destroy'])
+        ->name('planification.destroy')
         ->middleware('role:rh');
 
     Route::get('recrutements', [RecrutementController::class, 'index'])
