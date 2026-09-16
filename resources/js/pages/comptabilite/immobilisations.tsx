@@ -24,11 +24,10 @@ const TOUS = '__tous__';
 /**
  * Registre des immobilisations (extension Phase 06) — vue cumulative des lignes de
  * facture fournisseur `nature = 'immobilisation'` déjà validées. Aucune nouvelle table :
- * la saisie reste « Factures fournisseur », cet écran ne fait que les additionner dans le
- * temps.
+ * la saisie reste « Achats », cet écran ne fait que les additionner dans le temps.
  *
  * ÉCRAN EN LECTURE SEULE, comme « Entrées » : la nature d'une ligne se corrige depuis
- * l'écran Factures fournisseur, pas ici.
+ * l'écran Achats, pas ici.
  */
 export default function Immobilisations({
     lignes,
@@ -164,7 +163,7 @@ export default function Immobilisations({
                 <DataTable columns={columns} data={lignes} searchPlaceholder="Rechercher une immobilisation..." />
 
                 <p className="text-xs text-muted-foreground">
-                    Écran de consultation. La nature d'une ligne se corrige depuis Factures fournisseur.
+                    Écran de consultation. La nature d'une ligne se corrige depuis Achats.
                 </p>
             </div>
         </>

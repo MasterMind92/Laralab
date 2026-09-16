@@ -80,7 +80,7 @@ export default function ComptabiliteDashboard({ kpi }: { kpi: Kpi }) {
                         <Link href="/admin/entrees" className="text-primary hover:underline">Entrées</Link>
                         <Link href="/admin/sorties" className="text-primary hover:underline">Sorties</Link>
                         <Link href="/admin/recouvrements" className="text-primary hover:underline">Recouvrements factures</Link>
-                        <Link href="/admin/achats" className="text-primary hover:underline">Factures fournisseur</Link>
+                        <Link href="/admin/achats" className="text-primary hover:underline">Achats</Link>
                         <Link href="/admin/etats-financiers" className="text-primary hover:underline">États Financiers</Link>
                     </CardContent>
                 </Card>

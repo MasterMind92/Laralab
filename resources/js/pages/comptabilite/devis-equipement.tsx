@@ -48,7 +48,7 @@ import type {
  * Devis équipement (extension Phase 06) — généré automatiquement à l'Enregistrement côté
  * Logistique (une ligne durable = facturable au Propriétaire, voir
  * `LogistiqueController::genererDevisEquipement()`). Rien ne se crée à la main ici,
- * contrairement à « Factures fournisseur » : cet écran fait vivre le cycle
+ * contrairement à « Achats » : cet écran fait vivre le cycle
  * brouillon → validé → payé, et laisse ajuster la majoration tant que le devis est encore
  * en brouillon.
  */

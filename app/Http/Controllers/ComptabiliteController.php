@@ -25,7 +25,7 @@ use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Les écrans de la Comptabilité avancée (Phase 06) : Factures fournisseur, Entrées,
+ * Les écrans de la Comptabilité avancée (Phase 06) : Achats, Entrées,
  * Sorties, Recouvrements et États financiers.
  *
  * Deux couples se ressemblent sans se confondre, et c'est le cœur de ce contrôleur :

@@ -209,22 +209,19 @@ const mainNavItems: NavItem[] = [
                 icon: PhoneCall,
             },
             {
-                // Remplace "Depenses" : celui-ci ne listait que les CHARGES, donc pas les
-                // immobilisations, donc pas la vraie tresorerie.
-                title: "Decaissements",
+                // Libelle aligne sur le titre de la page (deja "Sorties" partout ailleurs
+                // : Head, h1, breadcrumb). Remplace "Depenses" : celui-ci ne listait que
+                // les CHARGES, donc pas les immobilisations, donc pas la vraie tresorerie.
+                title: "Sorties",
                 url:"/admin/sorties",
             },
             {
-                // Suivi des impayes/relances — different du flux valider/encaisser,
-                // differe a un futur reporting.
+                // Revient sur le renommage B-bis (2026-09-10) sur demande explicite de
+                // l'utilisateur le 2026-09-16 : le libelle "Achats" reste plus lisible que
+                // "Factures fournisseur" malgre la distinction avec le document facture.
+                // L'ancien stub mort "Achats" (#, residu du commit f783600) est supprime au
+                // passage — il aurait fait doublon avec celui-ci.
                 title: "Achats",
-                url:"#",
-            },
-            {
-                // Renomme : cet ecran n'est pas une vue comptable mais la file d'attente
-                // de validation des engagements. L'URL reste /admin/achats — le projet
-                // tolere deja l'ecart libelle/URL ("Consultation Devis" sert /admin/factures).
-                title: "Factures fournisseur",
                 url:"/admin/achats",
                 icon: ShoppingCart,
             },
