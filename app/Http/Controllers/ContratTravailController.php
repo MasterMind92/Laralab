@@ -46,13 +46,16 @@ class ContratTravailController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'employe_id' => ['required', 'integer', 'exists:employes,id'],
+            'employe_id' => ['required', 'integer'],
             'type_contrat' => ['required', 'in:cdi,cdd,stage'],
             'salaire' => ['required', 'numeric', 'min:0'],
             'date_debut' => ['required', 'date'],
             'date_fin' => ['nullable', 'date', 'after:date_debut'],
             'fichier_contrat' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
         ]);
+
+        // Requete cloisonnee plutot que exists: (qui ignore les global scopes).
+        Employe::findOrFail($data['employe_id']);
 
         ContratTravail::create([
             ...$data,

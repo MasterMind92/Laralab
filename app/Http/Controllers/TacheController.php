@@ -64,12 +64,15 @@ class TacheController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'appartement_id' => ['required', 'integer', 'exists:appartements,id'],
+            'appartement_id' => ['required', 'integer'],
             'type' => ['required', 'in:'.implode(',', Tache::TYPES)],
             'priorite' => ['required', 'in:basse,normale,haute'],
             'date_prevue' => ['required', 'date'],
             'notes' => ['nullable', 'string'],
         ]);
+
+        // Requete cloisonnee plutot que exists: (qui ignore les global scopes).
+        Appartement::findOrFail($data['appartement_id']);
 
         Tache::create([...$data, 'origine' => 'manuelle', 'statut' => 'a_faire']);
 
@@ -82,8 +85,13 @@ class TacheController extends Controller
     public function assigner(Request $request, Tache $tache): RedirectResponse
     {
         $data = $request->validate([
-            'employe_assigne_id' => ['nullable', 'integer', 'exists:employes,id'],
+            'employe_assigne_id' => ['nullable', 'integer'],
         ]);
+
+        // Requete cloisonnee plutot que exists: (qui ignore les global scopes).
+        if ($data['employe_assigne_id'] ?? null) {
+            Employe::findOrFail($data['employe_assigne_id']);
+        }
 
         $tache->update(['employe_assigne_id' => $data['employe_assigne_id'] ?? null]);
 

@@ -35,7 +35,7 @@ class RecrutementController extends Controller
     public function update(Request $request, Recrutement $recrutement): RedirectResponse
     {
         if ($recrutement->statut !== 'brouillon') {
-            return back()->withErrors(['recrutement' => "Seule une demande en brouillon peut être modifiée."]);
+            return back()->withErrors(['recrutement' => 'Seule une demande en brouillon peut être modifiée.']);
         }
 
         $recrutement->update($this->validatedData($request));
@@ -66,7 +66,7 @@ class RecrutementController extends Controller
     public function soumettre(Recrutement $recrutement): RedirectResponse
     {
         if ($recrutement->statut !== 'brouillon') {
-            return back()->withErrors(['recrutement' => "Seule une demande en brouillon peut être soumise."]);
+            return back()->withErrors(['recrutement' => 'Seule une demande en brouillon peut être soumise.']);
         }
 
         $recrutement->update(['statut' => 'en_attente_validation']);
@@ -80,7 +80,7 @@ class RecrutementController extends Controller
     public function valider(Request $request, Recrutement $recrutement): RedirectResponse
     {
         if ($recrutement->statut !== 'en_attente_validation') {
-            return back()->withErrors(['recrutement' => "Seule une demande en attente de validation peut être validée."]);
+            return back()->withErrors(['recrutement' => 'Seule une demande en attente de validation peut être validée.']);
         }
 
         $recrutement->update([
@@ -99,7 +99,7 @@ class RecrutementController extends Controller
     public function rejeter(Request $request, Recrutement $recrutement): RedirectResponse
     {
         if ($recrutement->statut !== 'en_attente_validation') {
-            return back()->withErrors(['recrutement' => "Seule une demande en attente de validation peut être rejetée."]);
+            return back()->withErrors(['recrutement' => 'Seule une demande en attente de validation peut être rejetée.']);
         }
 
         $data = $request->validate([
@@ -121,7 +121,7 @@ class RecrutementController extends Controller
     public function cloturer(Recrutement $recrutement): RedirectResponse
     {
         if ($recrutement->statut !== 'validee') {
-            return back()->withErrors(['recrutement' => "Seul un recrutement validé peut être clôturé."]);
+            return back()->withErrors(['recrutement' => 'Seul un recrutement validé peut être clôturé.']);
         }
 
         $enSuspens = $recrutement->candidats()
@@ -130,7 +130,7 @@ class RecrutementController extends Controller
             ->exists();
 
         if ($enSuspens) {
-            return back()->withErrors(['recrutement' => "Tous les candidats doivent avoir une décision (retenu ou rejeté) avant de clôturer."]);
+            return back()->withErrors(['recrutement' => 'Tous les candidats doivent avoir une décision (retenu ou rejeté) avant de clôturer.']);
         }
 
         $recrutement->update(['statut' => 'clos']);
@@ -171,10 +171,10 @@ class RecrutementController extends Controller
      */
     private function validatedData(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'poste' => ['required', 'string', 'max:255'],
             'departement' => ['nullable', 'string', 'max:255'],
-            'responsable_id' => ['nullable', 'integer', 'exists:employes,id'],
+            'responsable_id' => ['nullable', 'integer'],
             'profil_recherche' => ['nullable', 'string'],
             'description' => ['nullable', 'string'],
             'competences' => ['nullable', 'array'],
@@ -189,5 +189,12 @@ class RecrutementController extends Controller
             'date_limite_candidature' => ['nullable', 'date'],
             'lieu' => ['nullable', 'string', 'max:255'],
         ]);
+
+        // Requete cloisonnee plutot que exists: (qui ignore les global scopes).
+        if ($data['responsable_id'] ?? null) {
+            Employe::findOrFail($data['responsable_id']);
+        }
+
+        return $data;
     }
 }

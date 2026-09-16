@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ExportsCsv;
+use App\Models\Equipement;
 use App\Models\Reservation;
 use App\Models\Sejour;
 use App\Models\Tache;
@@ -41,7 +42,9 @@ class SejourController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'reservation_id' => ['required', 'integer', 'exists:reservations,id'],
+            // Pas d'exists: ici : Reservation::findOrFail() juste en dessous fait deja
+            // la verification via une requete cloisonnee.
+            'reservation_id' => ['required', 'integer'],
             'etat_lieux_entree' => ['nullable', 'string'],
         ]);
 
@@ -79,7 +82,7 @@ class SejourController extends Controller
         $data = $request->validate([
             'etat_lieux_sortie' => ['nullable', 'string'],
             'dommages' => ['nullable', 'array'],
-            'dommages.*.equipement_id' => ['nullable', 'integer', 'exists:equipements,id'],
+            'dommages.*.equipement_id' => ['nullable', 'integer'],
             'dommages.*.description' => ['required_with:dommages', 'string', 'max:255'],
             'dommages.*.montant' => ['nullable', 'numeric', 'min:0'],
         ]);
@@ -88,6 +91,14 @@ class SejourController extends Controller
             return back()->withErrors([
                 'sejour' => "Seul un séjour en cours peut faire l'objet d'un check-out.",
             ]);
+        }
+
+        // Equipement n'a pas de scope automatique : whereHas('appartement') est le
+        // garde-fou manuel prescrit par le modele, exists: ne suffit pas (voir DommageController).
+        foreach ($data['dommages'] ?? [] as $dommage) {
+            if ($dommage['equipement_id'] ?? null) {
+                Equipement::whereHas('appartement')->findOrFail($dommage['equipement_id']);
+            }
         }
 
         DB::transaction(function () use ($sejour, $data) {

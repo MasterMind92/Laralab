@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Candidat;
+use App\Models\Employe;
 use App\Models\Entretien;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,8 +28,14 @@ class EntretienController extends Controller
             'type' => ['required', 'in:visio,presentiel,telephone'],
             'duree_minutes' => ['nullable', 'integer', 'min:1'],
             'intervieweurs' => ['nullable', 'array'],
-            'intervieweurs.*' => ['integer', 'exists:employes,id'],
+            'intervieweurs.*' => ['integer'],
         ]);
+
+        // Requete cloisonnee plutot que exists: (qui ignore les global scopes) —
+        // findOrFail() accepte un tableau d'ids et echoue si UN SEUL est hors-tenant.
+        if (! empty($data['intervieweurs'])) {
+            Employe::findOrFail($data['intervieweurs']);
+        }
 
         $entretien = $candidat->entretiens()->create([
             'numero_tour' => $data['numero_tour'],

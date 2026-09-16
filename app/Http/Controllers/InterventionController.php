@@ -31,13 +31,18 @@ class InterventionController extends Controller
     public function index(Request $request): Response
     {
         $filters = $request->validate([
-            'appartement_id' => ['nullable', 'integer', 'exists:appartements,id'],
+            'appartement_id' => ['nullable', 'integer'],
             'statut' => ['nullable', 'in:stock,affecte,en_panne,reforme'],
             'date_debut' => ['nullable', 'date'],
             'date_fin' => ['nullable', 'date'],
         ]);
 
+        // whereHas('appartement') est le garde-fou manuel qui manquait ici (Phase 08,
+        // 2026-09-16) : sans lui, cette liste montrait le parc equipement de TOUTES les
+        // entreprises — Equipement n'a pas de scope automatique, voir son doc-comment.
+        // Deja applique correctement dans ParcEquipementController::index().
         $equipements = Equipement::whereNotNull('appartement_id')
+            ->whereHas('appartement')
             ->with(['appartement:id,numero', 'interventions' => fn ($query) => $query->orderByDesc('date_signalement')])
             ->when($filters['appartement_id'] ?? null, fn ($q, $id) => $q->where('appartement_id', $id))
             ->when($filters['statut'] ?? null, fn ($q, $statut) => $q->where('statut', $statut))
@@ -75,12 +80,16 @@ class InterventionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'equipement_id' => ['required', 'integer', 'exists:equipements,id'],
+            'equipement_id' => ['required', 'integer'],
             'description_panne' => ['required', 'string'],
             'priorite' => ['required', 'in:basse,normale,haute,critique'],
         ]);
 
-        $equipement = Equipement::findOrFail($data['equipement_id']);
+        // whereHas('appartement') est le garde-fou manuel qui manquait ici (Phase 08,
+        // 2026-09-16) : sans lui, un equipement_id d'une autre entreprise etait accepte,
+        // rattache a une nouvelle Intervention, ET reellement modifie (statut -> en_panne
+        // plus bas) — une vraie ecriture cross-tenant, pas seulement une lecture.
+        $equipement = Equipement::whereHas('appartement')->findOrFail($data['equipement_id']);
 
         DB::transaction(function () use ($equipement, $data, $request) {
             // Paramètres de l'entreprise de l'utilisateur connecté : le réceptionniste

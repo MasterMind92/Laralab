@@ -47,20 +47,28 @@ class DemandeServiceController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'appartement_id' => ['required', 'integer', 'exists:appartements,id'],
-            'sejour_id' => ['nullable', 'integer', 'exists:sejours,id'],
+            'appartement_id' => ['required', 'integer'],
+            // sejour_id n'a pas besoin d'exists: ici : Sejour::findOrFail() juste en
+            // dessous fait deja la verification via une requete cloisonnee.
+            'sejour_id' => ['nullable', 'integer'],
+            // partenaire_id garde exists: — Partenaire est un catalogue GLOBAL,
+            // volontairement non cloisonne par entreprise (decision Phase 09, voir
+            // Admin\PartenaireController).
             'partenaire_id' => ['nullable', 'integer', 'exists:partenaires,id'],
             'designation' => ['required', 'string', 'max:255'],
             'quantite' => ['required', 'integer', 'min:1'],
             'prix_unitaire' => ['required', 'numeric', 'min:0'],
         ]);
 
+        // Requete cloisonnee plutot que exists: (qui ignore les global scopes).
+        Appartement::findOrFail($data['appartement_id']);
+
         if (! empty($data['sejour_id'])) {
             $sejour = Sejour::findOrFail($data['sejour_id']);
 
             if ($sejour->statut !== 'en_cours') {
                 return back()->withErrors([
-                    'sejour_id' => "Seul un séjour en cours peut avoir de nouvelles demandes.",
+                    'sejour_id' => 'Seul un séjour en cours peut avoir de nouvelles demandes.',
                 ]);
             }
         }

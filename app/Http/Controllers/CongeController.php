@@ -32,10 +32,14 @@ class CongeController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'employe_id' => ['required', 'integer', 'exists:employes,id'],
+            'employe_id' => ['required', 'integer'],
             'date_debut' => ['required', 'date'],
             'date_fin' => ['required', 'date', 'after_or_equal:date_debut'],
         ]);
+
+        // Requete cloisonnee plutot que exists: (qui ignore les global scopes) — sinon un
+        // conge se cree contre l'employe d'une autre entreprise.
+        Employe::findOrFail($data['employe_id']);
 
         $conge = Conge::create([...$data, 'statut' => 'demande']);
 

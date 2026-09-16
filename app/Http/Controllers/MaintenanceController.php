@@ -201,8 +201,12 @@ class MaintenanceController extends Controller
     public function affecter(Request $request, Intervention $intervention): RedirectResponse
     {
         $data = $request->validate([
-            'technicien_employe_id' => ['required', 'integer', 'exists:employes,id'],
+            'technicien_employe_id' => ['required', 'integer'],
         ]);
+
+        // Requete cloisonnee plutot que exists: (qui ignore les global scopes) — un
+        // technicien d'une autre entreprise ne doit meme pas etre resolvable ici.
+        Employe::findOrFail($data['technicien_employe_id']);
 
         $this->refuserSiTerminee($intervention);
 
@@ -511,10 +515,9 @@ class MaintenanceController extends Controller
      * (voir Employe::MOTSCLES_POSTE_MAINTENANCE), et uniquement les actifs. Avant, tout
      * employé actif était proposé — un réceptionniste pouvait être affecté à une panne.
      *
-     * Ce filtre ne sécurise RIEN à lui seul : la règle `exists:employes,id` de affecter()
-     * accepte toujours n'importe quel identifiant existant sur une requête forgée. C'est
-     * une aide à la saisie, pas un contrôle d'accès (voir la faille de cloisonnement
-     * consignée pour la Phase 08).
+     * Ce filtre à lui seul n'est qu'une aide à la saisie, pas un contrôle d'accès — c'est
+     * `Employe::findOrFail()` dans `affecter()` qui empêche réellement une requête forgée
+     * de pointer vers un employé d'une autre entreprise (Phase 08, 2026-09-16).
      *
      * @return array<int, array<string, mixed>>
      */
