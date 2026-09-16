@@ -209,11 +209,12 @@ const mainNavItems: NavItem[] = [
                 icon: PhoneCall,
             },
             {
-                // Libelle aligne sur le titre de la page (deja "Sorties" partout ailleurs
-                // : Head, h1, breadcrumb). Remplace "Depenses" : celui-ci ne listait que
-                // les CHARGES, donc pas les immobilisations, donc pas la vraie tresorerie.
-                title: "Sorties",
+                // Remplace "Depenses" : celui-ci ne listait que les CHARGES, donc pas les
+                // immobilisations, donc pas la vraie tresorerie. Icone ajoutee au passage
+                // (manquait depuis le B-bis) — symetrique d'Encaissements (ArrowDownToLine).
+                title: "Decaissements",
                 url:"/admin/sorties",
+                icon: ArrowUpFromLine,
             },
             {
                 // Revient sur le renommage B-bis (2026-09-10) sur demande explicite de
