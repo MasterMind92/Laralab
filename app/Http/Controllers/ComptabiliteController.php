@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ExportsCsv;
+use App\Models\Appartement;
 use App\Models\Commande;
 use App\Models\CommandeLigne;
 use App\Models\Depense;
+use App\Models\DevisEquipement;
+use App\Models\DevisEquipementLigne;
 use App\Models\Employe;
 use App\Models\Facture;
 use App\Models\FactureFournisseur;
@@ -18,6 +22,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Les écrans de la Comptabilité avancée (Phase 06) : Factures fournisseur, Entrées,
@@ -44,6 +49,8 @@ use Inertia\Response;
  */
 class ComptabiliteController extends Controller
 {
+    use ExportsCsv;
+
     /**
      * Tableau de bord (Phase 07) : des compteurs ponctuels, pas le rapport détaillé —
      * `etatsFinanciers()` reste le seul endroit avec une ventilation par catégorie et un
@@ -267,6 +274,207 @@ class ComptabiliteController extends Controller
         return back();
     }
 
+    // --------------------------------------------------------- Devis équipement
+
+    /**
+     * Généré automatiquement à l'Enregistrement côté Logistique (extension Phase 06,
+     * voir `LogistiqueController::genererDevisEquipement()`) — cet écran ne fait que le
+     * faire vivre : ajuster la majoration tant qu'il est en brouillon, puis le valider et
+     * le régler. Aucune création manuelle ici, contrairement aux Achats.
+     */
+    public function devisEquipements(): Response
+    {
+        $devis = DevisEquipement::with(['lignes', 'reception.commande.fournisseur:id,nom', 'valideur:id,nom,prenom'])
+            ->orderByDesc('id')
+            ->get();
+
+        return Inertia::render('comptabilite/devis-equipement', [
+            'devis' => $devis->map(fn (DevisEquipement $d) => $this->ligneDevisEquipement($d)),
+        ]);
+    }
+
+    /**
+     * La majoration est un choix PAR DEVIS, pas un réglage global — décision actée le
+     * 2026-09-16. Verrouillé au brouillon : passé ce stade, le montant a déjà pu être
+     * communiqué au Propriétaire.
+     */
+    public function majorerDevisEquipement(Request $request, DevisEquipement $devis): RedirectResponse
+    {
+        if ($devis->statut !== 'brouillon') {
+            return back()->withErrors([
+                'devis' => 'La majoration ne se modifie que sur un devis encore en brouillon.',
+            ]);
+        }
+
+        $data = $request->validate([
+            'majoration_active' => ['required', 'boolean'],
+            'taux_majoration' => ['nullable', 'numeric', 'min:0', 'max:1', 'required_if:majoration_active,true'],
+        ]);
+
+        $devis->definirMajoration($data['majoration_active'], $data['taux_majoration'] ?? null);
+
+        return back();
+    }
+
+    public function changerStatutDevisEquipement(Request $request, DevisEquipement $devis): RedirectResponse
+    {
+        $data = $request->validate([
+            'statut' => ['required', 'in:validee,brouillon,annulee'],
+            'motif' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        if (! $devis->peutPasserA($data['statut'])) {
+            return back()->withErrors([
+                'statut' => "Passage impossible de « {$devis->statut} » à « {$data['statut']} ».",
+            ]);
+        }
+
+        match ($data['statut']) {
+            'validee' => $devis->valider($request->user()->employe?->id),
+            'brouillon' => $devis->renvoyerEnValidation($data['motif'] ?? null),
+            'annulee' => $devis->annuler($data['motif'] ?? null),
+        };
+
+        return back();
+    }
+
+    public function payerDevisEquipement(Request $request, DevisEquipement $devis): RedirectResponse
+    {
+        if (! $devis->peutPasserA('payee')) {
+            return back()->withErrors([
+                'statut' => "Seul un devis validé peut être réglé (celui-ci est « {$devis->statut} »).",
+            ]);
+        }
+
+        $data = $request->validate([
+            'date_paiement' => ['required', 'date'],
+            'mode_paiement' => ['nullable', 'in:especes,virement,mobile_money,cheque'],
+            'reference_paiement' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $devis->payer(
+            $data['date_paiement'],
+            $data['mode_paiement'] ?? null,
+            $data['reference_paiement'] ?? null,
+        );
+
+        return back();
+    }
+
+    // ------------------------------------------------ Registre des immobilisations
+
+    /**
+     * Vue cumulative des lignes déjà en base — aucune nouvelle table. "Validées" veut
+     * dire statut `validee` OU `payee` (une facture payée reste une facture validée).
+     *
+     * L'appartement d'origine se lit sur le `Besoin` (`Besoin.appartement_id`, nullable
+     * pour le stock général), pas sur les `Equipement` affectés : une ligne peut porter
+     * plusieurs équipements affectés à des endroits différents ou pas encore affectés du
+     * tout, alors que le besoin qui a déclenché l'achat est unique et déjà connu ici.
+     */
+    public function immobilisations(Request $request): Response
+    {
+        $filtres = $request->validate([
+            'appartement_id' => ['nullable', 'integer'],
+            'du' => ['nullable', 'date'],
+            'au' => ['nullable', 'date'],
+        ]);
+
+        $lignes = $this->requeteImmobilisations($filtres)->get();
+
+        return Inertia::render('comptabilite/immobilisations', [
+            'lignes' => $lignes->map(fn (FactureFournisseurLigne $l) => $this->ligneImmobilisation($l)),
+            'total' => (float) $lignes->sum(fn (FactureFournisseurLigne $l) => $l->montant()),
+            'appartements' => Appartement::orderBy('numero')->get(['id', 'numero']),
+            'filters' => $filtres,
+        ]);
+    }
+
+    /**
+     * Meme lecture que ci-dessus pour le Proprietaire/Gerant (acces confirme). Une
+     * methode dediee plutot qu'une seconde route sur `immobilisations()` : Wayfinder
+     * genere un export ambigu (objet indexe par URL, non appelable) des qu'un meme nom de
+     * methode sert deux routes differentes.
+     */
+    public function immobilisationsProprietaire(Request $request): Response
+    {
+        return $this->immobilisations($request);
+    }
+
+    public function exportImmobilisations(Request $request): StreamedResponse
+    {
+        $filtres = $request->validate([
+            'appartement_id' => ['nullable', 'integer'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $lignes = $this->requeteImmobilisations([
+            'appartement_id' => $filtres['appartement_id'] ?? null,
+            'du' => $filtres['from'] ?? null,
+            'au' => $filtres['to'] ?? null,
+        ])->get();
+
+        return $this->streamCsv(
+            'immobilisations.csv',
+            ['Date', 'Fournisseur', 'Designation', 'Montant', 'Appartement', 'Statut'],
+            $lignes->map(fn (FactureFournisseurLigne $l) => $this->ligneImmobilisation($l))
+                ->map(fn (array $l) => [
+                    $l['date_facture'],
+                    $l['fournisseur'],
+                    $l['designation'],
+                    $l['montant'],
+                    $l['appartement'],
+                    $l['statut'],
+                ]),
+        );
+    }
+
+    /** @param array{appartement_id?: int|null, du?: string|null, au?: string|null} $filtres */
+    private function requeteImmobilisations(array $filtres)
+    {
+        return FactureFournisseurLigne::immobilisations()
+            ->whereHas('factureFournisseur', fn ($q) => $q->whereIn('statut', ['validee', 'payee']))
+            ->with([
+                'factureFournisseur:id,fournisseur_id,date_facture,statut',
+                'factureFournisseur.fournisseur:id,nom',
+                'commandeLigne.besoin.appartement:id,numero',
+                'commandeLigne.receptionLignes.equipements:id,reception_ligne_id,statut,garantie_fin,date_reforme',
+            ])
+            ->when(
+                $filtres['appartement_id'] ?? null,
+                fn ($q, $id) => $q->whereHas('commandeLigne.besoin', fn ($q2) => $q2->where('appartement_id', $id)),
+            )
+            ->when(
+                $filtres['du'] ?? null,
+                fn ($q, $d) => $q->whereHas('factureFournisseur', fn ($q2) => $q2->whereDate('date_facture', '>=', $d)),
+            )
+            ->when(
+                $filtres['au'] ?? null,
+                fn ($q, $a) => $q->whereHas('factureFournisseur', fn ($q2) => $q2->whereDate('date_facture', '<=', $a)),
+            )
+            ->orderByDesc('id');
+    }
+
+    /** @return array<string, mixed> */
+    private function ligneImmobilisation(FactureFournisseurLigne $ligne): array
+    {
+        $besoin = $ligne->commandeLigne?->besoin;
+        $equipements = $ligne->commandeLigne?->receptionLignes
+            ->flatMap(fn ($rl) => $rl->equipements) ?? collect();
+
+        return [
+            'id' => $ligne->id,
+            'date_facture' => $ligne->factureFournisseur?->date_facture?->toDateString(),
+            'fournisseur' => $ligne->factureFournisseur?->fournisseur?->nom,
+            'designation' => $ligne->designation,
+            'montant' => $ligne->montant(),
+            'appartement' => $besoin?->appartement?->numero ?? 'Stock général',
+            'statut' => $equipements->contains(fn ($e) => $e->statut === 'reforme') ? 'Réformé' : 'Actif',
+            'garantie_fin' => $equipements->pluck('garantie_fin')->filter()->max()?->toDateString(),
+        ];
+    }
+
     // ---------------------------------------------------------------- Entrées
 
     /**
@@ -336,6 +544,99 @@ class ComptabiliteController extends Controller
             ?? $paiement->facture?->sejour?->reservation?->client;
 
         return $client ? trim($client->nom.' '.$client->prenom) : null;
+    }
+
+    // -------------------------------------------------- Avances de réservation
+
+    /**
+     * Isole les acomptes pris au checkout portail (`Paiement.reservation_id` non nul,
+     * avant qu'une Facture existe) — aujourd'hui noyés dans Entrées. Même source, même
+     * règle de non double-comptage que `entrees()` : un acompte rattaché à sa facture
+     * reste une seule ligne `paiements`.
+     */
+    public function avances(Request $request): Response
+    {
+        $filtres = $request->validate([
+            'appartement_id' => ['nullable', 'integer'],
+            'client' => ['nullable', 'string', 'max:255'],
+            'du' => ['nullable', 'date'],
+            'au' => ['nullable', 'date'],
+        ]);
+
+        $avances = $this->requeteAvances($filtres)->get();
+
+        return Inertia::render('comptabilite/avances', [
+            'avances' => $avances->map(fn (Paiement $p) => $this->ligneAvance($p)),
+            'total' => (float) $avances->sum('montant'),
+            'appartements' => Appartement::orderBy('numero')->get(['id', 'numero']),
+            'filters' => $filtres,
+        ]);
+    }
+
+    public function exportAvances(Request $request): StreamedResponse
+    {
+        $filtres = $request->validate([
+            'appartement_id' => ['nullable', 'integer'],
+            'client' => ['nullable', 'string', 'max:255'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $avances = $this->requeteAvances([
+            'appartement_id' => $filtres['appartement_id'] ?? null,
+            'client' => $filtres['client'] ?? null,
+            'du' => $filtres['from'] ?? null,
+            'au' => $filtres['to'] ?? null,
+        ])->get();
+
+        return $this->streamCsv(
+            'avances.csv',
+            ['Date', 'Client', 'Appartement', 'Montant', 'Etat'],
+            $avances->map(fn (Paiement $p) => $this->ligneAvance($p))
+                ->map(fn (array $a) => [
+                    $a['date_paiement'],
+                    $a['client'],
+                    $a['appartement'],
+                    $a['montant'],
+                    $a['etat'],
+                ]),
+        );
+    }
+
+    /** @param array{appartement_id?: int|null, client?: string|null, du?: string|null, au?: string|null} $filtres */
+    private function requeteAvances(array $filtres)
+    {
+        return Paiement::whereNotNull('reservation_id')
+            ->with(['reservation.client:id,nom,prenom', 'reservation.appartement:id,numero', 'facture:id,numero_facture'])
+            ->when(
+                $filtres['appartement_id'] ?? null,
+                fn ($q, $id) => $q->whereHas('reservation', fn ($q2) => $q2->where('appartement_id', $id)),
+            )
+            ->when(
+                $filtres['client'] ?? null,
+                fn ($q, $nom) => $q->whereHas('reservation.client', fn ($q2) => $q2->where('nom', 'like', "%{$nom}%")
+                    ->orWhere('prenom', 'like', "%{$nom}%")),
+            )
+            ->when($filtres['du'] ?? null, fn ($q, $d) => $q->whereDate('date_paiement', '>=', $d))
+            ->when($filtres['au'] ?? null, fn ($q, $a) => $q->whereDate('date_paiement', '<=', $a))
+            ->orderByDesc('date_paiement')
+            ->orderByDesc('id');
+    }
+
+    /** @return array<string, mixed> */
+    private function ligneAvance(Paiement $paiement): array
+    {
+        return [
+            'id' => $paiement->id,
+            'montant' => (float) $paiement->montant,
+            'date_paiement' => $paiement->date_paiement?->toDateString(),
+            'client' => $this->nomClientDuPaiement($paiement),
+            'appartement' => $paiement->reservation?->appartement?->numero,
+            'numero_facture' => $paiement->facture?->numero_facture,
+            // "Rapprochée" : l'acompte a déjà été rattaché à la facture de son séjour.
+            // Même règle que `rattachee` dans `entrees()`.
+            'etat' => $paiement->facture_id !== null ? 'rapprochee' : 'en_attente',
+        ];
     }
 
     // ---------------------------------------------------------------- Sorties
@@ -702,6 +1003,36 @@ class ComptabiliteController extends Controller
                 'montant' => $l->montant(),
                 'nature' => $l->nature,
                 'categorie' => $l->categorie,
+            ]),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function ligneDevisEquipement(DevisEquipement $devis): array
+    {
+        return [
+            'id' => $devis->id,
+            'statut' => $devis->statut,
+            'majoration_active' => $devis->majoration_active,
+            'taux_majoration' => $devis->taux_majoration !== null ? (float) $devis->taux_majoration : null,
+            'montant_base' => $devis->montantBase(),
+            'montant' => $devis->montant(),
+            'date_validation' => $devis->date_validation?->toDateString(),
+            'date_paiement' => $devis->date_paiement?->toDateString(),
+            'mode_paiement' => $devis->mode_paiement,
+            'motif_rejet' => $devis->motif_rejet,
+            'notes' => $devis->notes,
+            'reception' => $devis->reception?->id,
+            'commande' => $devis->reception?->commande?->reference,
+            'fournisseur' => $devis->reception?->commande?->fournisseur?->nom,
+            'valideur' => $devis->valideur ? $devis->valideur->prenom.' '.$devis->valideur->nom : null,
+            'transitions' => DevisEquipement::TRANSITIONS[$devis->statut] ?? [],
+            'lignes' => $devis->lignes->map(fn (DevisEquipementLigne $l) => [
+                'id' => $l->id,
+                'designation' => $l->designation,
+                'quantite' => $l->quantite,
+                'prix_unitaire' => (float) $l->prix_unitaire,
+                'montant' => $l->montant(),
             ]),
         ];
     }

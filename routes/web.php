@@ -28,6 +28,7 @@ use App\Http\Controllers\ParcEquipementController;
 use App\Http\Controllers\PartenaireController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\Proprietaire\DashboardController as ProprietaireDashboardController;
+use App\Http\Controllers\Proprietaire\DevisEquipementController as ProprietaireDevisEquipementController;
 use App\Http\Controllers\Proprietaire\EncaissementController as ProprietaireEncaissementController;
 use App\Http\Controllers\Proprietaire\EquipementController as ProprietaireEquipementController;
 use App\Http\Controllers\Proprietaire\PartenaireController as ProprietairePartenaireController;
@@ -113,6 +114,38 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
         Route::delete('achats/{achat}', [ComptabiliteController::class, 'destroyAchat'])
             ->name('comptabilite.achats.destroy');
+
+        // Devis equipement (extension Phase 06) : genere automatiquement a
+        // l'Enregistrement cote Logistique, jamais cree a la main ici.
+        Route::get('devis-equipements', [ComptabiliteController::class, 'devisEquipements'])
+            ->name('comptabilite.devis-equipements');
+
+        Route::patch('devis-equipements/{devis}/majoration', [ComptabiliteController::class, 'majorerDevisEquipement'])
+            ->name('comptabilite.devis-equipements.majoration');
+
+        Route::patch('devis-equipements/{devis}/statut', [ComptabiliteController::class, 'changerStatutDevisEquipement'])
+            ->name('comptabilite.devis-equipements.statut');
+
+        Route::patch('devis-equipements/{devis}/paiement', [ComptabiliteController::class, 'payerDevisEquipement'])
+            ->name('comptabilite.devis-equipements.paiement');
+
+        // Registre des immobilisations (extension Phase 06) : vue cumulative des lignes
+        // 'immobilisation' deja en base, pas de nouvelle table. Declaree avant
+        // 'devis-equipements/{devis}' n'est pas necessaire (prefixe different), mais
+        // 'export' reste avant toute route parametree par principe.
+        Route::get('immobilisations/export', [ComptabiliteController::class, 'exportImmobilisations'])
+            ->name('comptabilite.immobilisations.export');
+
+        Route::get('immobilisations', [ComptabiliteController::class, 'immobilisations'])
+            ->name('comptabilite.immobilisations');
+
+        // Avances de reservation (extension Phase 06) : isole les acomptes portail
+        // aujourd'hui noyes dans Entrees.
+        Route::get('avances/export', [ComptabiliteController::class, 'exportAvances'])
+            ->name('comptabilite.avances.export');
+
+        Route::get('avances', [ComptabiliteController::class, 'avances'])
+            ->name('comptabilite.avances');
 
         // Le livre de caisse (etape B-bis). 'Depenses' et 'Avances recues' ont ete
         // absorbes : la premiere ne montrait que les charges — donc pas les
@@ -627,6 +660,16 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
         Route::get('partenaires-catalogue', [ProprietairePartenaireController::class, 'index'])
             ->name('proprietaire.partenaires.index');
+
+        // Extension Phase 06 : lecture seule, le reglement se fait cote Comptabilite.
+        Route::get('mes-devis-equipement', [ProprietaireDevisEquipementController::class, 'index'])
+            ->name('proprietaire.devis-equipements.index');
+
+        // Meme controleur/requete que la Comptabilite (acces confirme en lecture seule),
+        // via une methode dediee : Wayfinder generait un export ambigu si le meme nom de
+        // methode servait /admin/immobilisations ET /admin/mes-immobilisations.
+        Route::get('mes-immobilisations', [ComptabiliteController::class, 'immobilisationsProprietaire'])
+            ->name('proprietaire.immobilisations.index');
     });
 });
 

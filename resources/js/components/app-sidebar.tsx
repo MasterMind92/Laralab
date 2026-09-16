@@ -63,6 +63,9 @@ const itemsPatrimoine: NonNullable<NavItem['sub']> = [
     { title: 'Encaissements', url: '/admin/encaissements', icon: Wallet },
     { title: 'Équipements', url: '/admin/equipements-statut', icon: Package },
     { title: 'Partenaires', url: '/admin/partenaires-catalogue', icon: Handshake },
+    // Extension Phase 06 : lecture seule, le reglement se fait cote Comptabilite.
+    { title: 'Devis Équipement', url: '/admin/mes-devis-equipement', icon: FileText },
+    { title: 'Registre des immobilisations', url: '/admin/mes-immobilisations', icon: Boxes },
     { title: 'Achats', url: '#', icon: ShoppingCart }, // Phase 06 (Comptabilité avancée)
     { title: 'Dépenses', url: '#', icon: ArrowUpFromLine }, // Phase 06
     { title: 'États Financiers', url: '#', icon: FileBarChart }, // Phase 06
@@ -177,20 +180,12 @@ const mainNavItems: NavItem[] = [
                 icon: FileStack,
             },
             {
-                // Fusionne "Consultation Devis" + "Cloture Sejours" + "Facture du sejour" +
-                // "Encaissements factures" : le statut de chaque facture (brouillon a
-                // valider/rejeter, validee a encaisser, payee = sejour cloture cote
-                // comptable) porte a lui seul ce qui distinguait ces 4 ecrans.
+                // Extension Phase 06 : genere automatiquement a l'Enregistrement cote
+                // Logistique (une ligne durable = facturable au Proprietaire), jamais
+                // cree a la main ici.
                 title: "Consultation Devis Equipement",
-                url:"#",
-            },
-            {
-                // Fusionne "Consultation Devis" + "Cloture Sejours" + "Facture du sejour" +
-                // "Encaissements factures" : le statut de chaque facture (brouillon a
-                // valider/rejeter, validee a encaisser, payee = sejour cloture cote
-                // comptable) porte a lui seul ce qui distinguait ces 4 ecrans.
-                title: "Consultation Devis Equipement",
-                url:"#",
+                url:"/admin/devis-equipements",
+                icon: FileText,
             },
             {
                 // Le livre de caisse (Phase 06, etape B-bis). Remplace "Avances recues",
@@ -200,10 +195,11 @@ const mainNavItems: NavItem[] = [
                 icon: ArrowDownToLine,
             },
             {
-                // Suivi des impayes/relances — different du flux valider/encaisser,
-                // differe a un futur reporting.
+                // Extension Phase 06 : isole les acomptes portail (Paiement.reservation_id
+                // non nul), aujourd'hui noyes dans "Encaissements".
                 title: "Avances perçues",
-                url:"#",
+                url:"/admin/avances",
+                icon: ArrowRightLeft,
             },
             {
                 // Suivi des impayes/relances — different du flux valider/encaisser,
@@ -212,9 +208,6 @@ const mainNavItems: NavItem[] = [
                 url:"/admin/recouvrements",
                 icon: PhoneCall,
             },
-            
-            
-            
             {
                 // Remplace "Depenses" : celui-ci ne listait que les CHARGES, donc pas les
                 // immobilisations, donc pas la vraie tresorerie.
@@ -228,12 +221,6 @@ const mainNavItems: NavItem[] = [
                 url:"#",
             },
             {
-                // Suivi des impayes/relances — different du flux valider/encaisser,
-                // differe a un futur reporting.
-                title: "Depenses",
-                url:"#",
-            },
-            {
                 // Renomme : cet ecran n'est pas une vue comptable mais la file d'attente
                 // de validation des engagements. L'URL reste /admin/achats — le projet
                 // tolere deja l'ecart libelle/URL ("Consultation Devis" sert /admin/factures).
@@ -242,18 +229,22 @@ const mainNavItems: NavItem[] = [
                 icon: ShoppingCart,
             },
             {
+                // Extension Phase 06 : vue cumulative des lignes 'immobilisation' deja en
+                // base (facture_fournisseur_lignes.nature), pas une nouvelle table.
+                title: "Registre des immobilisations",
+                url:"/admin/immobilisations",
+                icon: Boxes,
+            },
+            {
                 title: "Etats Financiers",
                 url:"/admin/etats-financiers",
                 icon: FileBarChart,
             },
-            
             {
                 title: "Parametres de facturation",
                 url:"/admin/parametres-facturation",
                 icon: Settings,
             },
-
-
         ]
     },
     {

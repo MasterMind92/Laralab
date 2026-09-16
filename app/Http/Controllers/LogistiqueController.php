@@ -7,6 +7,8 @@ use App\Models\Appartement;
 use App\Models\Besoin;
 use App\Models\Commande;
 use App\Models\CommandeLigne;
+use App\Models\DevisEquipement;
+use App\Models\DevisEquipementLigne;
 use App\Models\Employe;
 use App\Models\Equipement;
 use App\Models\Fournisseur;
@@ -14,6 +16,7 @@ use App\Models\Reception;
 use App\Models\ReceptionLigne;
 use App\Notifications\Interne\BesoinAValider;
 use App\Notifications\Interne\CommandeRecue;
+use App\Notifications\Interne\DevisEquipementEmis;
 use App\Notifications\Interne\EcartReception;
 use App\Support\Destinataires;
 use Illuminate\Http\RedirectResponse;
@@ -638,9 +641,54 @@ class LogistiqueController extends Controller
             }
 
             $ligne->increment('quantite_enregistree', $data['quantite']);
+
+            $this->genererDevisEquipement($ligne);
         });
 
         return back();
+    }
+
+    /**
+     * Devis équipement (extension Phase 06) : une ligne qui vient d'être enregistrée est
+     * par définition durable (elle a produit un Equipement), donc facturable au
+     * Propriétaire de l'entreprise. Un brouillon par réception ; les lignes s'y
+     * accumulent au fil des enregistrements successifs — `updateOrCreate` sur
+     * `reception_ligne_id` rend l'écriture idempotente si le même complément est rejoué.
+     *
+     * Si un devis pour cette réception a déjà été validé entre-temps, un second brouillon
+     * démarre plutôt que de rouvrir un document déjà communiqué au Propriétaire — cas
+     * rare (un enregistrement tardif le même jour qu'une validation), assumé.
+     */
+    private function genererDevisEquipement(ReceptionLigne $ligne): void
+    {
+        $devis = DevisEquipement::where('reception_id', $ligne->reception_id)
+            ->where('statut', 'brouillon')
+            ->first();
+
+        $nouveau = $devis === null;
+
+        if ($nouveau) {
+            $devis = DevisEquipement::create([
+                'entreprise_id' => $ligne->reception->commande->entreprise_id,
+                'reception_id' => $ligne->reception_id,
+            ]);
+        }
+
+        DevisEquipementLigne::updateOrCreate(
+            ['devis_equipement_id' => $devis->id, 'reception_ligne_id' => $ligne->id],
+            [
+                'designation' => $ligne->commandeLigne?->designation ?? '—',
+                'quantite' => $ligne->quantite_enregistree,
+                'prix_unitaire' => $ligne->commandeLigne?->prix_unitaire ?? 0,
+            ],
+        );
+
+        if ($nouveau) {
+            Notification::send(
+                Destinataires::pourRole(['proprietaire', 'gerant'], $devis->entreprise_id),
+                new DevisEquipementEmis($devis),
+            );
+        }
     }
 
     // ------------------------------------------------------------- Affectation

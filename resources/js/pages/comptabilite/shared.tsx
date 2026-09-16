@@ -251,3 +251,101 @@ export function OrigineSortieBadge({ origine }: { origine: OrigineSortie }) {
         </Badge>
     );
 }
+
+/* --------------------------------------------------- extension Phase 06 */
+
+/**
+ * Devis équipement : généré automatiquement à l'Enregistrement côté Logistique
+ * (`LogistiqueController::genererDevisEquipement()`), jamais créé à la main. Cycle
+ * calqué sur `StatutAchat`, mais nommé "brouillon" plutôt que "a_valider" — décision
+ * actée lors du cadrage du 2026-09-16.
+ */
+export type StatutDevisEquipement = 'brouillon' | 'validee' | 'payee' | 'annulee';
+
+export type LigneDevisEquipement = {
+    id: number;
+    designation: string;
+    quantite: number;
+    prix_unitaire: number;
+    montant: number;
+};
+
+export type DevisEquipementRow = {
+    id: number;
+    statut: StatutDevisEquipement;
+    majoration_active: boolean;
+    taux_majoration: number | null;
+    montant_base: number;
+    montant: number;
+    date_validation: string | null;
+    date_paiement: string | null;
+    mode_paiement: ModePaiementFournisseur | null;
+    motif_rejet: string | null;
+    notes: string | null;
+    reception: number | null;
+    commande: string | null;
+    fournisseur: string | null;
+    valideur: string | null;
+    transitions: StatutDevisEquipement[];
+    lignes: LigneDevisEquipement[];
+};
+
+export const STATUT_DEVIS_EQUIPEMENT_LABELS: Record<StatutDevisEquipement, string> = {
+    brouillon: 'Brouillon',
+    validee: 'Validé',
+    payee: 'Payé',
+    annulee: 'Annulé',
+};
+
+const STATUT_DEVIS_EQUIPEMENT_VARIANTS: Record<StatutDevisEquipement, Variant> = {
+    brouillon: 'default',
+    validee: 'secondary',
+    payee: 'secondary',
+    annulee: 'destructive',
+};
+
+export function StatutDevisEquipementBadge({ statut }: { statut: StatutDevisEquipement }) {
+    return (
+        <Badge variant={STATUT_DEVIS_EQUIPEMENT_VARIANTS[statut]}>
+            {STATUT_DEVIS_EQUIPEMENT_LABELS[statut]}
+        </Badge>
+    );
+}
+
+/** Registre des immobilisations : lecture cumulative, pas de cycle de statut ici. */
+export type ImmobilisationRow = {
+    id: number;
+    date_facture: string | null;
+    fournisseur: string | null;
+    designation: string;
+    montant: number;
+    appartement: string;
+    statut: 'Actif' | 'Réformé';
+    garantie_fin: string | null;
+};
+
+/** Avances de réservation : acomptes portail, "rapprochée" une fois liés à une facture. */
+export type EtatAvance = 'en_attente' | 'rapprochee';
+
+export type AvanceRow = {
+    id: number;
+    montant: number;
+    date_paiement: string | null;
+    client: string | null;
+    appartement: string | null;
+    numero_facture: string | null;
+    etat: EtatAvance;
+};
+
+export const ETAT_AVANCE_LABELS: Record<EtatAvance, string> = {
+    en_attente: 'En attente de facturation',
+    rapprochee: 'Rapprochée',
+};
+
+export function EtatAvanceBadge({ etat }: { etat: EtatAvance }) {
+    return (
+        <Badge variant={etat === 'rapprochee' ? 'secondary' : 'outline'}>
+            {ETAT_AVANCE_LABELS[etat]}
+        </Badge>
+    );
+}
