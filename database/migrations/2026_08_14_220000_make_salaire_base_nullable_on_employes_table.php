@@ -1,7 +1,8 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -10,11 +11,14 @@ return new class extends Migration
      * Employe::contratActif()) : le vrai salaire vit sur ContratTravail. La colonne
      * reste utile (renseignée automatiquement à l'embauche depuis l'offre acceptée),
      * mais ne doit plus être obligatoire à la création manuelle d'un employé.
-     * DB::statement plutôt que ->change() pour ne pas ajouter doctrine/dbal.
+     * `->change()` ne nécessite PAS doctrine/dbal dans cette version de Laravel
+     * (vérifié sur MySQL et SQLite, 2026-09-17) — portable sur les deux pilotes.
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE employes MODIFY salaire_base DECIMAL(10,2) NULL');
+        Schema::table('employes', function (Blueprint $table) {
+            $table->decimal('salaire_base', 10, 2)->nullable()->change();
+        });
     }
 
     /**
@@ -22,6 +26,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE employes MODIFY salaire_base DECIMAL(10,2) NOT NULL');
+        Schema::table('employes', function (Blueprint $table) {
+            $table->decimal('salaire_base', 10, 2)->nullable(false)->change();
+        });
     }
 };

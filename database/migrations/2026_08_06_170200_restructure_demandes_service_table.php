@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -26,7 +25,11 @@ return new class extends Migration
             $table->dropForeign(['sejour_id']);
         });
 
-        DB::statement('ALTER TABLE demandes_service MODIFY sejour_id BIGINT UNSIGNED NULL');
+        // ->change() ne necessite pas doctrine/dbal dans cette version de Laravel
+        // (verifie sur MySQL et SQLite, 2026-09-17) — portable sur les deux pilotes.
+        Schema::table('demandes_service', function (Blueprint $table) {
+            $table->foreignId('sejour_id')->nullable()->change();
+        });
 
         Schema::table('demandes_service', function (Blueprint $table) {
             $table->foreign('sejour_id')->references('id')->on('sejours')->nullOnDelete();
@@ -45,7 +48,9 @@ return new class extends Migration
             $table->dropColumn(['appartement_id', 'partenaire_id']);
         });
 
-        DB::statement('ALTER TABLE demandes_service MODIFY sejour_id BIGINT UNSIGNED NOT NULL');
+        Schema::table('demandes_service', function (Blueprint $table) {
+            $table->foreignId('sejour_id')->nullable(false)->change();
+        });
 
         Schema::table('demandes_service', function (Blueprint $table) {
             $table->foreign('sejour_id')->references('id')->on('sejours')->cascadeOnDelete();

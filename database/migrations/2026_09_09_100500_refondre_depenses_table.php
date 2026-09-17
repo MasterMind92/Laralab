@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -43,12 +42,20 @@ return new class extends Migration
             $table->index(['entreprise_id', 'date_depense']);
         });
 
-        DB::statement("ALTER TABLE depenses MODIFY categorie ENUM('achats_consommables','services_exterieurs','personnel','impots_taxes','charges_financieres','autres') NOT NULL DEFAULT 'autres'");
+        // ->change() ne necessite pas doctrine/dbal dans cette version de Laravel
+        // (verifie sur MySQL et SQLite, 2026-09-17) — portable sur les deux pilotes.
+        Schema::table('depenses', function (Blueprint $table) {
+            $table->enum('categorie', ['achats_consommables', 'services_exterieurs', 'personnel', 'impots_taxes', 'charges_financieres', 'autres'])
+                ->default('autres')
+                ->change();
+        });
     }
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE depenses MODIFY categorie ENUM('achats','salaires','maintenance','fournitures') NOT NULL");
+        Schema::table('depenses', function (Blueprint $table) {
+            $table->enum('categorie', ['achats', 'salaires', 'maintenance', 'fournitures'])->change();
+        });
 
         Schema::table('depenses', function (Blueprint $table) {
             $table->dropIndex(['entreprise_id', 'date_depense']);

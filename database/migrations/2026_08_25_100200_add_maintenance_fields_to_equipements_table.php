@@ -23,13 +23,19 @@ return new class extends Migration
             $table->date('date_reforme')->nullable()->after('contrat_echeance');
         });
 
-        DB::statement("ALTER TABLE equipements MODIFY statut ENUM('stock','affecte','en_panne','reforme') NOT NULL DEFAULT 'stock'");
+        // ->change() ne necessite pas doctrine/dbal dans cette version de Laravel
+        // (verifie sur MySQL et SQLite, 2026-09-17) — portable sur les deux pilotes.
+        Schema::table('equipements', function (Blueprint $table) {
+            $table->enum('statut', ['stock', 'affecte', 'en_panne', 'reforme'])->default('stock')->change();
+        });
     }
 
     public function down(): void
     {
         DB::statement("UPDATE equipements SET statut = 'en_panne' WHERE statut = 'reforme'");
-        DB::statement("ALTER TABLE equipements MODIFY statut ENUM('stock','affecte','en_panne') NOT NULL DEFAULT 'stock'");
+        Schema::table('equipements', function (Blueprint $table) {
+            $table->enum('statut', ['stock', 'affecte', 'en_panne'])->default('stock')->change();
+        });
 
         Schema::table('equipements', function (Blueprint $table) {
             $table->dropColumn(['date_reforme', 'contrat_echeance', 'contrat_reference', 'contrat_maintenance', 'garantie_fin', 'numero_serie']);

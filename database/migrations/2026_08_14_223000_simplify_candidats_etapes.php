@@ -1,7 +1,9 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -10,10 +12,16 @@ return new class extends Migration
      * preselectionne/entretien -> entretien, evaluation/retenu -> decision).
      * L'enum est élargi avant le remappage des données, puis restreint à sa
      * forme finale, pour ne jamais avoir de valeur hors-enum en transit.
+     * `->change()` ne nécessite PAS doctrine/dbal dans cette version de Laravel
+     * (vérifié sur MySQL et SQLite, 2026-09-17) — portable sur les deux pilotes.
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE candidats MODIFY etape ENUM('recu','a_analyser','preselectionne','entretien','evaluation','retenu','offre','embauche','decision') NOT NULL DEFAULT 'recu'");
+        Schema::table('candidats', function (Blueprint $table) {
+            $table->enum('etape', ['recu', 'a_analyser', 'preselectionne', 'entretien', 'evaluation', 'retenu', 'offre', 'embauche', 'decision'])
+                ->default('recu')
+                ->change();
+        });
 
         DB::statement("UPDATE candidats SET etape = CASE etape
             WHEN 'a_analyser' THEN 'recu'
@@ -23,18 +31,30 @@ return new class extends Migration
             ELSE etape
         END");
 
-        DB::statement("ALTER TABLE candidats MODIFY etape ENUM('recu','entretien','decision','offre','embauche') NOT NULL DEFAULT 'recu'");
+        Schema::table('candidats', function (Blueprint $table) {
+            $table->enum('etape', ['recu', 'entretien', 'decision', 'offre', 'embauche'])
+                ->default('recu')
+                ->change();
+        });
     }
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE candidats MODIFY etape ENUM('recu','a_analyser','preselectionne','entretien','evaluation','retenu','offre','embauche','decision') NOT NULL DEFAULT 'recu'");
+        Schema::table('candidats', function (Blueprint $table) {
+            $table->enum('etape', ['recu', 'a_analyser', 'preselectionne', 'entretien', 'evaluation', 'retenu', 'offre', 'embauche', 'decision'])
+                ->default('recu')
+                ->change();
+        });
 
         DB::statement("UPDATE candidats SET etape = CASE etape
             WHEN 'decision' THEN 'evaluation'
             ELSE etape
         END");
 
-        DB::statement("ALTER TABLE candidats MODIFY etape ENUM('recu','a_analyser','preselectionne','entretien','evaluation','retenu','offre','embauche') NOT NULL DEFAULT 'recu'");
+        Schema::table('candidats', function (Blueprint $table) {
+            $table->enum('etape', ['recu', 'a_analyser', 'preselectionne', 'entretien', 'evaluation', 'retenu', 'offre', 'embauche'])
+                ->default('recu')
+                ->change();
+        });
     }
 };

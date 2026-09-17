@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -14,11 +13,17 @@ return new class extends Migration
      * du séjour (facture_id mis à jour sur la même ligne, jamais dupliquée). Invariant
      * maintenu côté application (pas en contrainte SQL) : à la création, exactement un
      * des deux FK est renseigné.
+     *
+     * `->change()` ne nécessite PAS doctrine/dbal dans cette version de Laravel (vérifié
+     * sur MySQL et SQLite, 2026-09-17) — portable sur les deux pilotes, y compris sur une
+     * colonne qui porte déjà une contrainte de clé étrangère (testé).
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE paiements MODIFY facture_id BIGINT UNSIGNED NULL');
-        DB::statement("ALTER TABLE paiements MODIFY mode_paiement ENUM('cb','especes','virement','mobile_money','paypal') NOT NULL");
+        Schema::table('paiements', function (Blueprint $table) {
+            $table->foreignId('facture_id')->nullable()->change();
+            $table->enum('mode_paiement', ['cb', 'especes', 'virement', 'mobile_money', 'paypal'])->change();
+        });
 
         Schema::table('paiements', function (Blueprint $table) {
             $table->foreignId('reservation_id')->nullable()->after('facture_id')->constrained('reservations')->restrictOnDelete();
@@ -31,7 +36,9 @@ return new class extends Migration
             $table->dropConstrainedForeignId('reservation_id');
         });
 
-        DB::statement("ALTER TABLE paiements MODIFY mode_paiement ENUM('cb','especes','virement','mobile_money') NOT NULL");
-        DB::statement('ALTER TABLE paiements MODIFY facture_id BIGINT UNSIGNED NOT NULL');
+        Schema::table('paiements', function (Blueprint $table) {
+            $table->enum('mode_paiement', ['cb', 'especes', 'virement', 'mobile_money'])->change();
+            $table->foreignId('facture_id')->nullable(false)->change();
+        });
     }
 };
