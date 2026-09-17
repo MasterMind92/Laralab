@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToEntreprise;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
-use Carbon\CarbonInterface;
 
 #[Fillable([
     'numero', 'capacite', 'prix_nuit', 'statut_entretien',
@@ -17,6 +18,7 @@ use Carbon\CarbonInterface;
 class Appartement extends Model
 {
     use BelongsToEntreprise;
+    use HasFactory;
 
     /**
      * Gère automatiquement `indisponible_depuis` quand `statut_entretien` change
