@@ -30,6 +30,13 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
+        // L'hebergement n'est pas encore choisi, donc l'IP du futur reverse-proxy est
+        // inconnue : faire confiance a tous les proxies immediats est le reglage standard
+        // Laravel dans ce cas (sans ca, en prod derriere n'importe quel nginx/load-balancer,
+        // Laravel ne voit jamais le HTTPS reel : URLs generees en http://, cookies "secure"
+        // jamais envoyes). A resserrer a une IP precise une fois l'hebergement tranche.
+        $middleware->trustProxies(at: '*');
+
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         $middleware->web(append: [
