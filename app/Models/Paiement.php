@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['facture_id', 'reservation_id', 'montant', 'mode_paiement', 'reference_transaction', 'date_paiement'])]
 class Paiement extends Model
 {
+    use Auditable;
+
     /**
      * Atteint son entreprise par deux chemins distincts selon son origine : via la
      * Facture (encaissement Comptabilité classique) ou directement via la Reservation

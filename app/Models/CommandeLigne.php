@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['commande_id', 'besoin_id', 'designation', 'quantite', 'prix_unitaire'])]
 class CommandeLigne extends Model
 {
+    use Auditable;
     use ScopedThroughEntreprise;
 
     public static function entrepriseRelationPath(): string

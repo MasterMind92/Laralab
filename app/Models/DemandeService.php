@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['sejour_id', 'appartement_id', 'partenaire_id', 'designation', 'quantite', 'prix_unitaire', 'statut'])]
 class DemandeService extends Model
 {
+    use Auditable;
     use ScopedThroughEntreprise;
     use SoftDeletes;
 

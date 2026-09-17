@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -27,6 +28,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 ])]
 class Intervention extends Model
 {
+    use Auditable;
     use ScopedThroughEntreprise;
     use SoftDeletes;
 

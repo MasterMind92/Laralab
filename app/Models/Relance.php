@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['facture_id', 'employe_id', 'date_relance', 'canal', 'note', 'solde_restant'])]
 class Relance extends Model
 {
+    use Auditable;
     use ScopedThroughEntreprise;
 
     public const CANAUX = ['email', 'telephone', 'courrier', 'sur_place'];

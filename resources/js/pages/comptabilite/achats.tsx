@@ -14,6 +14,7 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import ComptabiliteController from '@/actions/App/Http/Controllers/ComptabiliteController';
 import { DataTable } from '@/components/data-table/data-table';
+import { Historique } from '@/components/historique';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -1020,6 +1021,8 @@ export default function Achats({
                                 {detail.motif_rejet}
                             </p>
                         )}
+
+                        {detail && <Historique type="FactureFournisseur" id={detail.id} ouvert={detail !== null} />}
                     </div>
                 </DialogContent>
             </Dialog>

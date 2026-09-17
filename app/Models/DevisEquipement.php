@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,6 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['entreprise_id', 'reception_id', 'notes'])]
 class DevisEquipement extends Model
 {
+    use Auditable;
     use BelongsToEntreprise;
     use SoftDeletes;
 

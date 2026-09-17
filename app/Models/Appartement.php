@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToEntreprise;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 ])]
 class Appartement extends Model
 {
+    use Auditable;
     use BelongsToEntreprise;
     use HasFactory;
 

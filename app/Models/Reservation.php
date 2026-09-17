@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['appartement_id', 'client_id', 'date_debut', 'date_fin', 'statut', 'nombre_personnes', 'notes'])]
 class Reservation extends Model
 {
+    use Auditable;
     use ScopedThroughEntreprise;
     use SoftDeletes;
 

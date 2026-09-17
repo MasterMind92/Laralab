@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['frais_service_actif', 'taux_frais_service', 'tva_active', 'taux_tva', 'depot_garantie_defaut', 'delai_restitution_jours', 'acompte_actif', 'delai_paiement_jours', 'entreprise_id'])]
 class ParametreFacturation extends Model
 {
+    use Auditable;
     use BelongsToEntreprise;
 
     protected $table = 'parametres_facturation';

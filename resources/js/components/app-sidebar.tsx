@@ -16,6 +16,7 @@ import {
     FileStack,
     FileText,
     Handshake,
+    History,
     LayoutDashboard,
     Package,
     PackageCheck,
@@ -69,6 +70,8 @@ const itemsPatrimoine: NonNullable<NavItem['sub']> = [
     { title: 'Achats', url: '#', icon: ShoppingCart }, // Phase 06 (Comptabilité avancée)
     { title: 'Dépenses', url: '#', icon: ArrowUpFromLine }, // Phase 06
     { title: 'États Financiers', url: '#', icon: FileBarChart }, // Phase 06
+    // Extension Phase 08 : scope automatique a l'entreprise du proprietaire/gerant.
+    { title: 'Journal d\'audit', url: '/admin/mon-journal-audit', icon: History },
 ];
 
 const mainNavItems: NavItem[] = [
@@ -92,6 +95,12 @@ const mainNavItems: NavItem[] = [
                 title: "Partenaires",
                 url:"/admin/admin-partenaires",
                 icon: Handshake,
+            },
+            {
+                // Extension Phase 08 : administrateur exempte de scope, voit tout.
+                title: "Journal d'audit",
+                url:"/admin/journal-audit",
+                icon: History,
             },
         ]
     },

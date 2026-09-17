@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -37,7 +38,18 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use Auditable, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    /**
+     * Jamais consigne dans le journal d'audit (extension Phase 08) : mot de passe hache,
+     * token "se souvenir de moi", secret et codes de recuperation 2FA. #[Hidden] ci-dessus
+     * ne protege que la serialisation JSON/Inertia, pas getAttributes()/getChanges() que
+     * lit JournalAudit::consigner() — cette liste est le vrai garde-fou.
+     */
+    public function auditExclusions(): array
+    {
+        return ['updated_at', 'password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at'];
+    }
 
     /**
      * Roles qui n'ont structurellement jamais d'entreprise_id : administrateur (accès

@@ -17,6 +17,7 @@ use App\Http\Controllers\EntretienController;
 use App\Http\Controllers\FactureController;
 use App\Http\Controllers\InterventionActionController;
 use App\Http\Controllers\InterventionController;
+use App\Http\Controllers\JournalAuditController;
 use App\Http\Controllers\LicenciementController;
 use App\Http\Controllers\LogistiqueController;
 use App\Http\Controllers\MaintenanceController;
@@ -79,6 +80,13 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
     Route::delete('notifications/{notification}', [NotificationController::class, 'destroy'])
         ->name('notifications.destroy');
+
+    // Journal d'audit (extension Phase 08) : historique d'une fiche precise, transverse a
+    // tous les poles comme les notifications ci-dessus — sans middleware 'role', le scope
+    // entreprise de JournalAudit suffit (si l'utilisateur peut ouvrir la fiche, il peut
+    // voir son historique).
+    Route::get('journal-audit/{type}/{id}', [JournalAuditController::class, 'pourAuditable'])
+        ->name('journal-audit.pour-auditable');
 
     Route::get('receptionniste', [ReceptionnisteDashboardController::class, 'index'])
         ->name('receptionniste')
@@ -642,6 +650,15 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
         Route::delete('admin-partenaires/{partenaire}', [AdminPartenaireController::class, 'destroy'])
             ->name('admin.partenaires.destroy');
+
+        // Journal d'audit (extension Phase 08) : vue Direction. Export avant la route
+        // simple par principe (aucun conflit ici, pas de segment parametre, mais on garde
+        // la convention du projet).
+        Route::get('journal-audit/export', [JournalAuditController::class, 'export'])
+            ->name('journal-audit.export');
+
+        Route::get('journal-audit', [JournalAuditController::class, 'index'])
+            ->name('journal-audit.index');
     });
 
     // Tableaux de bord Propriétaire/Gérant, scopés à leur entreprise (Phase 09).
@@ -660,6 +677,16 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
         Route::get('partenaires-catalogue', [ProprietairePartenaireController::class, 'index'])
             ->name('proprietaire.partenaires.index');
+
+        // Journal d'audit (extension Phase 08) : meme requete que la vue administrateur,
+        // scopee automatiquement a l'entreprise du proprietaire/gerant connecte. Methode
+        // dediee (indexProprietaire) plutot qu'une 2e route sur index() : meme contrainte
+        // Wayfinder que ComptabiliteController::immobilisationsProprietaire().
+        Route::get('mon-journal-audit', [JournalAuditController::class, 'indexProprietaire'])
+            ->name('journal-audit.index-proprietaire');
+
+        Route::get('mon-journal-audit/export', [JournalAuditController::class, 'exportProprietaire'])
+            ->name('journal-audit.export-proprietaire');
 
         // Extension Phase 06 : lecture seule, le reglement se fait cote Comptabilite.
         Route::get('mes-devis-equipement', [ProprietaireDevisEquipementController::class, 'index'])

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\ScopedThroughEntreprise;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['employe_id', 'motif', 'date_notification', 'duree_preavis_jours', 'decide_par_id'])]
 class Licenciement extends Model
 {
+    use Auditable;
     use ScopedThroughEntreprise;
 
     public static function entrepriseRelationPath(): string

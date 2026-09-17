@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTable } from '@/components/data-table/data-table';
 import { ExportDialog } from '@/components/data-table/export-dialog';
+import { Historique } from '@/components/historique';
 import {
     Dialog,
     DialogContent,
@@ -464,6 +465,10 @@ export default function Employes({ employes, competences }: { employes: EmployeR
                                     </div>
                                 </div>
                             )}
+
+                            <div className="pt-2">
+                                <Historique type="Employe" id={details.id} ouvert={true} />
+                            </div>
                         </div>
                     )}
                 </DialogContent>

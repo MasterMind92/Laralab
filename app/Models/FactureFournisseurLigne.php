@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 ])]
 class FactureFournisseurLigne extends Model
 {
+    use Auditable;
     use ScopedThroughEntreprise;
 
     public const NATURES = ['charge', 'immobilisation'];

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 ])]
 class Employe extends Model
 {
+    use Auditable;
     use BelongsToEntreprise;
     use HasFactory;
     use SoftDeletes;

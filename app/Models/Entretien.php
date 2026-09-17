@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['candidat_id', 'numero_tour', 'date_entretien', 'type', 'duree_minutes', 'statut', 'decision', 'note'])]
 class Entretien extends Model
 {
+    use Auditable;
     use ScopedThroughEntreprise;
     use SoftDeletes;
 

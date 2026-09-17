@@ -12,6 +12,7 @@ import {
 import type { FormEvent } from 'react';
 import InterventionActionController from '@/actions/App/Http/Controllers/InterventionActionController';
 import MaintenanceController from '@/actions/App/Http/Controllers/MaintenanceController';
+import { Historique } from '@/components/historique';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -720,6 +721,10 @@ export function InterventionDialog({
                             </form>
                         )}
                     </div>
+
+                    <Separator />
+
+                    <Historique type="Intervention" id={intervention.id} ouvert={true} />
                 </div>
             </DialogContent>
         </Dialog>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['intervention_id', 'type', 'description', 'temps_passe_minutes', 'piece_libelle', 'piece_quantite', 'cout', 'effectuee_le'])]
 class InterventionAction extends Model
 {
+    use Auditable;
     use ScopedThroughEntreprise;
     use SoftDeletes;
 

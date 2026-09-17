@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\ScopedThroughEntreprise;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['devis_equipement_id', 'reception_ligne_id', 'designation', 'quantite', 'prix_unitaire'])]
 class DevisEquipementLigne extends Model
 {
+    use Auditable;
     use ScopedThroughEntreprise;
 
     public static function entrepriseRelationPath(): string
