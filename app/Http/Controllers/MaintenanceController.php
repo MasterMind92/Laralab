@@ -46,6 +46,12 @@ class MaintenanceController extends Controller
     ];
 
     /**
+     * FIELD() est propre à MySQL — absent de Postgres (hébergement Render). Un CASE WHEN
+     * donne le même tri et fonctionne à l'identique sur MySQL/Postgres/SQLite.
+     */
+    private const TRI_PRIORITE = "CASE priorite WHEN 'critique' THEN 1 WHEN 'haute' THEN 2 WHEN 'normale' THEN 3 WHEN 'basse' THEN 4 ELSE 5 END";
+
+    /**
      * Tableau de bord opérationnel : une file de travail, pas du reporting agrégé —
      * les états financiers et les KPI transverses relèvent de la Phase 07 (décision
      * actée le 2026-08-26, le 6e bloc "Contrôle & reporting" y est entièrement différé).
@@ -91,7 +97,7 @@ class MaintenanceController extends Controller
             ->when($filtres['equipement_id'] ?? null, fn ($q, $id) => $q->where('equipement_id', $id))
             ->when($filtres['appartement_id'] ?? null, fn ($q, $id) => $q->where('appartement_id', $id))
             ->when($filtres['priorite'] ?? null, fn ($q, $p) => $q->where('priorite', $p))
-            ->orderByRaw("FIELD(priorite, 'critique', 'haute', 'normale', 'basse')")
+            ->orderByRaw(self::TRI_PRIORITE)
             ->orderBy('date_signalement');
 
         return Inertia::render('maintenance/pannes', [
@@ -165,7 +171,7 @@ class MaintenanceController extends Controller
         return Inertia::render('maintenance/reparations', [
             'interventions' => $this->lignes(
                 Intervention::whereIn('etape', ['en_cours', 'reparee', 'controlee'])
-                    ->orderByRaw("FIELD(priorite, 'critique', 'haute', 'normale', 'basse')")
+                    ->orderByRaw(self::TRI_PRIORITE)
                     ->orderBy('date_signalement'),
                 avecActions: true,
             ),

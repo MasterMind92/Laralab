@@ -1,68 +1,100 @@
-# Mise en production — checklist
+# Mise en production — Render
 
-Ce document couvre uniquement ce qui est **indépendant de l'hébergeur** (pas encore choisi
-au 2026-09-17). Les sections provisioning serveur / CI-CD / sauvegardes / monitoring
-dépendent de ce choix et restent à écrire une fois tranché.
+Hébergeur retenu (2026-09-17) : **Render**, plan payant Starter, PostgreSQL managé (Render
+ne propose pas de MySQL managé). Déploiement via **Docker** (`Dockerfile` à la racine,
+`render.yaml` décrit les 3 services). Ce document couvre ce que l'utilisateur doit faire
+lui-même dans le dashboard Render — connecter le compte/repo et les secrets restent hors de
+portée d'une session automatisée.
 
-## Avant le tout premier déploiement
+## Ce que `render.yaml` déclare déjà
 
-- Générer `APP_KEY` une seule fois (`php artisan key:generate`) et le conserver stable
-  ensuite. Le régénérer casse les sessions et tout ce qui est chiffré (cookies, colonnes
-  `encrypted`).
-- `php artisan storage:link` (lien symbolique `public/storage`, requis pour servir les
-  fichiers uploadés).
-- Copier `.env.example`, renseigner les vraies valeurs (voir le bloc "production" en bas du
-  fichier) : `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL` réel en HTTPS, base de
-  données MySQL réelle, `SESSION_SECURE_COOKIE=true`, `MAIL_MAILER` réel (pas `log`).
+- **`laralab-web`** (Web Service, Docker) : `healthCheckPath: /up`, `preDeployCommand`
+  (migrations + caches + `storage:link --force` à chaque déploiement — voir plus bas
+  pourquoi `--force` est nécessaire), un **disque persistant** de 1 Go monté sur
+  `storage/app` pour les fichiers uploadés (CVs, contrats, photos de logement).
+- **`laralab-scheduler`** (Background Worker, même image) : lance `php artisan
+  schedule:work` en continu. **Pas un Render Cron Job** — la doc Render déconseille un cron
+  à la minute (facturation à la seconde, timeout 12h, une seule exécution à la fois) et
+  recommande un worker continu pour ce cas d'usage. Un seul ordonnanceur existe aujourd'hui
+  (`maintenance:alerter-sla`, toutes les 15 min — voir `bootstrap/app.php`) ; sans ce
+  worker, les alertes de dépassement de SLA ne partent jamais.
+- **`laralab-db`** (PostgreSQL managé) — `DB_URL` est injecté automatiquement dans les deux
+  services ci-dessus via `fromDatabase`.
 
-## À chaque déploiement
+Pas de service Redis, pas de queue worker : aucune notification de ce projet n'implémente
+`ShouldQueue` (vérifié explicitement) — tout est synchrone.
 
-```
-composer install --no-dev --optimize-autoloader
-npm ci && npm run build
-php artisan migrate --force
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-php artisan event:cache
-```
+## À faire manuellement dans le dashboard Render (une fois, avant le premier déploiement)
 
-Si `.env` a changé depuis le déploiement précédent, faire `php artisan config:clear` avant
-`config:cache` (sinon l'ancien cache reste actif).
+- Générer `APP_KEY` en local (`php artisan key:generate --show`) et le coller comme variable
+  d'environnement secrète sur **les deux services** (`laralab-web` et `laralab-scheduler`,
+  marqués `sync: false` dans `render.yaml`). Ne jamais le régénérer ensuite (casse sessions
+  et données chiffrées).
+- `APP_URL` : renseigner une fois l'URL réelle connue (sous-domaine `*.onrender.com` fourni
+  par Render, ou domaine personnalisé).
+- Identifiants SMTP réels (Mailjet d'après l'historique du projet) :
+  `MAIL_HOST`/`MAIL_PORT`/`MAIL_USERNAME`/`MAIL_PASSWORD`/`MAIL_FROM_ADDRESS`.
+- `BROWSERSHOT_CHROME_PATH` : chemin du binaire chromium installé dans l'image (voir
+  section suivante).
 
-## Cron requis
+## Dépendance système : Chrome/Chromium (Browsershot)
 
-```
-* * * * * php artisan schedule:run
-```
+La génération PDF des devis/factures (Phase 03) shelle vers `node`, qui lance Chromium.
+Le `Dockerfile` installe `chromium` + `nodejs`/`npm` dans l'image finale (Alpine, via
+`apk add`). `puppeteer` a été déplacé de `devDependencies` vers `dependencies` dans
+`package.json` (bug latent trouvé au passage : c'est un besoin d'exécution — Browsershot en
+a besoin à chaque génération de PDF — pas seulement un outil de dev ; un `npm ci
+--omit=dev` l'aurait silencieusement cassé).
 
-Un seul ordonnanceur existe aujourd'hui (Phase 12) : `maintenance:alerter-sla`, toutes les
-15 minutes — voir `bootstrap/app.php`. Sans cette ligne de cron, les alertes de dépassement
-de SLA ne partent jamais en production.
+**`BROWSERSHOT_CHROME_PATH` non vérifié empiriquement** — Docker Desktop n'a pas pu être
+démarré sur ce poste pendant cette session (moteur resté en erreur 500 au démarrage), donc
+ni le build de l'image, ni le binaire chromium réel, ni la compatibilité des migrations
+avec Postgres n'ont pu être testés en local comme prévu. Deux chemins candidats selon la
+version d'Alpine de l'image de base (`richarvey/nginx-php-fpm:3.1.6`) :
+`/usr/bin/chromium-browser` (Alpine < 3.19) ou `/usr/bin/chromium` (Alpine ≥ 3.19). **À
+confirmer avant le premier déploiement réel**, soit en relançant Docker Desktop sur ce
+poste (`docker build . && docker run --rm <image> which chromium chromium-browser`), soit
+via l'onglet **Shell** de Render une fois le premier déploiement fait (le service
+démarrera même sans la bonne valeur — Browsershot échouera seulement au moment de générer
+un PDF, pas au démarrage).
 
-## Worker de file d'attente
+## Non vérifié cette session (Docker Desktop indisponible)
 
-**Aucun requis actuellement.** Toutes les notifications (transactionnelles et internes)
-sont envoyées de façon synchrone — aucune classe n'implémente `ShouldQueue`. À revoir si ça
-change.
+- Le `Dockerfile` construit bel et bien une image (syntaxe/logique relues, mais jamais
+  buildées).
+- La compatibilité Postgres des migrations réécrites en 2ème passe (`enum()->change()` sans
+  doctrine/dbal) — vérifiée jusqu'ici seulement sur MySQL et SQLite, jamais sur Postgres
+  réel.
+- Le healthcheck `/up` en conteneur.
 
-## Dépendance système : Chrome/Chromium
+À faire avant de considérer le déploiement Render fiable : soit relancer Docker Desktop sur
+ce poste et rejouer la vérification prévue (build + `postgres:16-alpine` + `migrate:fresh`
++ génération PDF réelle), soit accepter de le découvrir au premier déploiement Render (les
+logs de build/deploy Render exposeront toute erreur de migration ou de build).
 
-La génération PDF des devis/factures (Phase 03) passe par Browsershot. Renseigner
-`BROWSERSHOT_CHROME_PATH` dans `.env` si un Chrome/Chromium est installé sur le serveur,
-sinon laisser vide (Browsershot utilise alors son propre Chromium via npm).
+## Bug de portabilité Postgres corrigé
+
+`MaintenanceController.php` triait par priorité via `FIELD(...)`, une fonction MySQL
+absente de Postgres — remplacé par un `CASE WHEN` portable (`TRI_PRIORITE`), identique sur
+MySQL/Postgres/SQLite.
 
 ## Stockage des fichiers uploadés
 
-CVs de candidats, contrats de travail, photos de logement sont stockés sur le disque
-(`FILESYSTEM_DISK`). Ce répertoire **doit survivre aux déploiements** — jamais recréé vide
-par le pipeline de déploiement. Le choix définitif (disque persistant du serveur vs S3) est
-à trancher avec l'hébergement.
+CVs, contrats, photos de logement vivent sous `storage/app`, monté sur le disque persistant
+Render déclaré dans `render.yaml`. Le lien symbolique `public/storage` (créé par
+`storage:link`), lui, n'est **pas** sur ce disque — `public/` fait partie de l'image
+reconstruite à chaque déploiement, donc le lien est recréé à chaque fois via
+`storage:link --force` dans `preDeployCommand`.
 
-## Hors scope pour l'instant (dépend de l'hébergeur, pas encore choisi)
+**Compromis accepté** : un disque persistant désactive le zero-downtime deploy côté Render.
+Sans conséquence ici (application mono-instance).
 
-- Provisioning serveur (nginx/Apache, PHP-FPM, MySQL, certificat SSL).
-- Pipeline de déploiement automatisé (CI existe déjà pour les tests/le lint —
-  `.github/workflows/`, mais rien ne déploie).
-- Sauvegardes base de données.
+## Hors scope pour l'instant
+
+- Nom de domaine personnalisé (le sous-domaine `*.onrender.com` suffit pour démarrer).
+- Sauvegardes base de données (Render Postgres a ses propres sauvegardes automatiques selon
+  le plan — à vérifier dans le dashboard, pas encore creusé côté application).
 - Monitoring/alerting externe.
+- CI de déploiement automatisé (la CI existante — `.github/workflows/` — teste/lint, elle ne
+  déploie pas ; Render peut déployer automatiquement sur push vers `main` une fois le
+  Blueprint connecté, à activer dans le dashboard).
