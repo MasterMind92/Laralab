@@ -65,6 +65,14 @@ class DemoSeeder extends Seeder
             );
         }
 
+        // 0bis) Catalogue d'équipements (appartement_id null) — même précaution que les
+        // comptes staff ci-dessus : ce seeder est censé pouvoir tourner seul sur une base
+        // fraîche, mais les $affecter() plus bas (étapes 3, seedMultiTenant()) lisent ce
+        // catalogue par nom et ne créent rien silencieusement si une entrée manque. Sans
+        // cet appel, une base où seul DemoSeeder a tourné (DatabaseSeeder jamais lancé)
+        // laissait tous les appartements sans le moindre équipement affecté.
+        $this->call(EquipementCatalogueSeeder::class);
+
         // 1) Compte client vedette pour la démo : vérifié, avec fiche Client complète
         $userClient = User::firstOrCreate(
             ['email' => 'client@laralab.test'],
