@@ -12,9 +12,7 @@ class FactureValidee extends Notification
      * @param  string|null  $pdf  Binaire PDF déjà généré (Browsershot) — null si la
      *                            génération a échoué, l'e-mail part alors sans pièce jointe.
      */
-    public function __construct(private readonly Facture $facture, private readonly ?string $pdf = null)
-    {
-    }
+    public function __construct(private readonly Facture $facture, private readonly ?string $pdf = null) {}
 
     public function via($notifiable): array
     {

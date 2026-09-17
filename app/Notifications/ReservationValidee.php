@@ -8,9 +8,7 @@ use Illuminate\Notifications\Notification;
 
 class ReservationValidee extends Notification
 {
-    public function __construct(private readonly Reservation $reservation)
-    {
-    }
+    public function __construct(private readonly Reservation $reservation) {}
 
     public function via($notifiable): array
     {

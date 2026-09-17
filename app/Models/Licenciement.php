@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\ScopedThroughEntreprise;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,7 @@ class Licenciement extends Model
     {
         return 'employe';
     }
+
     protected function casts(): array
     {
         return [
@@ -33,7 +35,7 @@ class Licenciement extends Model
         return $this->belongsTo(Employe::class, 'decide_par_id');
     }
 
-    public function dateEffective(): \Carbon\CarbonInterface
+    public function dateEffective(): CarbonInterface
     {
         return $this->date_notification->copy()->addDays($this->duree_preavis_jours);
     }

@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['reservation_id', 'date_entree', 'date_sortie', 'etat_lieux_entree', 'etat_lieux_sortie', 'statut'])]
 class Sejour extends Model
 {
-    use SoftDeletes;
     use ScopedThroughEntreprise;
+    use SoftDeletes;
 
     public static function entrepriseRelationPath(): string
     {

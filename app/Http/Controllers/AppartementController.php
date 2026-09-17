@@ -9,6 +9,7 @@ use App\Models\Entreprise;
 use App\Models\Equipement;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -128,7 +129,7 @@ class AppartementController extends Controller
      * recalculée à l'affichage par Appartement::photosAffichables(), pour ne pas
      * dépendre de l'adresse locale utilisée au moment de l'upload (APP_URL).
      *
-     * @param  array<\Illuminate\Http\UploadedFile>  $files
+     * @param  array<UploadedFile>  $files
      * @return array<string>
      */
     private function uploadPhotos(array $files): array

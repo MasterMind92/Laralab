@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['sejour_id', 'equipement_id', 'description', 'montant'])]
 class Dommage extends Model
 {
-    use SoftDeletes;
     use ScopedThroughEntreprise;
+    use SoftDeletes;
 
     public static function entrepriseRelationPath(): string
     {

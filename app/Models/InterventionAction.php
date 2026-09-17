@@ -16,8 +16,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['intervention_id', 'type', 'description', 'temps_passe_minutes', 'piece_libelle', 'piece_quantite', 'cout', 'effectuee_le'])]
 class InterventionAction extends Model
 {
-    use SoftDeletes;
     use ScopedThroughEntreprise;
+    use SoftDeletes;
 
     protected $table = 'intervention_actions';
 

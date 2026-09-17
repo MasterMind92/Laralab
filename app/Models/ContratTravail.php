@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['employe_id', 'type_contrat', 'salaire', 'date_debut', 'date_fin', 'fichier_contrat', 'candidat_id', 'embauche_par_id'])]
 class ContratTravail extends Model
 {
-    use SoftDeletes;
     use ScopedThroughEntreprise;
+    use SoftDeletes;
 
     public static function entrepriseRelationPath(): string
     {

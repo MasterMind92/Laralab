@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['sejour_id', 'appartement_id', 'partenaire_id', 'designation', 'quantite', 'prix_unitaire', 'statut'])]
 class DemandeService extends Model
 {
-    use SoftDeletes;
     use ScopedThroughEntreprise;
+    use SoftDeletes;
 
     public static function entrepriseRelationPath(): string
     {

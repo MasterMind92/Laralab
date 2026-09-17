@@ -16,6 +16,7 @@ class Reduction extends Model
     {
         return 'appartement';
     }
+
     protected function casts(): array
     {
         return [

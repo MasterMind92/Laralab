@@ -9,9 +9,7 @@ use Illuminate\Notifications\Notification;
 
 class ReservationConfirmee extends Notification
 {
-    public function __construct(private readonly Reservation $reservation)
-    {
-    }
+    public function __construct(private readonly Reservation $reservation) {}
 
     public function via($notifiable): array
     {
@@ -34,11 +32,11 @@ class ReservationConfirmee extends Notification
         $fin = $this->reservation->date_fin->format('d/m/Y');
 
         $mail = (new MailMessage)
-            ->subject("Votre demande de réservation — LuxStay")
+            ->subject('Votre demande de réservation — LuxStay')
             ->greeting('Bonjour '.$notifiable->client->prenom.',')
             ->line("Nous avons bien reçu votre demande de réservation pour {$titre}.")
             ->line("Du {$debut} au {$fin} ({$nights} nuit".($nights > 1 ? 's' : '').($this->reservation->nombre_personnes ? ", {$this->reservation->nombre_personnes} personne".($this->reservation->nombre_personnes > 1 ? 's' : '') : '').').')
-            ->line('Montant estimé : '.number_format($total, 0, ',', ' ')." FCFA".($discount > 0 ? ' (réduction séjour longue durée incluse)' : ''))
+            ->line('Montant estimé : '.number_format($total, 0, ',', ' ').' FCFA'.($discount > 0 ? ' (réduction séjour longue durée incluse)' : ''))
             ->line("Cette estimation sera confirmée par notre équipe — aucun paiement n'est prélevé pour l'instant.")
             ->action("Voir l'appartement", url("/appartements/{$appartement->id}"))
             ->theme('luxstay');

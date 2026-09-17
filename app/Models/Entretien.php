@@ -12,8 +12,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['candidat_id', 'numero_tour', 'date_entretien', 'type', 'duree_minutes', 'statut', 'decision', 'note'])]
 class Entretien extends Model
 {
-    use SoftDeletes;
     use ScopedThroughEntreprise;
+    use SoftDeletes;
 
     public static function entrepriseRelationPath(): string
     {

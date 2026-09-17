@@ -17,7 +17,7 @@ class PaiementController extends Controller
     {
         if ($facture->statut !== 'validee') {
             return back()->withErrors([
-                'facture' => "Seule une facture validée peut recevoir un paiement.",
+                'facture' => 'Seule une facture validée peut recevoir un paiement.',
             ]);
         }
 

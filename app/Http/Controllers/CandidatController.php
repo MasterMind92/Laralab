@@ -15,7 +15,7 @@ class CandidatController extends Controller
     public function store(Request $request, Recrutement $recrutement): RedirectResponse
     {
         if ($recrutement->statut !== 'validee') {
-            return back()->withErrors(['recrutement' => "Les candidatures ne sont ouvertes que sur un recrutement validé."]);
+            return back()->withErrors(['recrutement' => 'Les candidatures ne sont ouvertes que sur un recrutement validé.']);
         }
 
         $data = $request->validate([

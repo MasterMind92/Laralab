@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['employe_id', 'date_debut', 'date_fin', 'statut'])]
 class Conge extends Model
 {
-    use SoftDeletes;
     use ScopedThroughEntreprise;
+    use SoftDeletes;
 
     public static function entrepriseRelationPath(): string
     {

@@ -17,8 +17,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 ])]
 class Recrutement extends Model
 {
-    use SoftDeletes;
     use BelongsToEntreprise;
+    use SoftDeletes;
 
     protected function casts(): array
     {
