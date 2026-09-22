@@ -1,6 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown, Building2, Pencil, Plus, Users } from 'lucide-react';
+import { ArrowUpDown, Building2, LayoutDashboard, Pencil, Plus, Users } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import AdminEntrepriseController from '@/actions/App/Http/Controllers/Admin/EntrepriseController';
 import { Badge } from '@/components/ui/badge';
@@ -132,6 +132,11 @@ export default function Entreprises({ entreprises }: { entreprises: EntrepriseRe
                         <Button variant="outline" size="sm" asChild>
                             <Link href={`/admin/entreprises/${entreprise.id}/appartements`}>
                                 <Building2 /> Appartements
+                            </Link>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                            <Link href={`/admin/entreprises/${entreprise.id}/activite-poles`}>
+                                <LayoutDashboard /> Activité des pôles
                             </Link>
                         </Button>
                         <Button size="sm" onClick={() => openEdit(entreprise)}>
