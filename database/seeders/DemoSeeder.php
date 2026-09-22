@@ -12,6 +12,8 @@ use App\Models\Conge;
 use App\Models\ContratTravail;
 use App\Models\DemandeService;
 use App\Models\Depense;
+use App\Models\DevisEquipement;
+use App\Models\DevisEquipementLigne;
 use App\Models\Dommage;
 use App\Models\Employe;
 use App\Models\Entreprise;
@@ -1290,8 +1292,11 @@ class DemoSeeder extends Seeder
         ]);
 
         // L'aspirateur est un bien durable : il entre au parc, comme tout ce qui
-        // traverse la réception logistique.
-        if ($ligneAspirateur = $lignesRecues->firstWhere('designation', 'Aspirateur professionnel')) {
+        // traverse la réception logistique. `designation` vit sur `commandeLigne`, pas
+        // directement sur `ReceptionLigne` — `firstWhere('designation', ...)` ne
+        // trouvait donc jamais rien (attribut toujours null) et l'équipement n'a jamais
+        // été créé jusqu'ici.
+        if ($ligneAspirateur = $lignesRecues->first(fn (ReceptionLigne $l) => $l->commandeLigne?->designation === 'Aspirateur professionnel')) {
             Equipement::updateOrCreate(
                 ['reception_ligne_id' => $ligneAspirateur->id, 'numero_serie' => 'ASP-BAYO-2026-01'],
                 ['nom' => 'Aspirateur professionnel', 'type' => 'electromenager', 'statut' => 'stock', 'date_achat' => now()->subDays(4)->toDateString(), 'garantie_fin' => now()->addYear()->toDateString(), 'contrat_maintenance' => false],
@@ -1401,7 +1406,120 @@ class DemoSeeder extends Seeder
             );
         }
 
-        $this->command?->info('Comptabilité avancée prête (Bayo) — 1 achat logistique réglé (1 charge + 1 immobilisation), 1 achat de service réglé, 1 achat en attente, 1 dépense directe, 1 facture client en retard relancée.');
+        // ── Devis Equipement (extension Phase 06) : la réception de l'aspirateur aurait
+        // dû générer un brouillon à l'enregistrement (LogistiqueController::genererDevisEquipement) —
+        // reproduit ici puisque l'Equipement ci-dessus a été créé directement, sans passer
+        // par l'action HTTP qui porte cet effet de bord.
+        if ($ligneAspirateur) {
+            $devisAspirateur = DevisEquipement::updateOrCreate(
+                ['reception_id' => $ligneAspirateur->reception_id, 'statut' => 'brouillon'],
+                ['entreprise_id' => $bayo->id],
+            );
+            DevisEquipementLigne::updateOrCreate(
+                ['devis_equipement_id' => $devisAspirateur->id, 'reception_ligne_id' => $ligneAspirateur->id],
+                ['designation' => 'Aspirateur professionnel', 'quantite' => 1, 'prix_unitaire' => 95000],
+            );
+        }
+
+        // ── Deux cycles supplémentaires (bien durable), pour couvrir les statuts restants
+        // de Devis Equipement (validée/payée) et enrichir le Registre des immobilisations.
+        $commandeFrigo = $this->commandeDemo($bayo, $fournisseurBiens, 'CMD-BAYO-02', 'envoyee', [
+            ['designation' => 'Réfrigérateur mini-bar', 'quantite' => 1, 'prix_unitaire' => 145000],
+        ], jours: -12);
+        $ligneFrigo = $this->receptionDemo($commandeFrigo, $magasinier, now()->subDays(10), [
+            ['designation' => 'Réfrigérateur mini-bar', 'quantite_recue' => 1, 'conforme' => true],
+        ])->first();
+
+        if ($ligneFrigo) {
+            Equipement::updateOrCreate(
+                ['reception_ligne_id' => $ligneFrigo->id, 'numero_serie' => 'FRI-BAYO-2026-01'],
+                ['nom' => 'Réfrigérateur mini-bar', 'type' => 'electromenager', 'statut' => 'stock', 'date_achat' => now()->subDays(10)->toDateString(), 'garantie_fin' => now()->addYears(2)->toDateString(), 'contrat_maintenance' => false],
+            );
+            $ligneFrigo->forceFill(['quantite_enregistree' => 1])->save();
+
+            $achatFrigo = FactureFournisseur::updateOrCreate(
+                ['entreprise_id' => $bayo->id, 'reference' => 'FF-BAYO-CMD02'],
+                ['fournisseur_id' => $fournisseurBiens->id, 'commande_id' => $commandeFrigo->id, 'date_facture' => now()->subDays(10)->toDateString(), 'date_echeance' => now()->addDays(4)->toDateString(), 'notes' => 'Facture de démonstration liée à la commande CMD-BAYO-02.'],
+            );
+            FactureFournisseurLigne::updateOrCreate(
+                ['facture_fournisseur_id' => $achatFrigo->id, 'designation' => 'Réfrigérateur mini-bar'],
+                ['commande_ligne_id' => $commandeFrigo->lignes()->first()?->id, 'quantite' => 1, 'prix_unitaire' => 145000, 'nature' => 'immobilisation', 'categorie' => null],
+            );
+            if ($achatFrigo->statut !== 'payee') {
+                $achatFrigo->valider($comptable->id);
+                $achatFrigo->payer(now()->subDays(8)->toDateString(), 'virement', 'VIR-BAYO-002');
+            }
+
+            $devisFrigo = DevisEquipement::updateOrCreate(
+                ['reception_id' => $ligneFrigo->reception_id],
+                ['entreprise_id' => $bayo->id],
+            );
+            DevisEquipementLigne::updateOrCreate(
+                ['devis_equipement_id' => $devisFrigo->id, 'reception_ligne_id' => $ligneFrigo->id],
+                ['designation' => 'Réfrigérateur mini-bar', 'quantite' => 1, 'prix_unitaire' => 145000],
+            );
+            if ($devisFrigo->statut === 'brouillon') {
+                $devisFrigo->valider($comptable->id);
+            }
+        }
+
+        $commandeCoffre = $this->commandeDemo($bayo, $fournisseurBiens, 'CMD-BAYO-03', 'envoyee', [
+            ['designation' => 'Coffre-fort électronique', 'quantite' => 1, 'prix_unitaire' => 85000],
+        ], jours: -18);
+        $ligneCoffre = $this->receptionDemo($commandeCoffre, $magasinier, now()->subDays(15), [
+            ['designation' => 'Coffre-fort électronique', 'quantite_recue' => 1, 'conforme' => true],
+        ])->first();
+
+        if ($ligneCoffre) {
+            Equipement::updateOrCreate(
+                ['reception_ligne_id' => $ligneCoffre->id, 'numero_serie' => 'CFR-BAYO-2026-01'],
+                ['nom' => 'Coffre-fort électronique', 'type' => 'securite', 'statut' => 'stock', 'date_achat' => now()->subDays(15)->toDateString(), 'garantie_fin' => now()->addYears(3)->toDateString(), 'contrat_maintenance' => false],
+            );
+            $ligneCoffre->forceFill(['quantite_enregistree' => 1])->save();
+
+            $achatCoffre = FactureFournisseur::updateOrCreate(
+                ['entreprise_id' => $bayo->id, 'reference' => 'FF-BAYO-CMD03'],
+                ['fournisseur_id' => $fournisseurBiens->id, 'commande_id' => $commandeCoffre->id, 'date_facture' => now()->subDays(15)->toDateString(), 'date_echeance' => now()->addDays(6)->toDateString(), 'notes' => 'Facture de démonstration liée à la commande CMD-BAYO-03.'],
+            );
+            FactureFournisseurLigne::updateOrCreate(
+                ['facture_fournisseur_id' => $achatCoffre->id, 'designation' => 'Coffre-fort électronique'],
+                ['commande_ligne_id' => $commandeCoffre->lignes()->first()?->id, 'quantite' => 1, 'prix_unitaire' => 85000, 'nature' => 'immobilisation', 'categorie' => null],
+            );
+            if ($achatCoffre->statut !== 'payee') {
+                $achatCoffre->valider($comptable->id);
+                $achatCoffre->payer(now()->subDays(12)->toDateString(), 'especes');
+            }
+
+            $devisCoffre = DevisEquipement::updateOrCreate(
+                ['reception_id' => $ligneCoffre->reception_id],
+                ['entreprise_id' => $bayo->id],
+            );
+            DevisEquipementLigne::updateOrCreate(
+                ['devis_equipement_id' => $devisCoffre->id, 'reception_ligne_id' => $ligneCoffre->id],
+                ['designation' => 'Coffre-fort électronique', 'quantite' => 1, 'prix_unitaire' => 85000],
+            );
+            if ($devisCoffre->statut === 'brouillon') {
+                $devisCoffre->valider($comptable->id);
+            }
+            if ($devisCoffre->statut === 'validee') {
+                $devisCoffre->payer(now()->subDays(10)->toDateString(), 'virement', 'VIR-BAYO-DEVIS-01');
+            }
+        }
+
+        // ── Avances perçues : une réservation à venir, acompte versé au portail, pas
+        // encore de séjour ni de facture — le cas que l'écran "Avances" doit montrer.
+        if ($client && $bApt1) {
+            $bRes3 = Reservation::updateOrCreate(
+                ['appartement_id' => $bApt1->id, 'client_id' => $client->id, 'date_debut' => now()->addDays(5)->toDateString(), 'date_fin' => now()->addDays(8)->toDateString()],
+                ['statut' => 'validee', 'nombre_personnes' => 2],
+            );
+            Paiement::updateOrCreate(
+                ['reservation_id' => $bRes3->id, 'reference_transaction' => 'DEMO-BAYO-AVANCE-'.$bRes3->id],
+                ['facture_id' => null, 'montant' => $bApt1->prix_nuit, 'mode_paiement' => 'mobile_money', 'date_paiement' => now()->subDays(2)],
+            );
+        }
+
+        $this->command?->info('Comptabilité avancée prête (Bayo) — 3 achats réglés (dont 2 immobilisations) + 1 en attente, 1 dépense directe, 1 facture en retard relancée, 3 devis équipement (brouillon/validée/payée), 1 avance sur réservation à venir.');
     }
 
     /**
@@ -1451,8 +1569,12 @@ class DemoSeeder extends Seeder
      */
     private function receptionDemo(Commande $commande, ?Employe $receptionnaire, \DateTimeInterface $date, array $lignes): Collection
     {
+        // `date_reception` en clé de recherche doit être une date pure : passer l'objet
+        // Carbon tel quel (portant l'heure courante) fait dériver la clé à chaque rejeu du
+        // seeder — MySQL compare alors la colonne DATE à un DATETIME qui ne correspond
+        // jamais exactement, et une nouvelle réception est créée à chaque fois.
         $reception = Reception::updateOrCreate(
-            ['commande_id' => $commande->id, 'date_reception' => $date],
+            ['commande_id' => $commande->id, 'date_reception' => $date->format('Y-m-d')],
             ['receptionnaire_employe_id' => $receptionnaire?->id, 'notes' => 'Livraison de démonstration.'],
         );
 
