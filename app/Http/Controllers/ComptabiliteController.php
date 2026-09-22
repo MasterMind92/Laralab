@@ -52,13 +52,29 @@ class ComptabiliteController extends Controller
     use ExportsCsv;
 
     /**
-     * Tableau de bord (Phase 07) : des compteurs ponctuels, pas le rapport détaillé —
-     * `etatsFinanciers()` reste le seul endroit avec une ventilation par catégorie et un
-     * filtre de période. `creances`/`dettes_fournisseur` sont des points dans le temps
-     * (tout ce qui reste dû aujourd'hui), pas bornés au mois comme le reste.
+     * Tableau de bord (Phase 07) — même schéma que MaintenanceController::dashboard() :
+     * cartes KPI, répartition par statut, et la liste des dossiers à traiter en
+     * priorité. `creances`/`dettes_fournisseur` restent des points dans le temps (tout
+     * ce qui reste dû aujourd'hui), pas bornés au mois comme le reste ; `etatsFinanciers()`
+     * demeure le seul endroit avec une ventilation par catégorie et un filtre de période.
      */
     public function dashboard(): Response
     {
+        $parStatut = FactureFournisseur::query()
+            ->selectRaw('statut, COUNT(*) as total')
+            ->groupBy('statut')
+            ->pluck('total', 'statut');
+
+        // Impayées + en retard : même filtre que recouvrements(), mais borné aux plus
+        // anciennes — soldeRestant()/estEnRetard() se calculent en collection, pas en SQL.
+        $facturesEnRetard = Facture::where('statut', 'validee')
+            ->with('sejour.reservation.client:id,nom,prenom')
+            ->get()
+            ->filter(fn (Facture $f) => $f->soldeRestant() > 0 && $this->estEnRetard($f))
+            ->sortBy(fn (Facture $f) => $f->date_echeance)
+            ->take(8)
+            ->values();
+
         return Inertia::render('comptabilite/dashboard', [
             'kpi' => [
                 'ca_encaisse_mois' => (float) Paiement::whereMonth('date_paiement', now()->month)
@@ -73,6 +89,19 @@ class ComptabiliteController extends Controller
                     ->whereYear('date_depense', now()->year)
                     ->sum('montant'),
             ],
+            'parStatutAchat' => collect(FactureFournisseur::STATUTS)
+                ->map(fn (string $statut) => ['statut' => $statut, 'total' => (int) ($parStatut[$statut] ?? 0)])
+                ->values(),
+            'facturesEnRetard' => $facturesEnRetard->map(fn (Facture $f) => [
+                'id' => $f->id,
+                'numero_facture' => $f->numero_facture,
+                'date_echeance' => $f->date_echeance?->toDateString(),
+                'jours_de_retard' => $this->joursDeRetard($f),
+                'solde_restant' => $f->soldeRestant(),
+                'client' => $f->sejour?->reservation?->client
+                    ? ['nom' => $f->sejour->reservation->client->nom, 'prenom' => $f->sejour->reservation->client->prenom]
+                    : null,
+            ])->values(),
         ]);
     }
 
