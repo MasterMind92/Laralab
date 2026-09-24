@@ -37,10 +37,19 @@ class FactureFournisseurLigne extends Model
      *
      * Ne s'appliquent qu'aux lignes de nature `charge` : une immobilisation n'est pas une
      * charge, elle n'a donc pas de famille de charge.
+     *
+     * `eau`, `courant`, `entretien`, `reparation` : extension du 2026-09-24, sortie du
+     * fourre-tout `services_exterieurs` — des postes récurrents (eau, courant) ou de
+     * nature différente (réparation ponctuelle vs entretien sous contrat) que le suivi
+     * de trésorerie doit pouvoir distinguer.
      */
     public const CATEGORIES = [
         'achats_consommables',
         'services_exterieurs',
+        'eau',
+        'courant',
+        'entretien',
+        'reparation',
         'personnel',
         'impots_taxes',
         'charges_financieres',

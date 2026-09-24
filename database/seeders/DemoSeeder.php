@@ -1345,7 +1345,7 @@ class DemoSeeder extends Seeder
         );
         FactureFournisseurLigne::updateOrCreate(
             ['facture_fournisseur_id' => $achatElectricite->id, 'designation' => 'Facture d\'électricité — septembre'],
-            ['quantite' => 1, 'prix_unitaire' => 68000, 'nature' => 'charge', 'categorie' => 'services_exterieurs'],
+            ['quantite' => 1, 'prix_unitaire' => 68000, 'nature' => 'charge', 'categorie' => 'courant'],
         );
         if ($achatElectricite->statut !== 'payee') {
             $achatElectricite->valider($comptable->id);
@@ -1372,6 +1372,18 @@ class DemoSeeder extends Seeder
         Depense::updateOrCreate(
             ['entreprise_id' => $bayo->id, 'libelle' => "Prime exceptionnelle — Agent d'entretien", 'facture_fournisseur_ligne_id' => null],
             ['montant' => 25000, 'date_depense' => now()->subDays(3)->toDateString(), 'categorie' => 'personnel', 'valideur_id' => $comptable->id],
+        );
+        Depense::updateOrCreate(
+            ['entreprise_id' => $bayo->id, 'libelle' => 'Facture SODECI — septembre', 'facture_fournisseur_ligne_id' => null],
+            ['montant' => 18500, 'date_depense' => now()->subDays(4)->toDateString(), 'categorie' => 'eau', 'valideur_id' => $comptable->id],
+        );
+        Depense::updateOrCreate(
+            ['entreprise_id' => $bayo->id, 'libelle' => 'Réparation plomberie — Appartement Baya 1', 'facture_fournisseur_ligne_id' => null],
+            ['montant' => 32000, 'date_depense' => now()->subDays(2)->toDateString(), 'categorie' => 'reparation', 'valideur_id' => $comptable->id],
+        );
+        Depense::updateOrCreate(
+            ['entreprise_id' => $bayo->id, 'libelle' => 'Contrat entretien mensuel — parties communes', 'facture_fournisseur_ligne_id' => null],
+            ['montant' => 15000, 'date_depense' => now()->subDays(6)->toDateString(), 'categorie' => 'entretien', 'valideur_id' => $comptable->id],
         );
 
         // ── Recouvrement : un second séjour Bayo, clôturé et facturé, jamais soldé ────

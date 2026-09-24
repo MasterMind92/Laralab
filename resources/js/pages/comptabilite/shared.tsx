@@ -14,6 +14,10 @@ export type NatureLigne = 'charge' | 'immobilisation';
 export type CategorieCharge =
     | 'achats_consommables'
     | 'services_exterieurs'
+    | 'eau'
+    | 'courant'
+    | 'entretien'
+    | 'reparation'
     | 'personnel'
     | 'impots_taxes'
     | 'charges_financieres'
@@ -99,10 +103,14 @@ export const NATURE_LABELS: Record<NatureLigne, string> = {
 export const CATEGORIE_LABELS: Record<CategorieCharge, string> = {
     achats_consommables: 'Achats consommables',
     services_exterieurs: 'Services extérieurs',
-    personnel: 'Personnel',
+    eau: 'Eau',
+    courant: 'Courant',
+    entretien: 'Entretien',
+    reparation: 'Réparation',
+    personnel: 'Salaires',
     impots_taxes: 'Impôts et taxes',
     charges_financieres: 'Charges financières',
-    autres: 'Autres charges',
+    autres: 'Divers',
 };
 
 export const MODE_PAIEMENT_LABELS: Record<ModePaiementFournisseur, string> = {
