@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivitePolesController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EntrepriseController as AdminEntrepriseController;
 use App\Http\Controllers\Admin\PartenaireController as AdminPartenaireController;
@@ -637,6 +638,9 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
             Route::delete('utilisateurs/{utilisateur}', [AdminUtilisateurController::class, 'destroy'])
                 ->name('admin.utilisateurs.destroy');
+
+            Route::get('activite-poles', [ActivitePolesController::class, 'pourEntreprise'])
+                ->name('admin.entreprises.activite-poles');
         });
 
         Route::get('admin-partenaires', [AdminPartenaireController::class, 'index'])
@@ -665,6 +669,9 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:proprietaire,gerant')->group(function () {
         Route::get('proprietaire', [ProprietaireDashboardController::class, 'index'])
             ->name('proprietaire.dashboard');
+
+        Route::get('activite-poles', [ActivitePolesController::class, 'moi'])
+            ->name('activite-poles');
 
         Route::get('encaissements', [ProprietaireEncaissementController::class, 'index'])
             ->name('proprietaire.encaissements.index');

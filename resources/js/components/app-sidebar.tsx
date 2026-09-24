@@ -59,6 +59,7 @@ import type { NavItem } from '@/types';
 // — communs aux deux roles, qui partagent desormais les memes vues.
 const itemsPatrimoine: NonNullable<NavItem['sub']> = [
     { title: 'Tableau de bord', url: '/admin/proprietaire', icon: LayoutDashboard },
+    { title: 'Activité des pôles', url: '/admin/activite-poles', icon: LayoutDashboard },
     { title: 'Appartements', url: '/admin/appartements', icon: BedDouble },
     { title: 'Planning', url: '/admin/planning', icon: Calendar },
     { title: 'Encaissements', url: '/admin/encaissements', icon: Wallet },
@@ -147,6 +148,11 @@ const mainNavItems: NavItem[] = [
         roles: ['rh'],
         sub:[
             {
+                title: "Tableau de bord",
+                url:"/admin/rh",
+                icon: LayoutDashboard,
+            },
+            {
                 title: "Employés",
                 url:"/admin/employes",
                 icon: Users,
@@ -180,6 +186,11 @@ const mainNavItems: NavItem[] = [
         roles: ['compta'],
         sub:[
             {
+                title: "Tableau de bord",
+                url:"/admin/comptabilite",
+                icon: LayoutDashboard,
+            },
+            {
                 // Fusionne "Consultation Devis" + "Cloture Sejours" + "Facture du sejour" +
                 // "Encaissements factures" : le statut de chaque facture (brouillon a
                 // valider/rejeter, validee a encaisser, payee = sejour cloture cote
@@ -188,14 +199,7 @@ const mainNavItems: NavItem[] = [
                 url:"/admin/factures",
                 icon: FileStack,
             },
-            {
-                // Extension Phase 06 : genere automatiquement a l'Enregistrement cote
-                // Logistique (une ligne durable = facturable au Proprietaire), jamais
-                // cree a la main ici.
-                title: "Consultation Devis Equipement",
-                url:"/admin/devis-equipements",
-                icon: FileText,
-            },
+            
             {
                 // Le livre de caisse (Phase 06, etape B-bis). Remplace "Avances recues",
                 // qui ne montrait qu'une des deux sources d'encaissement.
@@ -236,12 +240,21 @@ const mainNavItems: NavItem[] = [
                 icon: ShoppingCart,
             },
             {
+                // Extension Phase 06 : genere automatiquement a l'Enregistrement cote
+                // Logistique (une ligne durable = facturable au Proprietaire), jamais
+                // cree a la main ici.
+                title: "Consultation Devis Equipement",
+                url:"/admin/devis-equipements",
+                icon: FileText,
+            },
+            {
                 // Extension Phase 06 : vue cumulative des lignes 'immobilisation' deja en
                 // base (facture_fournisseur_lignes.nature), pas une nouvelle table.
                 title: "Registre des immobilisations",
                 url:"/admin/immobilisations",
                 icon: Boxes,
             },
+            //SALAIRES, IMPOTS/TAXES, EAU, COURANT, DIVERS, REPARATION, ENTRETIEN.
             {
                 title: "Etats Financiers",
                 url:"/admin/etats-financiers",
@@ -264,6 +277,11 @@ const mainNavItems: NavItem[] = [
         // Affectation ; "Commandes" est le maillon qui manquait au menu, on ne peut
         // pas passer d'un besoin a une livraison sans bon de commande.
         sub:[
+            {
+                title: "Tableau de bord",
+                url:"/admin/logistique",
+                icon: LayoutDashboard,
+            },
             {
                 title: "Expression Besoins",
                 url:"/admin/logistique/besoins",
@@ -331,6 +349,11 @@ const mainNavItems: NavItem[] = [
         icon: ConciergeBell,
         roles: ['receptionniste'],
         sub:[
+            {
+                title: "Tableau de bord",
+                url:"/admin/receptionniste",
+                icon: LayoutDashboard,
+            },
             {
                 // Vue calendrier (visuelle) des reservations/sejours — complement du datatable Reservations
                 title: "Planning",
