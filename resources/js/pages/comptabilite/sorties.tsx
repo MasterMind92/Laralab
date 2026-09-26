@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
@@ -262,7 +262,18 @@ export default function Sorties({
                 // reflet d'un règlement. La corriger sans toucher la facture ferait
                 // diverger les deux.
                 if (sortie.origine === 'facture') {
-                    return (
+                    return sortie.facture_fournisseur_id ? (
+                        <Link
+                            href={ComptabiliteController.achats.url({
+                                query: {
+                                    facture: sortie.facture_fournisseur_id,
+                                },
+                            })}
+                            className="text-xs text-primary underline-offset-2 hover:underline"
+                        >
+                            Voir la facture
+                        </Link>
+                    ) : (
                         <span className="text-xs text-muted-foreground">
                             Voir la facture
                         </span>

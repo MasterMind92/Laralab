@@ -11,7 +11,7 @@ import {
     Wallet,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ComptabiliteController from '@/actions/App/Http/Controllers/ComptabiliteController';
 import { DataTable } from '@/components/data-table/data-table';
 import { Historique } from '@/components/historique';
@@ -122,12 +122,38 @@ export default function Achats({
     const [notes, setNotes] = useState('');
     const [lignes, setLignes] = useState<LigneSaisie[]>([]);
 
-    const [detail, setDetail] = useState<AchatRow | null>(null);
+    // Arrivée depuis « Sorties » (lien « Voir la facture ») : ouvre directement le détail
+    // de la facture visée plutôt que de laisser l'utilisateur la rechercher dans la liste.
+    // Calculé à l'initialisation (pas dans un effet) pour éviter un rendu en cascade.
+    const [detail, setDetail] = useState<AchatRow | null>(() => {
+        const factureId = new URLSearchParams(window.location.search).get(
+            'facture',
+        );
+
+        return factureId
+            ? (factures.find((f) => f.id === Number(factureId)) ?? null)
+            : null;
+    });
     const [aPayer, setAPayer] = useState<AchatRow | null>(null);
     const [datePaiement, setDatePaiement] = useState('');
     const [modePaiement, setModePaiement] =
         useState<ModePaiementFournisseur>('virement');
     const [referencePaiement, setReferencePaiement] = useState('');
+
+    useEffect(() => {
+        if (!window.location.search.includes('facture=')) {
+            return;
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        params.delete('facture');
+        const reste = params.toString();
+        window.history.replaceState(
+            {},
+            '',
+            window.location.pathname + (reste ? `?${reste}` : ''),
+        );
+    }, []);
 
     function filtrer(choisi: string) {
         setStatut(choisi);
