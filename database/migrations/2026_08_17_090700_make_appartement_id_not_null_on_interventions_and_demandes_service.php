@@ -17,18 +17,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Sous-requete correlee plutot que UPDATE...JOIN (syntaxe MySQL-only) — portable,
-        // verifie sur SQLite et standard sur MySQL (2026-09-17).
-        DB::statement('
-            UPDATE demandes_service
+        // Sous-requete correlee plutot que UPDATE...JOIN (syntaxe MySQL-only) — portable
+        // MySQL / SQLite / PostgreSQL. Prefixe de table applique a la main (`resi_` sur
+        // pgsql) : le SQL brut ne passe pas par le builder.
+        $p = DB::getTablePrefix();
+        DB::statement("
+            UPDATE {$p}demandes_service
             SET appartement_id = (
                 SELECT r.appartement_id
-                FROM sejours s
-                JOIN reservations r ON r.id = s.reservation_id
-                WHERE s.id = demandes_service.sejour_id
+                FROM {$p}sejours s
+                JOIN {$p}reservations r ON r.id = s.reservation_id
+                WHERE s.id = {$p}demandes_service.sejour_id
             )
             WHERE appartement_id IS NULL AND sejour_id IS NOT NULL
-        ');
+        ");
 
         Schema::table('interventions', function (Blueprint $table) {
             $table->dropForeign(['appartement_id']);

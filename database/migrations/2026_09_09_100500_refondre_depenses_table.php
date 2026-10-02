@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\EnumColonne;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -42,20 +43,13 @@ return new class extends Migration
             $table->index(['entreprise_id', 'date_depense']);
         });
 
-        // ->change() ne necessite pas doctrine/dbal dans cette version de Laravel
-        // (verifie sur MySQL et SQLite, 2026-09-17) — portable sur les deux pilotes.
-        Schema::table('depenses', function (Blueprint $table) {
-            $table->enum('categorie', ['achats_consommables', 'services_exterieurs', 'personnel', 'impots_taxes', 'charges_financieres', 'autres'])
-                ->default('autres')
-                ->change();
-        });
+        // Portable MySQL / SQLite / PostgreSQL (voir App\Support\EnumColonne).
+        EnumColonne::changer('depenses', 'categorie', ['achats_consommables', 'services_exterieurs', 'personnel', 'impots_taxes', 'charges_financieres', 'autres'], 'autres');
     }
 
     public function down(): void
     {
-        Schema::table('depenses', function (Blueprint $table) {
-            $table->enum('categorie', ['achats', 'salaires', 'maintenance', 'fournitures'])->change();
-        });
+        EnumColonne::changer('depenses', 'categorie', ['achats', 'salaires', 'maintenance', 'fournitures']);
 
         Schema::table('depenses', function (Blueprint $table) {
             $table->dropIndex(['entreprise_id', 'date_depense']);

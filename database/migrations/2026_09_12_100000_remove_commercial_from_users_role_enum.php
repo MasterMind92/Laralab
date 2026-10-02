@@ -1,9 +1,8 @@
 <?php
 
+use App\Support\EnumColonne;
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -21,19 +20,11 @@ return new class extends Migration
     {
         DB::table('users')->where('role', 'commercial')->delete();
 
-        Schema::table('users', function (Blueprint $table) {
-            $table->enum('role', ['administrateur', 'proprietaire', 'gerant', 'rh', 'compta', 'logistique', 'maintenance', 'receptionniste', 'client'])
-                ->default('client')
-                ->change();
-        });
+        EnumColonne::changer('users', 'role', ['administrateur', 'proprietaire', 'gerant', 'rh', 'compta', 'logistique', 'maintenance', 'receptionniste', 'client'], 'client');
     }
 
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->enum('role', ['administrateur', 'proprietaire', 'gerant', 'commercial', 'rh', 'compta', 'logistique', 'maintenance', 'receptionniste', 'client'])
-                ->default('client')
-                ->change();
-        });
+        EnumColonne::changer('users', 'role', ['administrateur', 'proprietaire', 'gerant', 'commercial', 'rh', 'compta', 'logistique', 'maintenance', 'receptionniste', 'client'], 'client');
     }
 };

@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\EnumColonne;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -14,32 +15,22 @@ return new class extends Migration
      * déclarant (réceptionniste qui signale) et au technicien (qui répare) : éclaté
      * en deux colonnes explicites.
      *
-     * `->change()`/`->renameColumn()` ne nécessitent PAS doctrine/dbal dans cette version
-     * de Laravel (vérifié sur MySQL et SQLite, 2026-09-17) — portables sur les deux
-     * pilotes. L'enum reste élargi avant le remappage des données puis restreint à sa
-     * forme finale (comme avant), simplement écrit en deux `Schema::table()` distincts
-     * plutôt qu'en SQL brut MySQL-only — renommer et changer le jeu de valeurs d'un enum
-     * dans le même appel ne fonctionne pas de façon fiable, d'où les deux étapes séparées.
+     * L'enum est élargi avant le remappage des données puis restreint à sa forme finale.
+     * Renommer et changer le jeu de valeurs d'un enum dans le même appel ne fonctionne
+     * pas de façon fiable, d'où les étapes séparées. Changements d'enum via
+     * EnumColonne::changer() — portable MySQL / SQLite / PostgreSQL (voir la classe).
      */
     public function up(): void
     {
-        Schema::table('interventions', function (Blueprint $table) {
-            $table->enum('statut', ['signalee', 'en_cours', 'resolue', 'planifiee', 'technicien_affecte', 'reparee', 'controlee', 'cloturee', 'reformee'])
-                ->default('signalee')
-                ->change();
-        });
+        EnumColonne::changer('interventions', 'statut', ['signalee', 'en_cours', 'resolue', 'planifiee', 'technicien_affecte', 'reparee', 'controlee', 'cloturee', 'reformee'], 'signalee');
 
-        DB::statement("UPDATE interventions SET statut = 'cloturee' WHERE statut = 'resolue'");
+        DB::table('interventions')->where('statut', 'resolue')->update(['statut' => 'cloturee']);
 
         Schema::table('interventions', function (Blueprint $table) {
             $table->renameColumn('statut', 'etape');
         });
 
-        Schema::table('interventions', function (Blueprint $table) {
-            $table->enum('etape', ['signalee', 'planifiee', 'technicien_affecte', 'en_cours', 'reparee', 'controlee', 'cloturee', 'reformee'])
-                ->default('signalee')
-                ->change();
-        });
+        EnumColonne::changer('interventions', 'etape', ['signalee', 'planifiee', 'technicien_affecte', 'en_cours', 'reparee', 'controlee', 'cloturee', 'reformee'], 'signalee');
 
         Schema::table('interventions', function (Blueprint $table) {
             $table->dropForeign(['employe_id']);
@@ -98,16 +89,17 @@ return new class extends Migration
             $table->foreign('employe_id')->references('id')->on('employes')->nullOnDelete();
         });
 
-        DB::statement("UPDATE interventions SET etape = 'resolue' WHERE etape IN ('cloturee', 'reformee')");
-        DB::statement("UPDATE interventions SET etape = 'en_cours' WHERE etape IN ('reparee', 'controlee')");
-        DB::statement("UPDATE interventions SET etape = 'signalee' WHERE etape IN ('planifiee', 'technicien_affecte')");
+        // Élargi d'abord : 'resolue' ne fait plus partie de l'enum `etape`.
+        EnumColonne::changer('interventions', 'etape', ['signalee', 'en_cours', 'resolue', 'planifiee', 'technicien_affecte', 'reparee', 'controlee', 'cloturee', 'reformee'], 'signalee');
+
+        DB::table('interventions')->whereIn('etape', ['cloturee', 'reformee'])->update(['etape' => 'resolue']);
+        DB::table('interventions')->whereIn('etape', ['reparee', 'controlee'])->update(['etape' => 'en_cours']);
+        DB::table('interventions')->whereIn('etape', ['planifiee', 'technicien_affecte'])->update(['etape' => 'signalee']);
 
         Schema::table('interventions', function (Blueprint $table) {
             $table->renameColumn('etape', 'statut');
         });
 
-        Schema::table('interventions', function (Blueprint $table) {
-            $table->enum('statut', ['signalee', 'en_cours', 'resolue'])->default('signalee')->change();
-        });
+        EnumColonne::changer('interventions', 'statut', ['signalee', 'en_cours', 'resolue'], 'signalee');
     }
 };

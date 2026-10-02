@@ -1,8 +1,7 @@
 <?php
 
+use App\Support\EnumColonne;
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -19,59 +18,51 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('facture_fournisseur_lignes', function (Blueprint $table) {
-            $table->enum('categorie', [
-                'achats_consommables',
-                'services_exterieurs',
-                'eau',
-                'courant',
-                'entretien',
-                'reparation',
-                'personnel',
-                'impots_taxes',
-                'charges_financieres',
-                'autres',
-            ])->nullable()->change();
-        });
+        EnumColonne::changer('facture_fournisseur_lignes', 'categorie', [
+            'achats_consommables',
+            'services_exterieurs',
+            'eau',
+            'courant',
+            'entretien',
+            'reparation',
+            'personnel',
+            'impots_taxes',
+            'charges_financieres',
+            'autres',
+        ], nullable: true);
 
-        Schema::table('depenses', function (Blueprint $table) {
-            $table->enum('categorie', [
-                'achats_consommables',
-                'services_exterieurs',
-                'eau',
-                'courant',
-                'entretien',
-                'reparation',
-                'personnel',
-                'impots_taxes',
-                'charges_financieres',
-                'autres',
-            ])->default('autres')->change();
-        });
+        EnumColonne::changer('depenses', 'categorie', [
+            'achats_consommables',
+            'services_exterieurs',
+            'eau',
+            'courant',
+            'entretien',
+            'reparation',
+            'personnel',
+            'impots_taxes',
+            'charges_financieres',
+            'autres',
+        ], 'autres');
     }
 
     public function down(): void
     {
-        Schema::table('facture_fournisseur_lignes', function (Blueprint $table) {
-            $table->enum('categorie', [
-                'achats_consommables',
-                'services_exterieurs',
-                'personnel',
-                'impots_taxes',
-                'charges_financieres',
-                'autres',
-            ])->nullable()->change();
-        });
+        EnumColonne::changer('facture_fournisseur_lignes', 'categorie', [
+            'achats_consommables',
+            'services_exterieurs',
+            'personnel',
+            'impots_taxes',
+            'charges_financieres',
+            'autres',
+        ], nullable: true);
 
-        Schema::table('depenses', function (Blueprint $table) {
-            $table->enum('categorie', [
-                'achats_consommables',
-                'services_exterieurs',
-                'personnel',
-                'impots_taxes',
-                'charges_financieres',
-                'autres',
-            ])->default('autres')->change();
-        });
+        EnumColonne::changer('depenses', 'categorie', [
+            'achats_consommables',
+            'services_exterieurs',
+            'personnel',
+            'impots_taxes',
+            'charges_financieres',
+            'autres',
+        ], 'autres');
     }
 };

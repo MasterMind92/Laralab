@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\EnumColonne;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -23,19 +24,14 @@ return new class extends Migration
             $table->date('date_reforme')->nullable()->after('contrat_echeance');
         });
 
-        // ->change() ne necessite pas doctrine/dbal dans cette version de Laravel
-        // (verifie sur MySQL et SQLite, 2026-09-17) — portable sur les deux pilotes.
-        Schema::table('equipements', function (Blueprint $table) {
-            $table->enum('statut', ['stock', 'affecte', 'en_panne', 'reforme'])->default('stock')->change();
-        });
+        // Portable MySQL / SQLite / PostgreSQL (voir App\Support\EnumColonne).
+        EnumColonne::changer('equipements', 'statut', ['stock', 'affecte', 'en_panne', 'reforme'], 'stock');
     }
 
     public function down(): void
     {
-        DB::statement("UPDATE equipements SET statut = 'en_panne' WHERE statut = 'reforme'");
-        Schema::table('equipements', function (Blueprint $table) {
-            $table->enum('statut', ['stock', 'affecte', 'en_panne'])->default('stock')->change();
-        });
+        DB::table('equipements')->where('statut', 'reforme')->update(['statut' => 'en_panne']);
+        EnumColonne::changer('equipements', 'statut', ['stock', 'affecte', 'en_panne'], 'stock');
 
         Schema::table('equipements', function (Blueprint $table) {
             $table->dropColumn(['date_reforme', 'contrat_echeance', 'contrat_reference', 'contrat_maintenance', 'garantie_fin', 'numero_serie']);

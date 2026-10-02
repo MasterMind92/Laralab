@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\EnumColonne;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -22,8 +23,9 @@ return new class extends Migration
     {
         Schema::table('paiements', function (Blueprint $table) {
             $table->foreignId('facture_id')->nullable()->change();
-            $table->enum('mode_paiement', ['cb', 'especes', 'virement', 'mobile_money', 'paypal'])->change();
         });
+
+        EnumColonne::changer('paiements', 'mode_paiement', ['cb', 'especes', 'virement', 'mobile_money', 'paypal']);
 
         Schema::table('paiements', function (Blueprint $table) {
             $table->foreignId('reservation_id')->nullable()->after('facture_id')->constrained('reservations')->restrictOnDelete();
@@ -36,8 +38,9 @@ return new class extends Migration
             $table->dropConstrainedForeignId('reservation_id');
         });
 
+        EnumColonne::changer('paiements', 'mode_paiement', ['cb', 'especes', 'virement', 'mobile_money']);
+
         Schema::table('paiements', function (Blueprint $table) {
-            $table->enum('mode_paiement', ['cb', 'especes', 'virement', 'mobile_money'])->change();
             $table->foreignId('facture_id')->nullable(false)->change();
         });
     }
