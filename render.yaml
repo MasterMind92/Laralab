@@ -1,17 +1,18 @@
-# Blueprint Render -- prepare le deploiement (compte/service/secrets restent a creer
-# manuellement dans le dashboard Render, voir PRODUCTION.md).
+# Blueprint Render -- offre GRATUITE (compte/service/secrets restent a creer manuellement
+# dans le dashboard Render, voir PRODUCTION.md).
 #
-# Pas de service Redis ni de queue worker : aucune notification de ce projet n'implemente
-# ShouldQueue (verifie en 5eme passe de Phase 08), tout est synchrone.
-#
-# Le planificateur (bootstrap/app.php : maintenance:alerter-sla toutes les 15 min) tourne
-# en Background Worker via `schedule:work`, pas en Cron Job Render -- la doc Render
-# deconseille un Cron Job a la minute (facturation a la seconde, timeout 12h, une seule
-# execution a la fois) et recommande un worker en continu pour ce cas d'usage.
+# Contraintes de l'offre gratuite, et comment elles sont absorbees :
+#   - pas de preDeployCommand ni de shell  -> migrations, comptes statiques et caches lances
+#     au demarrage du conteneur (docker/60-laralab-deploiement.sh)
+#   - pas de background worker             -> `schedule:work` lance dans le meme conteneur
+#   - pas de disque persistant             -> fichiers uploades PERDUS a chaque redemarrage
+#     (voir PRODUCTION.md, "Limites de l'offre gratuite")
+#   - mise en veille apres 15 min sans trafic, ~1 min de reveil
+#   - Postgres gratuit supprime 30 jours apres sa creation
 
 databases:
   - name: laralab-db
-    plan: starter
+    plan: free
     databaseName: laralab
     user: laralab
 
@@ -19,31 +20,18 @@ services:
   - name: laralab-web
     type: web
     runtime: docker
-    plan: starter
+    plan: free
     dockerfilePath: ./Dockerfile
     healthCheckPath: /up
-    # Migrations + caches a chaque deploiement, apres le build, avant que le nouveau code
-    # serve du trafic -- storage:link --force car public/ fait partie de l'image
-    # reconstruite a chaque deploi (le lien symbolique ne survit pas, contrairement a son
-    # contenu sur le disque monte ci-dessous).
-    preDeployCommand: >-
-      php artisan migrate --force &&
-      php artisan config:cache &&
-      php artisan route:cache &&
-      php artisan view:cache &&
-      php artisan event:cache &&
-      php artisan storage:link --force
-    disk:
-      name: laralab-storage
-      mountPath: /var/www/html/storage/app
-      sizeGB: 1
     envVars:
+      - key: PORT
+        value: "8080"
       - key: APP_NAME
         value: Laralab
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
-        value: false
+        value: "false"
       - key: APP_KEY
         sync: false
       - key: APP_URL
@@ -59,15 +47,13 @@ services:
       - key: SESSION_DRIVER
         value: database
       - key: SESSION_SECURE_COOKIE
-        value: true
+        value: "true"
       - key: CACHE_STORE
         value: database
       - key: QUEUE_CONNECTION
         value: database
       - key: FILESYSTEM_DISK
         value: local
-      - key: BROWSERSHOT_CHROME_PATH
-        sync: false
       - key: MAIL_MAILER
         value: smtp
       - key: MAIL_HOST
@@ -80,25 +66,10 @@ services:
         sync: false
       - key: MAIL_FROM_ADDRESS
         sync: false
-
-  - name: laralab-scheduler
-    type: worker
-    runtime: docker
-    plan: starter
-    dockerfilePath: ./Dockerfile
-    dockerCommand: php artisan schedule:work
-    envVars:
-      - key: APP_ENV
-        value: production
-      - key: APP_DEBUG
-        value: false
-      - key: APP_KEY
+      # Comptes statiques de l'administration (config/comptes.php)
+      - key: COMPTES_MOT_DE_PASSE
         sync: false
-      - key: LOG_LEVEL
-        value: error
-      - key: DB_CONNECTION
-        value: pgsql
-      - key: DB_URL
-        fromDatabase:
-          name: laralab-db
-          property: connectionString
+      - key: COMPTES_DOMAINE
+        sync: false
+      - key: COMPTES_ENTREPRISE
+        sync: false
